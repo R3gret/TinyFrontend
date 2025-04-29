@@ -29,40 +29,91 @@ const Login = () => {
     setError(null);
     
     try {
+      console.log("Attempting login to:", `${API_BASE_URL}/api/login`);
+      console.log("Login payload:", { 
+        username: loginUsername, 
+        password: '[redacted]' // Don't log actual password in production
+      });
+  
       const response = await axios.post(`${API_BASE_URL}/api/login`, {
         username: loginUsername,
         password: loginPassword
       }, {
+        headers: {
+          'Content-Type': 'application/json'
+        },
         withCredentials: true
       });
       
+      console.log("Login response:", {
+        status: response.status,
+        data: response.data,
+        headers: response.headers
+      });
+  
       if (response.data.success) {
+        // Store authentication data
         localStorage.setItem("token", response.data.token);
         localStorage.setItem("user", JSON.stringify(response.data.user));
         
-        console.log("Logged in user type:", response.data.user.type);
-
+        console.log("Successful login for user:", {
+          id: response.data.user.id,
+          username: response.data.user.username,
+          type: response.data.user.type
+        });
+  
+        // Navigate based on user type after delay
         setTimeout(() => {
           switch(response.data.user.type) {
             case 'admin':
+              console.log("Redirecting to admin dashboard");
               navigate("/admin-dashboard");
               break;
             case 'president':
+              console.log("Redirecting to president dashboard");
               navigate("/president-dashboard");
               break;
             case 'worker':
+              console.log("Redirecting to worker dashboard");
               navigate("/dashboard");
               break;
             default:
+              console.warn("Unknown user type, redirecting to home");
               navigate("/");
           }
         }, 2000);
       } else {
+        console.warn("Login failed with server response:", response.data);
         setError(response.data.message || "Invalid username or password.");
       }
     } catch (err) {
-      console.error('Login error:', err);
-      setError(err.response?.data?.message || "Something went wrong. Please try again later.");
+      const errorDetails = {
+        message: err.message,
+        code: err.code,
+        status: err.response?.status,
+        responseData: err.response?.data,
+        config: {
+          url: err.config?.url,
+          method: err.config?.method
+        }
+      };
+      
+      console.error("Full login error:", errorDetails);
+      
+      // User-friendly error messages
+      const errorMessage = 
+        err.response?.data?.message ||
+        (err.response?.status === 500 ? "Server error. Please try again later." :
+        err.response?.status === 401 ? "Invalid credentials" :
+        err.code === 'ERR_NETWORK' ? "Network error. Check your connection." :
+        "Login failed. Please try again.");
+  
+      setError(errorMessage);
+      
+      // Optional: Track failed login attempts
+      if (err.response?.status === 401) {
+        console.warn(`Failed login attempt for username: ${loginUsername}`);
+      }
     }
   };
 

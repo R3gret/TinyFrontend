@@ -9,7 +9,7 @@ import { ImSpinner8 } from "react-icons/im";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 
 // API configuration - using Vite environment variable
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 export default function Profile() {
   const [fadeIn, setFadeIn] = useState(false);

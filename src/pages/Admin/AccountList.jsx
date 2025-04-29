@@ -6,33 +6,6 @@ import defaultProfile from "../../assets/default-profile.png";
 import { useNavigate } from 'react-router-dom';
 import { Table, TableBody, TableCell, TableHead, TableRow, Paper, TextField, TableContainer, Select, MenuItem, InputLabel, FormControl } from "@mui/material";
 
-const API_URL = import.meta.env.VITE_API_URL;
-
-// API Service Helper
-const apiRequest = async (endpoint, method = 'GET', body = null) => {
-  const token = localStorage.getItem('token');
-  const headers = {
-    'Content-Type': 'application/json',
-    ...(token && { 'Authorization': `Bearer ${token}` })
-  };
-
-  const config = {
-    method,
-    headers,
-    credentials: 'include',
-    ...(body && { body: JSON.stringify(body) })
-  };
-
-  const response = await fetch(`${API_URL}${endpoint}`, config);
-  
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.message || 'Request failed');
-  }
-
-  return response.json();
-};
-
 const typeMapping = {
   admin: 'Administrator',
   worker: 'CD Worker',
@@ -91,20 +64,25 @@ export default function AccountList() {
       try {
         setLoading(true);
         
-        // Fetch user types using apiRequest
-        const typesData = await apiRequest('/api/account/types/all');
+        // Fetch user types
+        const typesResponse = await fetch('http://localhost:3001/api/account/types/all');
+        if (!typesResponse.ok) throw new Error('Failed to fetch types');
+        const typesData = await typesResponse.json();
         setUserTypes(typesData.types);
 
-        // Fetch users with query parameters using apiRequest
-        let endpoint = '/api/account';
+        // Fetch users with query parameters
+        let url = 'http://localhost:3001/api/account';
         const params = new URLSearchParams();
         
         if (selectedType) params.append('type', selectedType);
         if (searchTerm) params.append('search', searchTerm);
         
-        if (params.toString()) endpoint += `?${params.toString()}`;
+        if (params.toString()) url += `?${params.toString()}`;
         
-        const usersData = await apiRequest(endpoint);
+        const usersResponse = await fetch(url);
+        if (!usersResponse.ok) throw new Error('Failed to fetch users');
+        const usersData = await usersResponse.json();
+        
         setUsers(usersData.users);
       } catch (err) {
         console.error('Fetch error:', err);
@@ -118,7 +96,7 @@ export default function AccountList() {
   }, [selectedType, searchTerm]);
 
   const handleViewProfile = (userId) => {
-    navigate(`/account-profile/${userId}`);
+    navigate(`/account-profile/${userId}`); // Updated to match your route
   };
 
   const createUserTable = () => {

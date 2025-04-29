@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../../components/all/Navbar";
 import Sidebar from "../../components/Admin/AdminSidebar";
@@ -8,8 +7,32 @@ import { FaPhone, FaEnvelope, FaMapMarkerAlt, FaLink, FaUserEdit, FaKey } from "
 import { ImSpinner8 } from "react-icons/im";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 
-// API configuration - using Vite environment variable
-const API_BASE_URL = import.meta.env.VITE_API_URL;
+// API Service Helper
+const apiRequest = async (endpoint, method = 'GET', body = null) => {
+  const token = localStorage.getItem('token');
+  const user = JSON.parse(localStorage.getItem('user'));
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(token && { 'Authorization': `Bearer ${token}` })
+  };
+
+  const config = {
+    method,
+    headers,
+    credentials: 'include',
+    ...(body && { body: JSON.stringify(body) })
+  };
+
+  const API_BASE_URL = import.meta.env.VITE_API_URL;
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+  
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.message || 'Request failed');
+  }
+
+  return response.json();
+};
 
 // Custom hook for form state management
 const useFormState = (initialState) => {
@@ -113,16 +136,8 @@ export default function Profile() {
         throw new Error('No user logged in');
       }
   
-      const response = await axios.get(
-        `${API_BASE_URL}/api/user_session/current-user/details`,
-        { params: { userId: user.id } }
-      );
-  
-      if (response.data.success) {
-        setUserData(response.data.user);
-      } else {
-        throw new Error(response.data.message || 'Failed to fetch user data');
-      }
+      const data = await apiRequest(`/api/user_session/current-user/details?userId=${user.id}`);
+      setUserData(data.user);
     } catch (err) {
       console.error('Error fetching user data:', err);
       handleApiError(err);
@@ -211,18 +226,14 @@ export default function Profile() {
         throw new Error('No user logged in');
       }
 
-      const response = await axios.put(
-        `${API_BASE_URL}/api/user_session/update-profile`,
-        { userId: user.id, ...editForm }
-      );
+      const data = await apiRequest('/api/user_session/update-profile', 'PUT', { 
+        userId: user.id, 
+        ...editForm 
+      });
   
-      if (response.data.success) {
-        setSuccess('Profile updated successfully!');
-        fetchUserData();
-        setTimeout(() => setActiveTab('profile'), 1500);
-      } else {
-        throw new Error(response.data.message || 'Update failed');
-      }
+      setSuccess('Profile updated successfully!');
+      fetchUserData();
+      setTimeout(() => setActiveTab('profile'), 1500);
     } catch (err) {
       handleApiError(err);
     } finally {
@@ -244,36 +255,30 @@ export default function Profile() {
         throw new Error('No user logged in');
       }
   
-      const response = await axios.put(
-        `${API_BASE_URL}/api/user_session/change-password`,
-        {
-          userId: user.id,
-          currentPassword: passwordForm.currentPassword,
-          newPassword: passwordForm.newPassword,
-          confirmPassword: passwordForm.confirmPassword
-        }
-      );
+      const data = await apiRequest('/api/user_session/change-password', 'PUT', {
+        userId: user.id,
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword,
+        confirmPassword: passwordForm.confirmPassword
+      });
   
-      if (response.data.success) {
-        setSuccess('Password updated successfully!');
-        setPasswordForm({
-          currentPassword: '',
-          newPassword: '',
-          confirmPassword: ''
-        });
-        setTimeout(() => setActiveTab('profile'), 3000);
-      } else {
-        throw new Error(response.data.message || 'Password change failed');
-      }
+      setSuccess('Password updated successfully!');
+      setPasswordForm({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      });
+      setTimeout(() => setActiveTab('profile'), 3000);
     } catch (err) {
-      if (err.response?.data?.errors) {
-        const serverErrors = err.response.data.errors.reduce((acc, error) => {
+      if (err.message.includes('validation')) {
+        // Handle validation errors from server
+        const serverErrors = JSON.parse(err.message).errors.reduce((acc, error) => {
           acc[error.path] = error.msg;
           return acc;
         }, {});
         setPasswordErrors(serverErrors);
       } else {
-        setErrors({ general: err.response?.data?.message || err.message || 'Failed to change password' });
+        setErrors({ general: err.message || 'Failed to change password' });
       }
     } finally {
       setLoading(false);
@@ -281,13 +286,11 @@ export default function Profile() {
   };
 
   const handleApiError = (err) => {
-    if (err.response?.status === 401) {
+    if (err.message.includes('Unauthorized') || err.message.includes('No user logged in')) {
       localStorage.removeItem('user');
       navigate('/login');
-    } else if (err.response?.data?.errors) {
-      setErrors(err.response.data.errors);
     } else {
-      setErrors({ general: err.response?.data?.message || err.message || 'An error occurred' });
+      setErrors({ general: err.message || 'An error occurred' });
     }
   };
 
@@ -370,64 +373,89 @@ export default function Profile() {
     <div className="p-4">
       <h3 className="text-xl font-semibold text-gray-800 mb-4">Edit Profile</h3>
       <form onSubmit={handleEditSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <FormField
-          label="Full Name *"
-          name="full_name"
-          value={editForm.full_name}
-          onChange={handleEditChange}
-          error={editErrors.full_name}
-          required
-        />
+        <div>
+          <label className="block text-gray-700 font-medium mb-1">Full Name *</label>
+          <input
+            type="text"
+            name="full_name"
+            value={editForm.full_name}
+            onChange={handleEditChange}
+            className={`w-full p-2 border rounded-md ${editErrors.full_name ? 'border-red-500' : ''}`}
+            required
+          />
+          {editErrors.full_name && <p className="text-red-500 text-sm mt-1">{editErrors.full_name}</p>}
+        </div>
         
-        <FormField
-          label="Email"
-          type="email"
-          name="email"
-          value={editForm.email}
-          onChange={handleEditChange}
-          error={editErrors.email}
-        />
+        <div>
+          <label className="block text-gray-700 font-medium mb-1">Email</label>
+          <input
+            type="email"
+            name="email"
+            value={editForm.email}
+            onChange={handleEditChange}
+            className={`w-full p-2 border rounded-md ${editErrors.email ? 'border-red-500' : ''}`}
+          />
+          {editErrors.email && <p className="text-red-500 text-sm mt-1">{editErrors.email}</p>}
+        </div>
         
-        <FormField
-          label="Phone"
-          name="phone"
-          value={editForm.phone}
-          onChange={handleEditChange}
-        />
+        <div>
+          <label className="block text-gray-700 font-medium mb-1">Phone</label>
+          <input
+            type="text"
+            name="phone"
+            value={editForm.phone}
+            onChange={handleEditChange}
+            className="w-full p-2 border rounded-md"
+          />
+        </div>
         
-        <FormField
-          label="Address"
-          name="address"
-          value={editForm.address}
-          onChange={handleEditChange}
-        />
+        <div>
+          <label className="block text-gray-700 font-medium mb-1">Address</label>
+          <input
+            type="text"
+            name="address"
+            value={editForm.address}
+            onChange={handleEditChange}
+            className="w-full p-2 border rounded-md"
+          />
+        </div>
         
-        <FormField
-          label="Organization"
-          name="organization"
-          value={editForm.organization}
-          onChange={handleEditChange}
-        />
+        <div>
+          <label className="block text-gray-700 font-medium mb-1">Organization</label>
+          <input
+            type="text"
+            name="organization"
+            value={editForm.organization}
+            onChange={handleEditChange}
+            className="w-full p-2 border rounded-md"
+          />
+        </div>
         
-        <FormField
-          label="Website"
-          type="url"
-          name="website"
-          value={editForm.website}
-          onChange={handleEditChange}
-          error={editErrors.website}
-          placeholder="https://example.com"
-        />
+        <div>
+          <label className="block text-gray-700 font-medium mb-1">Website</label>
+          <input
+            type="url"
+            name="website"
+            value={editForm.website}
+            onChange={handleEditChange}
+            className={`w-full p-2 border rounded-md ${editErrors.website ? 'border-red-500' : ''}`}
+            placeholder="https://example.com"
+          />
+          {editErrors.website && <p className="text-red-500 text-sm mt-1">{editErrors.website}</p>}
+        </div>
         
-        <FormField
-          label="Social Media"
-          type="url"
-          name="social_media"
-          value={editForm.social_media}
-          onChange={handleEditChange}
-          error={editErrors.social_media}
-          placeholder="https://facebook.com/username"
-        />
+        <div>
+          <label className="block text-gray-700 font-medium mb-1">Social Media</label>
+          <input
+            type="url"
+            name="social_media"
+            value={editForm.social_media}
+            onChange={handleEditChange}
+            className={`w-full p-2 border rounded-md ${editErrors.social_media ? 'border-red-500' : ''}`}
+            placeholder="https://facebook.com/username"
+          />
+          {editErrors.social_media && <p className="text-red-500 text-sm mt-1">{editErrors.social_media}</p>}
+        </div>
 
         <div className="col-span-1 md:col-span-2 flex justify-end space-x-4">
           <button
@@ -454,27 +482,48 @@ export default function Profile() {
     <div className="p-4">
       <h3 className="text-xl font-semibold text-gray-800 mb-4">Change Password</h3>
       <form onSubmit={handlePasswordSubmit} className="space-y-4 max-w-md mx-auto">
-        <PasswordField
-          label="Current Password *"
-          name="currentPassword"
-          value={passwordForm.currentPassword}
-          onChange={handlePasswordChange}
-          error={passwordErrors.currentPassword}
-          showPassword={showPasswords.current}
-          onToggleVisibility={() => togglePasswordVisibility('current')}
-          required
-        />
+        <div>
+          <label className="block text-gray-700 font-medium mb-1">Current Password *</label>
+          <div className="relative">
+            <input
+              type={showPasswords.current ? "text" : "password"}
+              name="currentPassword"
+              value={passwordForm.currentPassword}
+              onChange={handlePasswordChange}
+              className={`w-full p-2 border rounded-md ${passwordErrors.currentPassword ? 'border-red-500' : ''}`}
+              required
+            />
+            <button
+              type="button"
+              onClick={() => togglePasswordVisibility('current')}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+            >
+              {showPasswords.current ? <FaEyeSlash /> : <FaEye />}
+            </button>
+          </div>
+          {passwordErrors.currentPassword && <p className="text-red-500 text-sm mt-1">{passwordErrors.currentPassword}</p>}
+        </div>
         
-        <PasswordField
-          label="New Password *"
-          name="newPassword"
-          value={passwordForm.newPassword}
-          onChange={handlePasswordChange}
-          error={passwordErrors.newPassword}
-          showPassword={showPasswords.new}
-          onToggleVisibility={() => togglePasswordVisibility('new')}
-          required
-        >
+        <div>
+          <label className="block text-gray-700 font-medium mb-1">New Password *</label>
+          <div className="relative">
+            <input
+              type={showPasswords.new ? "text" : "password"}
+              name="newPassword"
+              value={passwordForm.newPassword}
+              onChange={handlePasswordChange}
+              className={`w-full p-2 border rounded-md ${passwordErrors.newPassword ? 'border-red-500' : ''}`}
+              required
+            />
+            <button
+              type="button"
+              onClick={() => togglePasswordVisibility('new')}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+            >
+              {showPasswords.new ? <FaEyeSlash /> : <FaEye />}
+            </button>
+          </div>
+          {passwordErrors.newPassword && <p className="text-red-500 text-sm mt-1">{passwordErrors.newPassword}</p>}
           <div className="text-xs text-gray-500 mt-1">
             Password must contain:
             <ul className="list-disc pl-5">
@@ -485,18 +534,29 @@ export default function Profile() {
               <li>One special character</li>
             </ul>
           </div>
-        </PasswordField>
+        </div>
         
-        <PasswordField
-          label="Confirm New Password *"
-          name="confirmPassword"
-          value={passwordForm.confirmPassword}
-          onChange={handlePasswordChange}
-          error={passwordErrors.confirmPassword}
-          showPassword={showPasswords.confirm}
-          onToggleVisibility={() => togglePasswordVisibility('confirm')}
-          required
-        />
+        <div>
+          <label className="block text-gray-700 font-medium mb-1">Confirm New Password *</label>
+          <div className="relative">
+            <input
+              type={showPasswords.confirm ? "text" : "password"}
+              name="confirmPassword"
+              value={passwordForm.confirmPassword}
+              onChange={handlePasswordChange}
+              className={`w-full p-2 border rounded-md ${passwordErrors.confirmPassword ? 'border-red-500' : ''}`}
+              required
+            />
+            <button
+              type="button"
+              onClick={() => togglePasswordVisibility('confirm')}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+            >
+              {showPasswords.confirm ? <FaEyeSlash /> : <FaEye />}
+            </button>
+          </div>
+          {passwordErrors.confirmPassword && <p className="text-red-500 text-sm mt-1">{passwordErrors.confirmPassword}</p>}
+        </div>
 
         <div className="flex justify-end space-x-4">
           <button
@@ -523,49 +583,6 @@ export default function Profile() {
           </button>
         </div>
       </form>
-    </div>
-  );
-
-  // Reusable form field component
-  const FormField = ({ label, type = 'text', name, value, onChange, error, placeholder, required = false }) => (
-    <div>
-      <label className="block text-gray-700 font-medium mb-1">{label}</label>
-      <input
-        type={type}
-        name={name}
-        value={value}
-        onChange={onChange}
-        className={`w-full p-2 border rounded-md ${error ? 'border-red-500' : ''}`}
-        placeholder={placeholder}
-        required={required}
-      />
-      {error && <p className="text-red-500 text-sm mt-1">{error}</p>}
-    </div>
-  );
-
-  // Reusable password field component
-  const PasswordField = ({ label, name, value, onChange, error, showPassword, onToggleVisibility, children, required = false }) => (
-    <div>
-      <label className="block text-gray-700 font-medium mb-1">{label}</label>
-      <div className="relative">
-        <input
-          type={showPassword ? "text" : "password"}
-          name={name}
-          value={value}
-          onChange={onChange}
-          className={`w-full p-2 border rounded-md ${error ? 'border-red-500' : ''}`}
-          required={required}
-        />
-        <button
-          type="button"
-          onClick={onToggleVisibility}
-          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
-        >
-          {showPassword ? <FaEyeSlash /> : <FaEye />}
-        </button>
-      </div>
-      {error && <p className="text-red-500 text-sm mt-1">{error}</p>}
-      {children}
     </div>
   );
 

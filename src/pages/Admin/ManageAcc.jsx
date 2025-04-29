@@ -22,6 +22,9 @@ import {
 } from "@mui/material";
 import { Eye, EyeOff, Edit, Trash2 } from "lucide-react";
 
+const API_URL = import.meta.env.VITE_API_URL;
+
+
 const CreateUserModal = ({ open, onClose, onUserCreated }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [username, setUsername] = useState("");
@@ -47,7 +50,7 @@ const CreateUserModal = ({ open, onClose, onUserCreated }) => {
     setError("");
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/users`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/users`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -215,7 +218,7 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
   
     try {
       // DON'T hash on the frontend - send plaintext password
-      const response = await fetch(`http://localhost:3001/api/users/${user.id}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/users/${user.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -443,7 +446,7 @@ const ManageAcc = () => {
     const fetchUsers = async () => {
       setLoading(true);
       try {
-        const response = await fetch("http://localhost:3001/api/users");
+        const response = await fetch(`${API_URL}/api/users`);
         if (!response.ok) {
           throw new Error("Failed to fetch users");
         }
@@ -463,7 +466,7 @@ const ManageAcc = () => {
   const fetchUserPassword = async (userId) => {
     setFetchingPassword(true);
     try {
-      const response = await fetch(`http://localhost:3001/api/users/${userId}/password`);
+      const response = await fetch(`${API_URL}/api/users/${userId}/password`);
       if (!response.ok) {
         throw new Error('Failed to fetch password');
       }
@@ -482,9 +485,7 @@ const ManageAcc = () => {
     setSearchQuery(newValue);
     if (newValue) {
       try {
-        const response = await fetch(
-          `http://localhost:3001/api/users/search?query=${newValue}`
-        );
+        const response = await fetch(`${API_URL}/api/users/search?query=${newValue}`);
         if (!response.ok) {
           throw new Error("Failed to search users");
         }
@@ -495,7 +496,7 @@ const ManageAcc = () => {
         showSnackbar("Failed to search users", "error");
       }
     } else {
-      const response = await fetch("http://localhost:3001/api/users");
+      const response = await fetch(`${API_URL}/api/users`);
       const data = await response.json();
       setUsers(data);
     }
@@ -503,7 +504,7 @@ const ManageAcc = () => {
 
   const saveUserInfo = async (infoData) => {
     try {
-      const response = await fetch("http://localhost:3001/api/user-info", {
+      const response = await fetch("${API_URL}/api/user-info", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -516,7 +517,7 @@ const ManageAcc = () => {
         throw new Error(error.error || 'Failed to save user info');
       }
       
-      const usersResponse = await fetch("http://localhost:3001/api/users");
+      const usersResponse = await fetch(`${API_URL}/api/users`);
       const usersData = await usersResponse.json();
       setUsers(usersData);
       showSnackbar("User info saved successfully");
@@ -536,7 +537,7 @@ const ManageAcc = () => {
 
   const handleUserCreated = async (userId) => {
     try {
-      const response = await fetch("http://localhost:3001/api/users");
+      const response = await fetch(`${API_URL}/api/users`);
       const data = await response.json();
       setUsers(data);
       setNewUserId(userId);
@@ -551,7 +552,7 @@ const ManageAcc = () => {
   const handleUserUpdated = async () => {
     try {
       // Refetch all users
-      const response = await fetch("http://localhost:3001/api/users");
+      const response = await fetch(`${API_URL}/api/users`);
       const data = await response.json();
       setUsers(data);
       
@@ -576,14 +577,14 @@ const ManageAcc = () => {
     if (!window.confirm("Are you sure you want to delete this user?")) return;
   
     try {
-      const response = await fetch(`http://localhost:3001/api/users/${userId}`, {
+      const response = await fetch(`${API_URL}/api/users/${userId}`, {
         method: "DELETE",
       });
   
       if (!response.ok) throw new Error("Failed to delete user");
   
       // Refetch users after deletion
-      const usersResponse = await fetch("http://localhost:3001/api/users");
+      const usersResponse = await fetch(`${API_URL}/api/users`);
       const usersData = await usersResponse.json();
       setUsers(usersData);
       setSelectedUser(null); // Reset selected user

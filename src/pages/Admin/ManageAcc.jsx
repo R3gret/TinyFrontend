@@ -478,7 +478,7 @@ const ManageAcc = () => {
 
   const saveUserInfo = async (infoData) => {
     try {
-      await apiRequest('/api/user-info', 'POST', infoData);
+      await apiRequest('/api/users/user-info', 'POST', infoData);
       await fetchUsers();
       setSnackbar({
         open: true,

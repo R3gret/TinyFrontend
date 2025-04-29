@@ -733,7 +733,7 @@ function ClassworksSection({ setSnackbar }) {
               <MenuItem value="">Select Age</MenuItem>
               {ageGroups.map((ageGroup) => (
                 <MenuItem key={ageGroup.age_group_id} value={ageGroup.age_group_id}>
-                  {ageGroup.age_range}
+                  {ageGroup.age_range.replace(/\?/g, '-')}
                 </MenuItem>
               ))}
             </Select>

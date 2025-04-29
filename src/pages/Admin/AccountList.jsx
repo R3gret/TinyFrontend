@@ -1,21 +1,10 @@
 import { useState, useEffect } from "react";
 import Navbar from "../../components/all/Navbar";
-import Sidebar from "../../components/CDC/Sidebar";
+import Sidebar from "../../components/Admin/AdminSidebar";
 import bgImage from "../../assets/bg1.jpg";
 import defaultProfile from "../../assets/default-profile.png";
 import { useNavigate } from 'react-router-dom';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableRow, 
-  Paper, 
-  TextField, 
-  TableContainer,
-  CircularProgress,
-  Button
-} from "@mui/material";
+import { Table, TableBody, TableCell, TableHead, TableRow, Paper, TextField, TableContainer, Select, MenuItem, InputLabel, FormControl } from "@mui/material";
 
 // API Service Helper
 const apiRequest = async (endpoint, method = 'GET', body = null) => {
@@ -42,12 +31,19 @@ const apiRequest = async (endpoint, method = 'GET', body = null) => {
   return response.json();
 };
 
+const typeMapping = {
+  admin: 'Administrator',
+  worker: 'CD Worker',
+  parent: 'Parent',
+  president: 'President'
+};  
+
 const SearchBar = ({ searchTerm, setSearchTerm }) => {
   return (
     <div className="flex-1 max-w-md">
       <TextField
         fullWidth
-        label="Search students..."
+        label="Search by username..."
         variant="outlined"
         size="small"
         value={searchTerm}
@@ -57,70 +53,79 @@ const SearchBar = ({ searchTerm, setSearchTerm }) => {
   );
 };
 
-export default function StudentList() {
+const FilterBar = ({ selectedType, setSelectedType, userTypes }) => {
+  return (
+    <div className="flex-1 max-w-xs">
+      <FormControl fullWidth size="small">
+        <InputLabel>User Type</InputLabel>
+        <Select
+          value={selectedType}
+          onChange={(e) => setSelectedType(e.target.value)}
+          label="User Type"
+        >
+          <MenuItem value="">All Types</MenuItem>
+          {userTypes.map((type) => (
+            <MenuItem key={type} value={type}>
+              {typeMapping[type] || type}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+    </div>
+  );
+};
+
+export default function AccountList() {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
-  const [students, setStudents] = useState([]);
-  const [filteredStudents, setFilteredStudents] = useState([]);
+  const [selectedType, setSelectedType] = useState("");
+  const [users, setUsers] = useState([]);
+  const [userTypes, setUserTypes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Fetch student data from the API
   useEffect(() => {
-    const fetchStudents = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
         setError(null);
-        const data = await apiRequest('/api/students');
-        if (data.success) {
-          setStudents(data.students);
-        } else {
-          throw new Error(data.message || 'Failed to fetch students');
-        }
+        
+        // Fetch user types and users in parallel using Promise.all
+        const [typesData, usersData] = await Promise.all([
+          apiRequest('/api/account/types/all'),
+          apiRequest(`/api/account?${new URLSearchParams({
+            type: selectedType,
+            search: searchTerm
+          }).toString()}`)
+        ]);
+
+        setUserTypes(typesData.types);
+        setUsers(usersData.users);
       } catch (err) {
-        console.error("Error fetching students:", err);
+        console.error('Fetch error:', err);
         setError(err.message);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchStudents();
-  }, []);
+    // Add debounce to prevent too many API calls
+    const debounceTimer = setTimeout(() => {
+      fetchData();
+    }, 300);
 
-  // Filter students based on search term
-  useEffect(() => {
-    if (searchTerm.trim() === '') {
-      setFilteredStudents(students);
-    } else {
-      const filtered = students.filter((student) =>
-        getFullName(student).toLowerCase().includes(searchTerm.toLowerCase())
-      );
-      setFilteredStudents(filtered);
-    }
-  }, [searchTerm, students]);
+    return () => clearTimeout(debounceTimer);
+  }, [selectedType, searchTerm]);
 
-  const formatDate = (dateInput) => {
-    const date = new Date(dateInput);
-    return isNaN(date.getTime()) ? "N/A" : date.toLocaleDateString();
+  const handleViewProfile = (userId) => {
+    navigate(`/account-profile/${userId}`);
   };
 
-  const getFullName = (student) => {
-    const firstName = student.first_name || "";
-    const middleName = student.middle_name ? `${student.middle_name.charAt(0)}.` : "";
-    const lastName = student.last_name || "";
-    return `${firstName} ${middleName} ${lastName}`.trim();
-  };
-
-  const handleViewProfile = (studentId) => {
-    navigate(`/student-profile/${studentId}`);
-  };
-
-  const renderStudentTable = () => {
+  const renderUserTable = () => {
     if (loading) {
       return (
         <div className="flex justify-center items-center py-8">
-          <CircularProgress />
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-500"></div>
         </div>
       );
     }
@@ -128,83 +133,84 @@ export default function StudentList() {
     if (error) {
       return (
         <div className="text-center py-8 text-red-500">
-          <p className="font-medium">Error loading students</p>
+          <p className="font-medium">Error loading users</p>
           <p className="text-sm">{error}</p>
-          <Button
-            variant="contained"
-            color="primary"
+          <button
             onClick={() => window.location.reload()}
-            className="mt-2"
+            className="mt-2 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition"
           >
             Retry
-          </Button>
+          </button>
         </div>
       );
     }
 
-    if (filteredStudents.length === 0) {
+    if (users.length === 0) {
       return (
         <div className="text-center py-8 text-gray-500">
-          {searchTerm ? 'No students found matching your search' : 'No students available'}
+          No users found matching your criteria
         </div>
       );
     }
 
     return (
-      <Paper className="shadow-lg rounded-lg">
-        <TableContainer style={{ maxHeight: "calc(100vh - 200px)" }}>
-          <Table stickyHeader aria-label="student table">
-            <TableHead>
-              <TableRow>
-                <TableCell align="center">ID</TableCell>
-                <TableCell>Profile</TableCell>
-                <TableCell>Full Name</TableCell>
-                <TableCell>Gender</TableCell>
-                <TableCell>Birthdate</TableCell>
-                <TableCell>Age</TableCell>
-                <TableCell>Action</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {filteredStudents.map((student) => (
-                <TableRow
-                  key={student.student_id}
-                  hover
-                  onClick={() => handleViewProfile(student.student_id)}
-                  sx={{ cursor: 'pointer' }}
-                >
-                  <TableCell align="center">{student.student_id}</TableCell>
-                  <TableCell>
-                    <img
-                      src={student.profile_pic || defaultProfile}
-                      alt="Profile"
-                      className="w-10 h-10 rounded-full shadow-md object-cover"
-                      onError={(e) => (e.target.src = defaultProfile)}
-                    />
-                  </TableCell>
-                  <TableCell>{getFullName(student)}</TableCell>
-                  <TableCell>{student.gender}</TableCell>
-                  <TableCell>{formatDate(student.birthdate)}</TableCell>
-                  <TableCell>{student.age || 'N/A'}</TableCell>
-                  <TableCell>
-                    <Button
-                      variant="outlined"
-                      color="primary"
-                      size="small"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleViewProfile(student.student_id);
-                      }}
-                    >
-                      View
-                    </Button>
-                  </TableCell>
+      <div className="mb-10">
+        <h3 className="text-xl font-semibold text-gray-800 mb-4">
+          {selectedType ? `${typeMapping[selectedType] || selectedType} Users` : 'All Users'}
+        </h3>
+        <Paper className="max-h-96 overflow-hidden">
+          <TableContainer style={{ maxHeight: "400px", overflowY: "auto" }}>
+            <Table sx={{ minWidth: 650 }} aria-label="user table" stickyHeader>
+              <TableHead>
+                <TableRow>
+                  <TableCell align="center">ID</TableCell>
+                  <TableCell>Profile</TableCell>
+                  <TableCell align="center">Username</TableCell>
+                  <TableCell align="center">Type</TableCell>
+                  <TableCell align="center">Action</TableCell>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Paper>
+              </TableHead>
+              <TableBody>
+                {users.map((user) => (
+                  <TableRow
+                    key={user.id}
+                    hover
+                    sx={{
+                      "&:nth-of-type(odd)": { backgroundColor: "#f5f5f5" },
+                      cursor: "pointer",
+                    }}
+                    onClick={() => handleViewProfile(user.id)}
+                  >
+                    <TableCell align="center">{user.id}</TableCell>
+                    <TableCell>
+                      <img
+                        src={user.profile_pic || defaultProfile}
+                        alt="Profile"
+                        className="w-10 h-10 rounded-full shadow-md object-cover"
+                      />
+                    </TableCell>
+                    <TableCell align="center">{user.username}</TableCell>
+                    <TableCell align="center">
+                      {typeMapping[user.type] || user.type}
+                    </TableCell>
+                    <TableCell align="center">
+                      <button
+                        className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleViewProfile(user.id);
+                        }}
+                      >
+                        View Profile
+                      </button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Paper>
+      </div>
     );
   };
 
@@ -216,10 +222,22 @@ export default function StudentList() {
         <Navbar />
         <div className="p-6">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-gray-800">Student List</h2>
-            <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
+            <h2 className="text-2xl font-bold text-gray-800">User Management</h2>
           </div>
-          {renderStudentTable()}
+          <div className="flex flex-col space-y-4 mb-6">
+            <div className="flex flex-col md:flex-row gap-4">
+              <FilterBar 
+                selectedType={selectedType}
+                setSelectedType={setSelectedType}
+                userTypes={userTypes}
+              />
+              <SearchBar 
+                searchTerm={searchTerm}
+                setSearchTerm={setSearchTerm}
+              />
+            </div>
+          </div>
+          {renderUserTable()}
         </div>
       </div>
     </div>

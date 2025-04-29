@@ -124,11 +124,15 @@ const AccProfiles = () => {
   return (
     <div className="w-screen min-h-screen flex flex-col bg-cover bg-center" style={{ backgroundImage: `url(${bgImage})` }}>
       {/* Navbar at the very top */}
-      <Navbar />
+      <div className="z-20"> {/* Wrap Navbar in a z-index container */}
+    <Navbar />
+  </div>
       
       {/* Main content area with Sidebar and content */}
       <div className="flex flex-1">
-        <Sidebar />
+      <div className="z-10"> {/* Wrap Sidebar in a z-index container */}
+      <Sidebar />
+    </div>
         
         {/* Content area */}
         <div className="flex-grow pl-16 pt-4 bg-white/60 backdrop-blur">

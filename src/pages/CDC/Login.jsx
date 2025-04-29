@@ -5,6 +5,9 @@ import logo from "../../assets/logo.png";
 import { FiEye, FiEyeOff } from "react-icons/fi";
 import axios from "axios";
 
+// Set API base URL from Vite environment variables with localhost fallback
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
 const Login = () => {
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
@@ -23,50 +26,59 @@ const Login = () => {
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    setError(null);
     
     try {
-      const response = await axios.post('http://localhost:3001/api/login', {
+      const response = await axios.post(`${API_BASE_URL}/api/login`, {
         username: loginUsername,
         password: loginPassword
+      }, {
+        withCredentials: true
       });
       
       if (response.data.success) {
+        localStorage.setItem("token", response.data.token);
         localStorage.setItem("user", JSON.stringify(response.data.user));
-        localStorage.setItem("token", response.data.token); // Store the token
         
-        // Store user data in localStorage
-        localStorage.setItem("user", JSON.stringify(response.data.user));
-  
-        // Log the user type to the console
-        console.log("Logged in user type:", response.data.user.type); // Log user type
-  
+        console.log("Logged in user type:", response.data.user.type);
+
         setTimeout(() => {
-          // Navigate to the dashboard based on user type
-          if (response.data.user.type === 'admin') {
-            navigate("/admin-dashboard");
-          } else if (response.data.user.type === 'president') {
-            navigate("/president-dashboard");
-          } else if (response.data.user.type === 'worker') {
-            navigate("/dashboard");
+          switch(response.data.user.type) {
+            case 'admin':
+              navigate("/admin-dashboard");
+              break;
+            case 'president':
+              navigate("/president-dashboard");
+              break;
+            case 'worker':
+              navigate("/dashboard");
+              break;
+            default:
+              navigate("/");
           }
         }, 2000);
       } else {
-        setError("Invalid username or password.");
+        setError(response.data.message || "Invalid username or password.");
       }
     } catch (err) {
       console.error('Login error:', err);
-      setError("Something went wrong. Please try again later.");
+      setError(err.response?.data?.message || "Something went wrong. Please try again later.");
     }
   };
-  
 
-  const handlePasswordReset = () => {
+  const handlePasswordReset = async () => {
     if (!resetEmail) {
       setError("Please enter your email.");
       return;
     }
-    setSuccessMessage("Reset email would be sent (simulated)!");
-    setShowModal(false);
+    
+    try {
+      await axios.post(`${API_BASE_URL}/api/password-reset`, { email: resetEmail });
+      setSuccessMessage("Password reset link sent to your email!");
+      setShowModal(false);
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to send reset email.");
+    }
   };
 
   return (

@@ -70,6 +70,9 @@ const AccProfiles = () => {
     try {
       return JSON.parse(text);
     } catch {
+      // Handle case where text is not JSON but might be comma-separated
+      if (typeof text !== 'string') return null;
+      
       return text.split(',').map(item => {
         const trimmed = item.trim();
         if (trimmed.includes(':')) {
@@ -122,17 +125,11 @@ const AccProfiles = () => {
   const socialMediaLinks = parseSocialMedia(userData.other_info?.social_media);
 
   return (
-    
-      <div className="flex flex-col flex-grow pl-16 pt-16 bg-white/60 backdrop-blur">
-      <div className="z-20"> {/* Wrap Navbar in a z-index container */}
-    <Navbar />
-  </div>
-        
-  <div className="w-screen min-h-screen flex bg-cover bg-center" style={{ backgroundImage: `url(${bgImage})` }}>
-      <div className="z-10"> {/* Wrap Navbar in a z-index container */}
-    <Sidebar />
-  </div>
-
+    <div className="w-full min-h-screen flex bg-cover bg-center" style={{ backgroundImage: `url(${bgImage})` }}>
+      <Sidebar />
+      <Navbar />
+      
+      <div className="flex flex-col flex-grow pl-16 pt-16">
         <button 
           onClick={() => navigate('/account-list')}
           className="absolute bottom-10 right-10 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg shadow-md transition z-10"
@@ -204,6 +201,8 @@ const AccProfiles = () => {
               {socialMediaLinks ? (
                 <div className="flex flex-wrap gap-3">
                   {socialMediaLinks.map((social, index) => {
+                    if (!social?.url) return null;
+                    
                     const url = social.url.startsWith('http') ? social.url : `https://${social.url}`;
                     let icon, color;
 
@@ -256,4 +255,4 @@ const AccProfiles = () => {
   );
 };
 
-export default AccProfiles;         
+export default AccProfiles;

@@ -90,19 +90,21 @@ export default function AccountList() {
     const fetchData = async () => {
       try {
         setLoading(true);
-  
-        // Fetch user types
+        
+        // Fetch user types using apiRequest
         const typesData = await apiRequest('/api/account/types/all');
         setUserTypes(typesData.types);
-  
-        // Fetch users with query parameters
+
+        // Fetch users with query parameters using apiRequest
+        let endpoint = '/api/account';
         const params = new URLSearchParams();
+        
         if (selectedType) params.append('type', selectedType);
         if (searchTerm) params.append('search', searchTerm);
-  
-        const endpoint = `/api/account${params.toString() ? `?${params.toString()}` : ''}`;
+        
+        if (params.toString()) endpoint += `?${params.toString()}`;
+        
         const usersData = await apiRequest(endpoint);
-  
         setUsers(usersData.users);
       } catch (err) {
         console.error('Fetch error:', err);
@@ -111,13 +113,12 @@ export default function AccountList() {
         setLoading(false);
       }
     };
-  
+
     fetchData();
   }, [selectedType, searchTerm]);
-  
 
   const handleViewProfile = (userId) => {
-    navigate(`/account-profile/${userId}`); // Updated to match your route
+    navigate(`/account-profile/${userId}`);
   };
 
   const createUserTable = () => {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, Outlet } from "react-router-dom";
-import { useAuth } from "../context/AuthContext"; // If you're using context
+
 
 const ProtectedRoute = ({ allowedTypes, children }) => {
   const [isAuthorized, setIsAuthorized] = useState(false);

@@ -6,6 +6,31 @@ import defaultProfile from "../../assets/default-profile.png";
 import { useNavigate } from 'react-router-dom';
 import { Table, TableBody, TableCell, TableHead, TableRow, Paper, TextField, TableContainer, Select, MenuItem, InputLabel, FormControl } from "@mui/material";
 
+// API Service Helper
+const apiRequest = async (endpoint, method = 'GET', body = null) => {
+  const token = localStorage.getItem('token');
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(token && { 'Authorization': `Bearer ${token}` })
+  };
+
+  const config = {
+    method,
+    headers,
+    ...(body && { body: JSON.stringify(body) })
+  };
+
+  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+  
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.message || 'Request failed');
+  }
+
+  return response.json();
+};
+
 const typeMapping = {
   admin: 'Administrator',
   worker: 'CD Worker',
@@ -63,26 +88,18 @@ export default function AccountList() {
     const fetchData = async () => {
       try {
         setLoading(true);
+        setError(null);
         
-        // Fetch user types
-        const typesResponse = await fetch('http://localhost:3001/api/account/types/all');
-        if (!typesResponse.ok) throw new Error('Failed to fetch types');
-        const typesData = await typesResponse.json();
-        setUserTypes(typesData.types);
+        // Fetch user types and users in parallel using Promise.all
+        const [typesData, usersData] = await Promise.all([
+          apiRequest('/api/account/types/all'),
+          apiRequest(`/api/account?${new URLSearchParams({
+            type: selectedType,
+            search: searchTerm
+          }).toString()}`)
+        ]);
 
-        // Fetch users with query parameters
-        let url = 'http://localhost:3001/api/account';
-        const params = new URLSearchParams();
-        
-        if (selectedType) params.append('type', selectedType);
-        if (searchTerm) params.append('search', searchTerm);
-        
-        if (params.toString()) url += `?${params.toString()}`;
-        
-        const usersResponse = await fetch(url);
-        if (!usersResponse.ok) throw new Error('Failed to fetch users');
-        const usersData = await usersResponse.json();
-        
+        setUserTypes(typesData.types);
         setUsers(usersData.users);
       } catch (err) {
         console.error('Fetch error:', err);
@@ -92,17 +109,49 @@ export default function AccountList() {
       }
     };
 
-    fetchData();
+    // Add debounce to prevent too many API calls
+    const debounceTimer = setTimeout(() => {
+      fetchData();
+    }, 300);
+
+    return () => clearTimeout(debounceTimer);
   }, [selectedType, searchTerm]);
 
   const handleViewProfile = (userId) => {
-    navigate(`/account-profile/${userId}`); // Updated to match your route
+    navigate(`/account-profile/${userId}`);
   };
 
-  const createUserTable = () => {
-    if (loading) return <div className="text-center py-8 text-gray-500">Loading users...</div>;
-    if (error) return <div className="text-center py-8 text-red-500">Error: {error}</div>;
-    if (users.length === 0) return <div className="text-center py-8 text-gray-500">No users found</div>;
+  const renderUserTable = () => {
+    if (loading) {
+      return (
+        <div className="flex justify-center items-center py-8">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-500"></div>
+        </div>
+      );
+    }
+
+    if (error) {
+      return (
+        <div className="text-center py-8 text-red-500">
+          <p className="font-medium">Error loading users</p>
+          <p className="text-sm">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-2 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition"
+          >
+            Retry
+          </button>
+        </div>
+      );
+    }
+
+    if (users.length === 0) {
+      return (
+        <div className="text-center py-8 text-gray-500">
+          No users found matching your criteria
+        </div>
+      );
+    }
 
     return (
       <div className="mb-10">
@@ -111,9 +160,9 @@ export default function AccountList() {
         </h3>
         <Paper className="max-h-96 overflow-hidden">
           <TableContainer style={{ maxHeight: "400px", overflowY: "auto" }}>
-            <Table sx={{ minWidth: 650 }} aria-label="user table">
+            <Table sx={{ minWidth: 650 }} aria-label="user table" stickyHeader>
               <TableHead>
-                <TableRow sx={{ backgroundColor: "white", position: "sticky", top: 0, zIndex: 1 }}>
+                <TableRow>
                   <TableCell align="center">ID</TableCell>
                   <TableCell>Profile</TableCell>
                   <TableCell align="center">Username</TableCell>
@@ -125,10 +174,12 @@ export default function AccountList() {
                 {users.map((user) => (
                   <TableRow
                     key={user.id}
+                    hover
                     sx={{
                       "&:nth-of-type(odd)": { backgroundColor: "#f5f5f5" },
-                      "&:hover": { backgroundColor: "#e0f7fa" },
+                      cursor: "pointer",
                     }}
+                    onClick={() => handleViewProfile(user.id)}
                   >
                     <TableCell align="center">{user.id}</TableCell>
                     <TableCell>
@@ -145,7 +196,10 @@ export default function AccountList() {
                     <TableCell align="center">
                       <button
                         className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition"
-                        onClick={() => handleViewProfile(user.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleViewProfile(user.id);
+                        }}
                       >
                         View Profile
                       </button>
@@ -171,7 +225,7 @@ export default function AccountList() {
             <h2 className="text-2xl font-bold text-gray-800">User Management</h2>
           </div>
           <div className="flex flex-col space-y-4 mb-6">
-            <div className="flex space-x-4">
+            <div className="flex flex-col md:flex-row gap-4">
               <FilterBar 
                 selectedType={selectedType}
                 setSelectedType={setSelectedType}
@@ -183,7 +237,7 @@ export default function AccountList() {
               />
             </div>
           </div>
-          {createUserTable()}
+          {renderUserTable()}
         </div>
       </div>
     </div>

@@ -6,6 +6,31 @@ import bgImage from "../../assets/bg1.jpg";
 import defaultProfile from "../../assets/default-profile.png";
 import { Mail, Phone, MapPin, Edit, Globe, Users, Facebook, Twitter, Linkedin, Instagram } from "lucide-react";
 
+// API Service Helper
+const apiRequest = async (endpoint, method = 'GET', body = null) => {
+  const token = localStorage.getItem('token');
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(token && { 'Authorization': `Bearer ${token}` })
+  };
+
+  const config = {
+    method,
+    headers,
+    ...(body && { body: JSON.stringify(body) })
+  };
+
+  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+  
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.message || 'Request failed');
+  }
+
+  return response.json();
+};
+
 const typeMapping = {
   admin: 'Administrator',
   worker: 'CD Worker',
@@ -18,21 +43,25 @@ const AccProfiles = () => {
   const navigate = useNavigate();
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const response = await fetch(`http://localhost:3001/api/account/${id}/details`);
-        if (!response.ok) throw new Error('Failed to fetch user data');
-        const data = await response.json();
+        setLoading(true);
+        setError(null);
+        
+        const data = await apiRequest(`/api/account/${id}/details`);
         console.log("Fetched user data:", data.user);
         setUserData(data.user);
       } catch (error) {
         console.error('Error fetching user:', error);
+        setError(error.message || 'Failed to load user profile');
       } finally {
         setLoading(false);
       }
     };
+    
     fetchUserData();
   }, [id]);
 
@@ -52,8 +81,43 @@ const AccProfiles = () => {
     }
   };
 
-  if (loading) return <div className="text-center py-8 text-gray-500">Loading profile...</div>;
-  if (!userData) return <div className="text-center py-8 text-red-500">User not found</div>;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center py-8 text-gray-500">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-500 mx-auto mb-4"></div>
+          Loading profile...
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center py-8 text-red-500">
+          <div className="text-xl font-semibold mb-2">Error loading profile</div>
+          <div className="mb-4">{error}</div>
+          <button 
+            onClick={() => navigate('/account-list')}
+            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg shadow-md transition"
+          >
+            Back to Accounts
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!userData) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center py-8 text-red-500">
+          User not found
+        </div>
+      </div>
+    );
+  }
 
   const socialMediaLinks = parseSocialMedia(userData.other_info?.social_media);
 
@@ -64,11 +128,11 @@ const AccProfiles = () => {
         <Navbar />
 
         <button 
-        onClick={() => navigate('/account-list')}
-        className="absolute bottom-10 right-10 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg shadow-md transition z-10"
-      >
-        Back to Accounts
-      </button>
+          onClick={() => navigate('/account-list')}
+          className="absolute bottom-10 right-10 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg shadow-md transition z-10"
+        >
+          Back to Accounts
+        </button>
 
         <div className="flex flex-col lg:flex-row gap-10 p-10 h-full">
           {/* Left: Profile Info */}

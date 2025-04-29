@@ -1,17 +1,41 @@
-import { useState, useEffect  } from "react";
+import { useState, useEffect } from "react";
 import { PDFViewer } from "@react-pdf/renderer";
 import Navbar from "../../components/all/Navbar";
 import Sidebar from "../../components/CDC/Sidebar";
 import bgImage from "../../assets/bg1.jpg";
 import RegistrationPDF from "../../forms/RegistrationPDF";
-import axios from 'axios';
+
+// API Service Helper
+const apiRequest = async (endpoint, method = 'GET', body = null) => {
+  const token = localStorage.getItem('token');
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(token && { 'Authorization': `Bearer ${token}` })
+  };
+
+  const config = {
+    method,
+    headers,
+    ...(body && { body: JSON.stringify(body) })
+  };
+
+  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+  
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.message || 'Request failed');
+  }
+
+  return response.json();
+};
 
 export default function Registration() {
   const [showPDF, setShowPDF] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
 
-  // Combined state for both parent and child
   const [formData, setFormData] = useState({
-    // Child Information
     childLastName: "",
     childFirstName: "",
     childMiddleName: "",
@@ -22,27 +46,19 @@ export default function Registration() {
     childFirstLanguage: "",
     childSecondLanguage: "",
     childRegistered: false,
-    
-    // Guardian Information
     guardianName: "",
     guardianRelationship: "",
     guardianEmail: "",
-    
-    // Mother Information
     motherName: "",
     motherOccupation: "",
     motherAddress: "",
     motherContactHome: "",
     motherContactWork: "",
-    
-    // Father Information
     fatherName: "",
     fatherOccupation: "",
     fatherAddress: "",
     fatherContactHome: "",
     fatherContactWork: "",
-    
-    // Emergency Contact
     emergencyName: "",
     emergencyRelationship: "",
     emergencyContactHome: "",
@@ -67,7 +83,6 @@ export default function Registration() {
         months += 12;
       }
   
-      // Ensure non-negative age values
       years = Math.max(0, years);
       months = Math.max(0, months);
   
@@ -76,36 +91,34 @@ export default function Registration() {
       setFormData(prev => ({ ...prev, childAge: ageString }));
     }
   }, [formData.childBirthday]);
-  
 
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleRegister = async () => {
+    // Validate required fields
+    if (!formData.childFirstName || !formData.childLastName || 
+        !formData.guardianName || !formData.motherName || !formData.fatherName) {
+      setSubmitError('Required fields are missing');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setSubmitError(null);
+
     try {
-      const response = await axios.post('http://localhost:3001/api/register', formData, {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-  
-      console.log('Registration successful:', response.data);
+      const response = await apiRequest('/api/register', 'POST', formData);
+      console.log('Registration successful:', response);
       alert('Registration successful!');
+      // Optionally reset form here
     } catch (error) {
-      if (error.response) {
-        console.error('Error during registration:', error.response.data);
-        alert('Registration failed. Please try again.');
-      } else if (error.request) {
-        console.error('No response from the server:', error.request);
-        alert('Server did not respond. Please check the server.');
-      } else {
-        console.error('Error', error.message);
-        alert('An unexpected error occurred. Please try again.');
-      }
+      console.error('Registration error:', error);
+      setSubmitError(error.message || 'Registration failed. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
-  
 
   return (
     <div
@@ -118,7 +131,6 @@ export default function Registration() {
         <h1 className="text-2xl font-bold text-gray-800 mt-11 mb-4 ml-10">Child Registration</h1>
 
         <div className="p-10 w-17/18 min-h-[500px] mx-auto bg-white shadow-lg rounded-lg">
-          {/* Show either PDF or Form */}
           {showPDF ? (
             <div className="absolute inset-0 bg-white p-10 z-50">
               <button 
@@ -134,6 +146,9 @@ export default function Registration() {
           ) : (
             <>
               <RegistrationForm formData={formData} onChange={handleChange} />
+              {submitError && (
+                <div className="text-red-500 mb-4">{submitError}</div>
+              )}
               <div className="flex justify-end space-x-4 mt-6">
                 <button
                   className="bg-blue-600 text-white px-4 py-2 rounded"
@@ -142,10 +157,11 @@ export default function Registration() {
                   Preview PDF
                 </button>
                 <button
-                  className="bg-green-600 text-white px-4 py-2 rounded"
+                  className="bg-green-600 text-white px-4 py-2 rounded disabled:bg-gray-400"
                   onClick={handleRegister}
+                  disabled={isSubmitting}
                 >
-                  Register
+                  {isSubmitting ? 'Registering...' : 'Register'}
                 </button>
               </div>
             </>

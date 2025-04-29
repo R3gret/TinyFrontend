@@ -122,15 +122,16 @@ const AccProfiles = () => {
   const socialMediaLinks = parseSocialMedia(userData.other_info?.social_media);
 
   return (
-    <div className="w-screen min-h-screen flex bg-cover bg-center" style={{ backgroundImage: `url(${bgImage})` }}>
-      <div className="z-10"> {/* Wrap Navbar in a z-index container */}
-    <Sidebar />
-  </div>
+    
       <div className="flex flex-col flex-grow pl-16 pt-16 bg-white/60 backdrop-blur">
       <div className="z-20"> {/* Wrap Navbar in a z-index container */}
     <Navbar />
   </div>
         
+  <div className="w-screen min-h-screen flex bg-cover bg-center" style={{ backgroundImage: `url(${bgImage})` }}>
+      <div className="z-10"> {/* Wrap Navbar in a z-index container */}
+    <Sidebar />
+  </div>
 
         <button 
           onClick={() => navigate('/account-list')}

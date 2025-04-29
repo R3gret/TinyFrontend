@@ -29,13 +29,13 @@ const Login = () => {
     setError(null);
     
     try {
-      console.log("Attempting login to:", `${VITE_API_URL}/api/login`);
+      console.log("Attempting login to:", `${API_BASE_URL}/api/login`);
       console.log("Login payload:", { 
         username: loginUsername, 
         password: '[redacted]' // Don't log actual password in production
       });
   
-      const response = await axios.post(`${VITE_API_URL}/api/login`, {
+      const response = await axios.post(`${API_BASE_URL}/api/login`, {
         username: loginUsername,
         password: loginPassword
       }, {

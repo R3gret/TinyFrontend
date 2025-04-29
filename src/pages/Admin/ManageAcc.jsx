@@ -3,7 +3,6 @@ import Navbar from "../../components/all/Navbar";
 import Sidebar from "../../components/Admin/AdminSidebar";
 import bgImage from "../../assets/bg1.jpg";
 import UserInfoModal from "../../components/Admin/UserInfoModal";
-import bcrypt from 'bcryptjs';
 import {
   TextField,
   Button,
@@ -24,51 +23,62 @@ import { Eye, EyeOff, Edit, Trash2 } from "lucide-react";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
+// API Service Helper
+const apiRequest = async (endpoint, method = 'GET', body = null) => {
+  const token = localStorage.getItem('token');
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(token && { 'Authorization': `Bearer ${token}` })
+  };
+
+  const config = {
+    method,
+    headers,
+    credentials: 'include',
+    ...(body && { body: JSON.stringify(body) })
+  };
+
+  const response = await fetch(`${API_URL}${endpoint}`, config);
+  
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.message || 'Request failed');
+  }
+
+  return response.json();
+};
 
 const CreateUserModal = ({ open, onClose, onUserCreated }) => {
   const [showPassword, setShowPassword] = useState(false);
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [type, setType] = useState("worker");
+  const [formData, setFormData] = useState({
+    username: "",
+    password: "",
+    type: "worker"
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError("");
 
-    if (!username || !password) {
+    if (!formData.username || !formData.password) {
       setError("Username and password are required");
       return;
     }
 
-    if (password.length < 8) {
+    if (formData.password.length < 8) {
       setError("Password must be at least 8 characters");
       return;
     }
 
     setLoading(true);
-    setError("");
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/users`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ username, password, type }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to create user");
-      }
-
-      const data = await response.json();
+      const data = await apiRequest('/api/users', 'POST', formData);
       onUserCreated(data.id);
       onClose();
-      setUsername("");
-      setPassword("");
-      setType("worker");
+      setFormData({ username: "", password: "", type: "worker" });
     } catch (err) {
       setError(err.message);
     } finally {
@@ -77,26 +87,18 @@ const CreateUserModal = ({ open, onClose, onUserCreated }) => {
   };
 
   return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      sx={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backdropFilter: "blur(5px)",
-        backgroundColor: "rgba(0, 0, 0, 0.4)",
-      }}
-    >
-      <Box
-        sx={{
-          width: "600px",
-          backgroundColor: "white",
-          borderRadius: 3,
-          p: 4,
-          boxShadow: 24,
-        }}
-      >
+    <Modal open={open} onClose={onClose}>
+      <Box sx={{ 
+        width: "600px", 
+        backgroundColor: "white",
+        borderRadius: 3,
+        p: 4,
+        boxShadow: 24,
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)'
+      }}>
         <Typography variant="h6" component="h2" sx={{ mb: 2, textAlign: "center" }}>
           Create New User
         </Typography>
@@ -110,8 +112,8 @@ const CreateUserModal = ({ open, onClose, onUserCreated }) => {
         <form onSubmit={handleSubmit}>
           <TextField
             label="Username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            value={formData.username}
+            onChange={(e) => setFormData({...formData, username: e.target.value})}
             required
             fullWidth
             sx={{ mb: 2 }}
@@ -125,8 +127,8 @@ const CreateUserModal = ({ open, onClose, onUserCreated }) => {
           <TextField
             label="Password"
             type={showPassword ? "text" : "password"}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            value={formData.password}
+            onChange={(e) => setFormData({...formData, password: e.target.value})}
             required
             fullWidth
             sx={{ mb: 2 }}
@@ -143,9 +145,9 @@ const CreateUserModal = ({ open, onClose, onUserCreated }) => {
           <FormControl fullWidth sx={{ mb: 3 }}>
             <InputLabel>User Type</InputLabel>
             <Select
-              value={type}
+              value={formData.type}
               label="User Type"
-              onChange={(e) => setType(e.target.value)}
+              onChange={(e) => setFormData({...formData, type: e.target.value})}
             >
               <MenuItem value="worker">CD Worker</MenuItem>
               <MenuItem value="parent">Parent</MenuItem>
@@ -173,71 +175,57 @@ const CreateUserModal = ({ open, onClose, onUserCreated }) => {
 };
 
 const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
-  const [username, setUsername] = useState(user?.username || "");
-  const [type, setType] = useState(user?.type || "worker");
-  const [password, setPassword] = useState("");
+  const [formData, setFormData] = useState({
+    username: user?.username || "",
+    type: user?.type || "worker",
+    password: ""
+  });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const [updateData, setUpdateData] = useState(null);
 
   useEffect(() => {
     if (user) {
-      setUsername(user.username);
-      setType(user.type);
-      setPassword("");
+      setFormData({
+        username: user.username,
+        type: user.type,
+        password: ""
+      });
     }
   }, [user]);
 
-  const prepareUpdate = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!username) {
+    setError("");
+
+    if (!formData.username) {
       setError("Username is required");
       return;
     }
 
-    const dataToUpdate = { username, type };
-    if (password) {
-      if (password.length < 8) {
-        setError("Password must be at least 8 characters");
-        return;
-      }
-      dataToUpdate.password = password;
+    if (formData.password && formData.password.length < 8) {
+      setError("Password must be at least 8 characters");
+      return;
     }
 
-    setUpdateData(dataToUpdate);
     setShowConfirmation(true);
   };
 
   const executeUpdate = async () => {
     setShowConfirmation(false);
     setLoading(true);
-    setError("");
-  
+
     try {
-      // DON'T hash on the frontend - send plaintext password
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/users/${user.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          username: updateData.username,
-          password: updateData.password, // plaintext
-          type: updateData.type
-        }),
-      });
+      const updatePayload = {
+        username: formData.username,
+        type: formData.type,
+        ...(formData.password && { password: formData.password })
+      };
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to update user");
-      }
-
+      await apiRequest(`/api/users/${user.id}`, 'PUT', updatePayload);
       onUserUpdated();
       onClose();
-      setPassword("");
     } catch (err) {
       setError(err.message);
     } finally {
@@ -247,27 +235,18 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
 
   return (
     <>
-      {/* Main Edit Modal */}
-      <Modal
-        open={open}
-        onClose={onClose}
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          backdropFilter: "blur(5px)",
-          backgroundColor: "rgba(0, 0, 0, 0.4)",
-        }}
-      >
-        <Box
-          sx={{
-            width: "600px",
-            backgroundColor: "white",
-            borderRadius: 3,
-            p: 4,
-            boxShadow: 24,
-          }}
-        >
+      <Modal open={open} onClose={onClose}>
+        <Box sx={{ 
+          width: "600px", 
+          backgroundColor: "white",
+          borderRadius: 3,
+          p: 4,
+          boxShadow: 24,
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)'
+        }}>
           <Typography variant="h6" component="h2" sx={{ mb: 2, textAlign: "center" }}>
             Edit User
           </Typography>
@@ -278,11 +257,11 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
             </Typography>
           )}
 
-          <form onSubmit={prepareUpdate}>
+          <form onSubmit={handleSubmit}>
             <TextField
               label="Username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              value={formData.username}
+              onChange={(e) => setFormData({...formData, username: e.target.value})}
               required
               fullWidth
               sx={{ mb: 2 }}
@@ -296,8 +275,8 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
             <TextField
               label="New Password (leave blank to keep current)"
               type={showPassword ? "text" : "password"}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              value={formData.password}
+              onChange={(e) => setFormData({...formData, password: e.target.value})}
               fullWidth
               sx={{ mb: 2 }}
               helperText="Minimum 8 characters if changing"
@@ -316,9 +295,9 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
             <FormControl fullWidth sx={{ mb: 3 }}>
               <InputLabel>User Type</InputLabel>
               <Select
-                value={type}
+                value={formData.type}
                 label="User Type"
-                onChange={(e) => setType(e.target.value)}
+                onChange={(e) => setFormData({...formData, type: e.target.value})}
               >
                 <MenuItem value="worker">CD Worker</MenuItem>
                 <MenuItem value="parent">Parent</MenuItem>
@@ -347,27 +326,18 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
         </Box>
       </Modal>
 
-      {/* Confirmation Modal */}
-      <Modal
-        open={showConfirmation}
-        onClose={() => setShowConfirmation(false)}
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          backdropFilter: "blur(5px)",
-          backgroundColor: "rgba(0, 0, 0, 0.4)",
-        }}
-      >
-        <Box
-          sx={{
-            width: "500px",
-            backgroundColor: "white",
-            borderRadius: 3,
-            p: 4,
-            boxShadow: 24,
-          }}
-        >
+      <Modal open={showConfirmation} onClose={() => setShowConfirmation(false)}>
+        <Box sx={{ 
+          width: "500px", 
+          backgroundColor: "white",
+          borderRadius: 3,
+          p: 4,
+          boxShadow: 24,
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)'
+        }}>
           <Typography variant="h6" component="h2" sx={{ mb: 3, textAlign: "center" }}>
             Confirm Changes
           </Typography>
@@ -384,9 +354,9 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
             borderLeft: '4px solid',
             borderColor: 'primary.main'
           }}>
-            <Typography><strong>Username:</strong> {username}</Typography>
-            <Typography><strong>Type:</strong> {type}</Typography>
-            {updateData?.password && (
+            <Typography><strong>Username:</strong> {formData.username}</Typography>
+            <Typography><strong>Type:</strong> {formData.type}</Typography>
+            {formData.password && (
               <Typography><strong>Password:</strong> Will be updated (securely hashed)</Typography>
             )}
           </Box>
@@ -425,176 +395,110 @@ const ManageAcc = () => {
   const [loading, setLoading] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [newUserId, setNewUserId] = useState(null);
-  const [showUserPassword, setShowUserPassword] = useState(false);
-  const [userPassword, setUserPassword] = useState("••••••••");
-  const [fetchingPassword, setFetchingPassword] = useState(false);
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
     severity: "success",
   });
 
-  const showSnackbar = (message, severity = "success") => {
-    setSnackbar({ open: true, message, severity });
-  };
-
-  const handleCloseSnackbar = () => {
-    setSnackbar({ ...snackbar, open: false });
-  };
-
-  useEffect(() => {
-    const fetchUsers = async () => {
-      setLoading(true);
-      try {
-        const response = await fetch(`${API_URL}/api/users`);
-        if (!response.ok) {
-          throw new Error("Failed to fetch users");
-        }
-        const data = await response.json();
-        setUsers(data);
-      } catch (error) {
-        console.error("Error fetching users:", error);
-        showSnackbar("Failed to fetch users", "error");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchUsers();
-  }, []);
-
-  const fetchUserPassword = async (userId) => {
-    setFetchingPassword(true);
+  const fetchUsers = async () => {
+    setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/users/${userId}/password`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch password');
-      }
-      const data = await response.json();
-      return data.password;
+      const data = await apiRequest('/api/users');
+      setUsers(data);
     } catch (error) {
-      console.error("Error fetching password:", error);
-      showSnackbar("Failed to fetch password", "error");
-      return null;
+      console.error("Error fetching users:", error);
+      setSnackbar({
+        open: true,
+        message: "Failed to fetch users",
+        severity: "error"
+      });
     } finally {
-      setFetchingPassword(false);
+      setLoading(false);
     }
   };
 
-  const handleSearchChange = async (event, newValue) => {
-    setSearchQuery(newValue);
-    if (newValue) {
-      try {
-        const response = await fetch(`${API_URL}/api/users/search?query=${newValue}`);
-        if (!response.ok) {
-          throw new Error("Failed to search users");
-        }
-        const results = await response.json();
-        setUsers(results);
-      } catch (error) {
-        console.error("Error searching users:", error);
-        showSnackbar("Failed to search users", "error");
-      }
-    } else {
-      const response = await fetch(`${API_URL}/api/users`);
-      const data = await response.json();
+  const handleSearch = async (query) => {
+    try {
+      const endpoint = query ? `/api/users/search?query=${query}` : '/api/users';
+      const data = await apiRequest(endpoint);
       setUsers(data);
+    } catch (error) {
+      console.error("Error searching users:", error);
+      setSnackbar({
+        open: true,
+        message: "Failed to search users",
+        severity: "error"
+      });
     }
+  };
+
+  const handleDeleteUser = async (userId) => {
+    if (!window.confirm("Are you sure you want to delete this user?")) return;
+    
+    try {
+      await apiRequest(`/api/users/${userId}`, 'DELETE');
+      await fetchUsers();
+      setSelectedUser(null);
+      setSearchQuery("");
+      setSnackbar({
+        open: true,
+        message: "User deleted successfully",
+        severity: "success"
+      });
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      setSnackbar({
+        open: true,
+        message: "Failed to delete user",
+        severity: "error"
+      });
+    }
+  };
+
+  const handleUserCreated = (userId) => {
+    fetchUsers();
+    setNewUserId(userId);
+    setShowInfoModal(true);
+    setSnackbar({
+      open: true,
+      message: "User created successfully",
+      severity: "success"
+    });
+  };
+
+  const handleUserUpdated = () => {
+    fetchUsers();
+    setSnackbar({
+      open: true,
+      message: "User updated successfully",
+      severity: "success"
+    });
   };
 
   const saveUserInfo = async (infoData) => {
     try {
-      const response = await fetch("${API_URL}/api/user-info", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(infoData),
+      await apiRequest('/api/user-info', 'POST', infoData);
+      await fetchUsers();
+      setSnackbar({
+        open: true,
+        message: "User info saved successfully",
+        severity: "success"
       });
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to save user info');
-      }
-      
-      const usersResponse = await fetch(`${API_URL}/api/users`);
-      const usersData = await usersResponse.json();
-      setUsers(usersData);
-      showSnackbar("User info saved successfully");
-    } catch (err) {
-      console.error("Error saving user info:", err);
-      showSnackbar("Failed to save user info", "error");
-      throw err;
-    }
-  };
-
-  const handleUserSelect = (event, newValue) => {
-    const selected = users.find((user) => user.username === newValue);
-    setSelectedUser(selected);
-    setShowUserPassword(false);
-    setUserPassword("••••••••");
-  };
-
-  const handleUserCreated = async (userId) => {
-    try {
-      const response = await fetch(`${API_URL}/api/users`);
-      const data = await response.json();
-      setUsers(data);
-      setNewUserId(userId);
-      setShowInfoModal(true);
-      showSnackbar("User created successfully");
     } catch (error) {
-      console.error("Error refreshing users:", error);
-      showSnackbar("Failed to create user", "error");
-    }
-  };
-
-  const handleUserUpdated = async () => {
-    try {
-      // Refetch all users
-      const response = await fetch(`${API_URL}/api/users`);
-      const data = await response.json();
-      setUsers(data);
-      
-      // Update the selected user with the latest data
-      if (selectedUser) {
-        const updatedUser = data.find(u => u.id === selectedUser.id);
-        setSelectedUser(updatedUser);
-        
-        // Update the search query to match the new username if it changed
-        if (updatedUser.username !== searchQuery) {
-          setSearchQuery(updatedUser.username);
-        }
-      }
-      
-      showSnackbar("User updated successfully");
-    } catch (error) {
-      console.error("Error refreshing users:", error);
-      showSnackbar("Failed to update user", "error");
-    }
-  };
-  const handleDeleteUser = async (userId) => {
-    if (!window.confirm("Are you sure you want to delete this user?")) return;
-  
-    try {
-      const response = await fetch(`${API_URL}/api/users/${userId}`, {
-        method: "DELETE",
+      console.error("Error saving user info:", error);
+      setSnackbar({
+        open: true,
+        message: "Failed to save user info",
+        severity: "error"
       });
-  
-      if (!response.ok) throw new Error("Failed to delete user");
-  
-      // Refetch users after deletion
-      const usersResponse = await fetch(`${API_URL}/api/users`);
-      const usersData = await usersResponse.json();
-      setUsers(usersData);
-      setSelectedUser(null); // Reset selected user
-      setSearchQuery("");
-      showSnackbar("User deleted successfully");
-    } catch (error) {
-      console.error("Error deleting user:", error);
-      showSnackbar("Failed to delete user", "error");
+      throw error;
     }
   };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
 
   return (
     <div className="w-screen h-screen flex overflow-hidden relative">
@@ -604,14 +508,11 @@ const ManageAcc = () => {
         style={{ backgroundImage: `url(${bgImage})`, zIndex: -1 }}
       ></div>
 
-      {/* Sidebar */}
       <Sidebar />
 
-      {/* Main Content */}
       <div className="flex flex-col flex-grow pl-16 pt-16 bg-white/50 overflow-auto w-full">
         <Navbar />
 
-        {/* Header */}
         <div className="p-6 mb-1">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-2xl font-bold text-gray-800">Manage Account</h2>
@@ -644,13 +545,18 @@ const ManageAcc = () => {
           </div>
         </div>
 
-        {/* Search Bar */}
         <div className="px-6">
           <Autocomplete
             value={searchQuery}
-            onInputChange={handleSearchChange}
-            onChange={handleUserSelect}
-            options={users.map((user) => user.username)}
+            onInputChange={(_, newValue) => {
+              setSearchQuery(newValue);
+              handleSearch(newValue);
+            }}
+            onChange={(_, newValue) => {
+              const user = users.find(u => u.username === newValue);
+              setSelectedUser(user || null);
+            }}
+            options={users.map(user => user.username)}
             loading={loading}
             renderInput={(params) => (
               <TextField
@@ -669,80 +575,27 @@ const ManageAcc = () => {
                 }}
               />
             )}
-            renderOption={(props, option) => (
-              <Box {...props} sx={{ display: "flex", justifyContent: "space-between" }}>
-                <Typography>{option}</Typography>
-              </Box>
-            )}
           />
         </div>
 
-        {/* Selected User Display */}
-        <div className="p-10 flex justify-start items-center h-full relative">
-          {selectedUser && (
+        {selectedUser && (
+          <div className="p-10">
             <Box sx={{ 
-              marginTop: -10,
-              width: "40%", 
-              marginLeft: "-15px",
               backgroundColor: "rgba(255, 255, 255, 0.8)",
               padding: 3,
               borderRadius: 2,
               boxShadow: 3
             }}>
-              <TextField
-                label="Username"
-                value={selectedUser.username}
-                variant="outlined"
-                fullWidth
-                disabled
-                sx={{ marginBottom: 2 }}
-              />
-              
-              <TextField
-                label="Password"
-                type={showUserPassword ? "text" : "password"}
-                value={showUserPassword ? userPassword : "••••••••"}
-                variant="outlined"
-                fullWidth
-                disabled
-                sx={{ marginBottom: 2 }}
-                InputProps={{
-                  endAdornment: fetchingPassword ? (
-                    <CircularProgress size={20} />
-                  ) : (
-                    <IconButton 
-                      onClick={async () => {
-                        if (!showUserPassword) {
-                          const password = await fetchUserPassword(selectedUser.id);
-                          if (password) {
-                            setUserPassword(password);
-                          }
-                        }
-                        setShowUserPassword(!showUserPassword);
-                      }}
-                    >
-                      {showUserPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                    </IconButton>
-                  ),
-                }}
-              />
-              
-              <TextField
-                label="User Type"
-                value={
-                  selectedUser.type === 'admin' ? 'Administrator' :
-                  selectedUser.type === 'worker' ? 'CD Worker' :
-                  selectedUser.type === 'parent' ? 'Parent' :
-                  selectedUser.type === 'president' ? 'President' : 'Regular User'
-                }
-                variant="outlined"
-                fullWidth
-                disabled
-                sx={{ marginBottom: 2 }}
-              />
+              <Typography variant="h6" gutterBottom>
+                User Details
+              </Typography>
+              <Typography>Username: {selectedUser.username}</Typography>
+              <Typography>
+                Role: {selectedUser.type.charAt(0).toUpperCase() + selectedUser.type.slice(1)}
+              </Typography>
             </Box>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       <CreateUserModal
@@ -768,11 +621,11 @@ const ManageAcc = () => {
       <Snackbar
         open={snackbar.open}
         autoHideDuration={6000}
-        onClose={handleCloseSnackbar}
+        onClose={() => setSnackbar({...snackbar, open: false})}
         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
       >
         <Alert 
-          onClose={handleCloseSnackbar} 
+          onClose={() => setSnackbar({...snackbar, open: false})}
           severity={snackbar.severity}
           sx={{ width: '100%' }}
         >

@@ -2,12 +2,72 @@ import { useState, useEffect } from "react";
 import Navbar from "../../components/all/Navbar";
 import Sidebar from "../../components/CDC/Sidebar";
 import bgImage from "../../assets/bg1.jpg";
-import axios from "axios";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
+  Paper,
+  TextField,
+  TableContainer,
+  CircularProgress,
+  Button,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Modal,
+  Box,
+  Typography,
+  Snackbar,
+  Alert
+} from "@mui/material";
+
+// API Service Helper
+const apiRequest = async (endpoint, method = 'GET', body = null, isFormData = false) => {
+  const token = localStorage.getItem('token');
+  const headers = {};
+  
+  if (!isFormData) {
+    headers['Content-Type'] = 'application/json';
+  }
+  
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const config = {
+    method,
+    headers,
+    credentials: 'include',
+    ...(body && { body: isFormData ? body : JSON.stringify(body) })
+  };
+
+  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+  
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.message || 'Request failed');
+  }
+
+  return response.json();
+};
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState("Stream");
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success"
+  });
 
   const tabs = ["Stream", "Classworks", "Students"];
+
+  const handleSnackbarClose = () => {
+    setSnackbar({...snackbar, open: false});
+  };
 
   return (
     <div className="w-screen h-screen flex overflow-hidden">
@@ -31,18 +91,32 @@ export default function Dashboard() {
           </div>
 
           <div className="mt-6 p-6 bg-white shadow-lg rounded-lg">
-            {activeTab === "Stream" && <StreamSection />}
-            {activeTab === "Classworks" && <ClassworksSection />}
-            {activeTab === "Students" && <StudentsSection />}
-            {activeTab === "Grades" && <GradesSection />}
+            {activeTab === "Stream" && <StreamSection setSnackbar={setSnackbar} />}
+            {activeTab === "Classworks" && <ClassworksSection setSnackbar={setSnackbar} />}
+            {activeTab === "Students" && <StudentsSection setSnackbar={setSnackbar} />}
           </div>
         </div>
       </div>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={handleSnackbarClose}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert 
+          onClose={handleSnackbarClose}
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </div>
   );
 }
 
-function StreamSection() {
+function StreamSection({ setSnackbar }) {
   const [announcements, setAnnouncements] = useState([]);
   const [isCreatingAnnouncement, setIsCreatingAnnouncement] = useState(false);
   const [newAnnouncement, setNewAnnouncement] = useState({
@@ -56,38 +130,34 @@ function StreamSection() {
   const [error, setError] = useState(null);
   const [ageFilter, setAgeFilter] = useState('all');
 
-  // Fetch announcements on component mount
   useEffect(() => {
     const fetchAnnouncements = async () => {
       try {
         setLoading(true);
-        const response = await fetch('http://localhost:3001/api/announcements');
-        if (!response.ok) throw new Error('Failed to fetch announcements');
-        const data = await response.json();
+        const data = await apiRequest('/api/announcements');
         setAnnouncements(data.announcements || []);
+        setError(null);
       } catch (err) {
         console.error('Error fetching announcements:', err);
         setError(err.message);
+        setSnackbar({
+          open: true,
+          message: 'Failed to fetch announcements',
+          severity: 'error'
+        });
       } finally {
         setLoading(false);
       }
     };
     
     fetchAnnouncements();
-  }, []);
-  
+  }, [setSnackbar]);
 
   const handleCreateAnnouncement = async (e) => {
     e.preventDefault();
     try {
       setLoading(true);
       
-      const token = localStorage.getItem("token");
-      
-      if (!token) {
-        throw new Error("No authentication token found. Please login again.");
-      }
-  
       const formData = new FormData();
       formData.append('title', newAnnouncement.title);
       formData.append('message', newAnnouncement.message);
@@ -96,37 +166,34 @@ function StreamSection() {
         formData.append('attachment', newAnnouncement.attachment);
       }
       
-      const response = await axios.post('http://localhost:3001/api/announcements', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const data = await apiRequest('/api/announcements', 'POST', formData, true);
       
-      // Check for successful response
-      if (response.data && response.data.success) {
-        setAnnouncements([response.data.announcement, ...announcements]);
-        setIsCreatingAnnouncement(false);
-        setNewAnnouncement({
-          title: '',
-          message: '',
-          ageFilter: 'all',
-          attachment: null,
-          attachmentName: ''
-        });
-        setError(null); // Clear any previous errors
-      } else {
-        throw new Error(response.data?.message || 'Failed to create announcement');
-      }
-
+      setAnnouncements([data.announcement, ...announcements]);
+      setIsCreatingAnnouncement(false);
+      setNewAnnouncement({
+        title: '',
+        message: '',
+        ageFilter: 'all',
+        attachment: null,
+        attachmentName: ''
+      });
+      setError(null);
+      
+      setSnackbar({
+        open: true,
+        message: 'Announcement created successfully',
+        severity: 'success'
+      });
     } catch (err) {
       console.error('Error creating announcement:', err);
-      if (err.response?.status === 401) {
-        setError('Session expired. Please login again.');
-        // Optionally redirect to login
-      } else {
-        setError(err.response?.data?.message || 'Failed to create announcement');
-      }
+      const errorMessage = err.message || 'Failed to create announcement';
+      
+      setError(errorMessage);
+      setSnackbar({
+        open: true,
+        message: errorMessage,
+        severity: 'error'
+      });
     } finally {
       setLoading(false);
     }
@@ -158,255 +225,250 @@ function StreamSection() {
 
   return (
     <div className="text-gray-800">
-      {/* Header with Create Button and Filter */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <h2 className="text-2xl font-bold">Announcements</h2>
         
         <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
           <div className="flex items-center space-x-2">
             <label className="font-medium">Filter:</label>
-            <select
-              className="px-3 py-1 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600"
-              value={ageFilter}
-              onChange={(e) => setAgeFilter(e.target.value)}
-            >
-              <option value="all">All Ages</option>
-              <option value="3-4">3.0 - 4.0 years</option>
-              <option value="4-5">4.1 - 5.0 years</option>
-              <option value="5-6">5.1 - 5.11 years</option>
-            </select>
+            <FormControl size="small">
+              <InputLabel>Age Group</InputLabel>
+              <Select
+                value={ageFilter}
+                onChange={(e) => setAgeFilter(e.target.value)}
+                label="Age Group"
+                sx={{ minWidth: 120 }}
+              >
+                <MenuItem value="all">All Ages</MenuItem>
+                <MenuItem value="3-4">3.0 - 4.0 years</MenuItem>
+                <MenuItem value="4-5">4.1 - 5.0 years</MenuItem>
+                <MenuItem value="5-6">5.1 - 5.11 years</MenuItem>
+              </Select>
+            </FormControl>
           </div>
           
-          <button
+          <Button
             onClick={() => setIsCreatingAnnouncement(true)}
-            className="px-4 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800 flex items-center justify-center gap-2"
+            variant="contained"
+            color="primary"
+            startIcon={<span>+</span>}
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
             New Announcement
-          </button>
+          </Button>
         </div>
       </div>
 
-      {/* Error Message */}
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          Error: {error}
-        </div>
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
       )}
 
-      {/* Loading State */}
       {loading && !isCreatingAnnouncement && (
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-600"></div>
-        </div>
+        <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+          <CircularProgress />
+        </Box>
       )}
 
-      {/* Empty State */}
       {!loading && filteredAnnouncements.length === 0 && (
-        <div className="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center">
-          <svg
-            className="mx-auto h-12 w-12 text-gray-400"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1}
-              d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
-            />
-          </svg>
-          <h3 className="mt-2 text-lg font-medium text-gray-900">No announcements yet</h3>
-          <p className="mt-1 text-sm text-gray-500">
+        <Box sx={{ 
+          border: 2, 
+          borderColor: 'grey.300', 
+          borderStyle: 'dashed', 
+          borderRadius: 2, 
+          p: 6, 
+          textAlign: 'center',
+          my: 4
+        }}>
+          <Typography variant="h6" gutterBottom>
+            No announcements yet
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
             Get started by creating a new announcement.
-          </p>
-          <div className="mt-6">
-            <button
-              type="button"
-              onClick={() => setIsCreatingAnnouncement(true)}
-              className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-700 hover:bg-green-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-            >
-              <svg className="-ml-1 mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Create Announcement
-            </button>
-          </div>
-        </div>
+          </Typography>
+          <Button
+            onClick={() => setIsCreatingAnnouncement(true)}
+            variant="contained"
+            color="primary"
+          >
+            Create Announcement
+          </Button>
+        </Box>
       )}
 
-      {/* Announcements List */}
       {!loading && filteredAnnouncements.length > 0 && (
-        <div className="space-y-6">
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
           {filteredAnnouncements.map((announcement) => (
-            <div key={announcement.id} className="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-              <div className="bg-green-700 text-white px-6 py-3">
-                <div className="flex justify-between items-center">
-                  <h3 className="font-semibold text-lg">{announcement.title}</h3>
-                  <span className="bg-green-800 text-xs px-2 py-1 rounded-full">
-                    {announcement.ageFilter === 'all' ? 'All Ages' : `${announcement.ageFilter} years`}
-                  </span>
-                </div>
-                <div className="text-sm text-green-100">
-                  Posted by {announcement.author} on {new Date(announcement.createdAt).toLocaleDateString()}
-                </div>
-              </div>
-              
-              <div className="p-6">
-                <p className="whitespace-pre-line">{announcement.message}</p>
+            <Paper key={announcement.id} elevation={3} sx={{ p: 0 }}>
+              <Box sx={{ 
+                bgcolor: 'primary.main', 
+                color: 'white', 
+                p: 3,
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <Box>
+                  <Typography variant="h6">{announcement.title}</Typography>
+                  <Typography variant="body2" sx={{ opacity: 0.8 }}>
+                    Posted by {announcement.author} on {new Date(announcement.createdAt).toLocaleDateString()}
+                  </Typography>
+                </Box>
+                <Chip 
+                  label={announcement.ageFilter === 'all' ? 'All Ages' : `${announcement.ageFilter} years`}
+                  color="secondary"
+                  size="small"
+                />
+              </Box>
+              <Box sx={{ p: 3 }}>
+                <Typography sx={{ whiteSpace: 'pre-line', mb: 2 }}>
+                  {announcement.message}
+                </Typography>
                 
                 {announcement.attachmentUrl && (
-                  <div className="mt-4 border-t pt-4">
-                    <div className="flex items-center">
-                      <svg className="w-6 h-6 text-green-700 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                      </svg>
-                      <span className="font-medium">{announcement.attachmentName}</span>
-                      <button 
-                        onClick={() => handleDownload(announcement.attachmentUrl, announcement.attachmentName)}
-                        className="ml-auto text-green-700 hover:text-green-900 flex items-center text-sm"
-                      >
-                        Download
-                        <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
+                  <Box sx={{ 
+                    borderTop: 1, 
+                    borderColor: 'divider', 
+                    pt: 2,
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
+                      <InsertDriveFileIcon color="primary" sx={{ mr: 1 }} />
+                      <Typography>{announcement.attachmentName}</Typography>
+                    </Box>
+                    <Button
+                      onClick={() => handleDownload(announcement.attachmentUrl, announcement.attachmentName)}
+                      color="primary"
+                      size="small"
+                      startIcon={<DownloadIcon />}
+                    >
+                      Download
+                    </Button>
+                  </Box>
                 )}
-              </div>
-            </div>
+              </Box>
+            </Paper>
           ))}
-        </div>
+        </Box>
       )}
 
-      {/* Create Announcement Modal */}
-      {isCreatingAnnouncement && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-semibold">Create New Announcement</h3>
-              <button
-                onClick={() => setIsCreatingAnnouncement(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
+      <Modal open={isCreatingAnnouncement} onClose={() => setIsCreatingAnnouncement(false)}>
+        <Box sx={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: '90%',
+          maxWidth: 800,
+          bgcolor: 'background.paper',
+          boxShadow: 24,
+          p: 4,
+          borderRadius: 2,
+          maxHeight: '90vh',
+          overflowY: 'auto'
+        }}>
+          <Typography variant="h6" component="h2" sx={{ mb: 3 }}>
+            Create New Announcement
+          </Typography>
+          
+          <form onSubmit={handleCreateAnnouncement}>
+            <TextField
+              label="Title"
+              fullWidth
+              required
+              value={newAnnouncement.title}
+              onChange={(e) => setNewAnnouncement({...newAnnouncement, title: e.target.value})}
+              sx={{ mb: 2 }}
+            />
             
-            <form onSubmit={handleCreateAnnouncement}>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Title*</label>
-                  <input
-                    type="text"
-                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600"
-                    value={newAnnouncement.title}
-                    onChange={(e) => setNewAnnouncement({...newAnnouncement, title: e.target.value})}
-                    required
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Message*</label>
-                  <textarea
-                    rows={5}
-                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600"
-                    value={newAnnouncement.message}
-                    onChange={(e) => setNewAnnouncement({...newAnnouncement, message: e.target.value})}
-                    required
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Target Age Group*</label>
-                  <select
-                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600"
-                    value={newAnnouncement.ageFilter}
-                    onChange={(e) => setNewAnnouncement({...newAnnouncement, ageFilter: e.target.value})}
-                    required
-                  >
-                    <option value="all">All Ages</option>
-                    <option value="3-4">3.0 - 4.0 years</option>
-                    <option value="4-5">4.1 - 5.0 years</option>
-                    <option value="5-6">5.1 - 5.11 years</option>
-                  </select>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Attachment (Optional)</label>
-                  <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
-                    <div className="space-y-1 text-center">
-                      <svg
-                        className="mx-auto h-12 w-12 text-gray-400"
-                        stroke="currentColor"
-                        fill="none"
-                        viewBox="0 0 48 48"
-                      >
-                        <path
-                          d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
-                          strokeWidth={2}
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                      <div className="flex text-sm text-gray-600">
-                        <label
-                          htmlFor="file-upload"
-                          className="relative cursor-pointer bg-white rounded-md font-medium text-green-600 hover:text-green-500 focus-within:outline-none"
-                        >
-                          <span>Upload a file</span>
-                          <input
-                            id="file-upload"
-                            name="file-upload"
-                            type="file"
-                            className="sr-only"
-                            onChange={handleFileChange}
-                          />
-                        </label>
-                        <p className="pl-1">or drag and drop</p>
-                      </div>
-                      <p className="text-xs text-gray-500">PDF, DOCX, XLSX up to 10MB</p>
-                      {newAnnouncement.attachmentName && (
-                        <p className="text-xs text-green-700 mt-2">
-                          Selected: {newAnnouncement.attachmentName}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="mt-6 flex justify-end space-x-3">
-                <button
-                  type="button"
-                  onClick={() => setIsCreatingAnnouncement(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800 disabled:bg-green-300"
-                  disabled={loading}
-                >
-                  {loading ? 'Posting...' : 'Post Announcement'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+            <TextField
+              label="Message"
+              fullWidth
+              required
+              multiline
+              rows={4}
+              value={newAnnouncement.message}
+              onChange={(e) => setNewAnnouncement({...newAnnouncement, message: e.target.value})}
+              sx={{ mb: 2 }}
+            />
+            
+            <FormControl fullWidth sx={{ mb: 2 }}>
+              <InputLabel>Target Age Group</InputLabel>
+              <Select
+                value={newAnnouncement.ageFilter}
+                label="Target Age Group"
+                onChange={(e) => setNewAnnouncement({...newAnnouncement, ageFilter: e.target.value})}
+                required
+              >
+                <MenuItem value="all">All Ages</MenuItem>
+                <MenuItem value="3-4">3.0 - 4.0 years</MenuItem>
+                <MenuItem value="4-5">4.1 - 5.0 years</MenuItem>
+                <MenuItem value="5-6">5.1 - 5.11 years</MenuItem>
+              </Select>
+            </FormControl>
+            
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="body2" sx={{ mb: 1 }}>Attachment (Optional)</Typography>
+              <Box sx={{
+                border: 2,
+                borderColor: 'grey.300',
+                borderStyle: 'dashed',
+                borderRadius: 1,
+                p: 3,
+                textAlign: 'center'
+              }}>
+                {newAnnouncement.attachmentName ? (
+                  <Typography>{newAnnouncement.attachmentName}</Typography>
+                ) : (
+                  <>
+                    <CloudUploadIcon sx={{ fontSize: 40, color: 'grey.500', mb: 1 }} />
+                    <Typography variant="body2" sx={{ mb: 1 }}>
+                      Drag and drop file here or click to browse
+                    </Typography>
+                    <Button
+                      variant="outlined"
+                      component="label"
+                    >
+                      Select File
+                      <input
+                        type="file"
+                        hidden
+                        onChange={handleFileChange}
+                      />
+                    </Button>
+                    <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+                      PDF, DOCX, XLSX up to 10MB
+                    </Typography>
+                  </>
+                )}
+              </Box>
+            </Box>
+            
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+              <Button
+                onClick={() => setIsCreatingAnnouncement(false)}
+                variant="outlined"
+                disabled={loading}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="contained"
+                disabled={loading}
+              >
+                {loading ? <CircularProgress size={24} /> : 'Post Announcement'}
+              </Button>
+            </Box>
+          </form>
+        </Box>
+      </Modal>
     </div>
   );
 }
 
-function ClassworksSection() {
+function ClassworksSection({ setSnackbar }) {
   const [categories, setCategories] = useState([]);
   const [ageGroups, setAgeGroups] = useState([]);
   const [selectedAgeGroup, setSelectedAgeGroup] = useState(null);
@@ -422,60 +484,52 @@ function ClassworksSection() {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [fileCounts, setFileCounts] = useState({}); // New state for file counts
+  const [fileCounts, setFileCounts] = useState({});
 
-  // Fetch categories and age groups on component mount
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
         
-        // Fetch categories
-        const categoriesResponse = await fetch('http://localhost:3001/api/files/categories');
-        if (!categoriesResponse.ok) throw new Error('Failed to fetch categories');
-        const categoriesData = await categoriesResponse.json();
-        setCategories(categoriesData.categories || []);
+        const [categoriesData, ageGroupsData] = await Promise.all([
+          apiRequest('/api/files/categories'),
+          apiRequest('/api/files/age-groups')
+        ]);
         
-        // Fetch age groups
-        const ageGroupsResponse = await fetch('http://localhost:3001/api/files/age-groups');
-        if (!ageGroupsResponse.ok) throw new Error('Failed to fetch age groups');
-        const ageGroupsData = await ageGroupsResponse.json();
+        setCategories(categoriesData.categories || []);
         setAgeGroups(ageGroupsData.ageGroups || []);
         
-        // If age group is already selected, fetch file counts
         if (selectedAgeGroup) {
-          const countsResponse = await fetch(
-            `http://localhost:3001/api/files/counts?age_group_id=${selectedAgeGroup}`
+          const countsData = await apiRequest(
+            `/api/files/counts?age_group_id=${selectedAgeGroup}`
           );
-          if (countsResponse.ok) {
-            const countsData = await countsResponse.json();
-            setFileCounts(countsData.counts || {});
-          }
+          setFileCounts(countsData.counts || {});
         }
         
       } catch (err) {
         console.error('Error fetching data:', err);
         setError(err.message);
+        setSnackbar({
+          open: true,
+          message: 'Failed to fetch data',
+          severity: 'error'
+        });
       } finally {
         setLoading(false);
       }
     };
     
     fetchData();
-  }, [selectedAgeGroup]); // Add selectedAgeGroup as dependency
+  }, [selectedAgeGroup, setSnackbar]);
 
-  // Add this useEffect to fetch file counts when age group changes
   useEffect(() => {
     if (selectedAgeGroup && !selectedCategory) {
       const fetchFileCounts = async () => {
         try {
-          const response = await fetch(
-            `http://localhost:3001/api/files/counts?age_group_id=${selectedAgeGroup}`
+          const data = await apiRequest(
+            `/api/files/counts?age_group_id=${selectedAgeGroup}`
           );
-          if (response.ok) {
-            const data = await response.json();
-            setFileCounts(data.counts || {});
-          }
+          setFileCounts(data.counts || {});
         } catch (err) {
           console.error('Error fetching file counts:', err);
         }
@@ -485,21 +539,23 @@ function ClassworksSection() {
     }
   }, [selectedAgeGroup, selectedCategory]);
 
-  // Fetch files when a category and age group are selected
   useEffect(() => {
     if (selectedCategory && selectedAgeGroup) {
       const fetchFiles = async () => {
         try {
           setLoading(true);
-          const response = await fetch(
-            `http://localhost:3001/api/files?category_id=${selectedCategory}&age_group_id=${selectedAgeGroup}`
+          const data = await apiRequest(
+            `/api/files?category_id=${selectedCategory}&age_group_id=${selectedAgeGroup}`
           );
-          if (!response.ok) throw new Error('Failed to fetch files');
-          const data = await response.json();
           setFiles(data.files || []);
         } catch (err) {
           console.error('Error fetching files:', err);
           setError(err.message);
+          setSnackbar({
+            open: true,
+            message: 'Failed to fetch files',
+            severity: 'error'
+          });
         } finally {
           setLoading(false);
         }
@@ -507,7 +563,7 @@ function ClassworksSection() {
       
       fetchFiles();
     }
-  }, [selectedCategory, selectedAgeGroup]);
+  }, [selectedCategory, selectedAgeGroup, setSnackbar]);
 
   const handleFileUpload = async (e) => {
     e.preventDefault();
@@ -520,34 +576,20 @@ function ClassworksSection() {
       formData.append('file_name', newFile.file_name);
       formData.append('file_data', newFile.file_data);
       
-      const response = await fetch('http://localhost:3001/api/files', {
-        method: 'POST',
-        body: formData
-      });
+      await apiRequest('/api/files', 'POST', formData, true);
       
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to upload file');
-      }
-      
-      // Refresh files list
       if (selectedCategory && selectedAgeGroup) {
-        const filesResponse = await fetch(
-          `http://localhost:3001/api/files?category_id=${selectedCategory}&age_group_id=${selectedAgeGroup}`
+        const filesData = await apiRequest(
+          `/api/files?category_id=${selectedCategory}&age_group_id=${selectedAgeGroup}`
         );
-        const filesData = await filesResponse.json();
         setFiles(filesData.files || []);
       }
       
-      // Refresh file counts
       if (selectedAgeGroup) {
-        const countsResponse = await fetch(
-          `http://localhost:3001/api/files/counts?age_group_id=${selectedAgeGroup}`
+        const countsData = await apiRequest(
+          `/api/files/counts?age_group_id=${selectedAgeGroup}`
         );
-        if (countsResponse.ok) {
-          const countsData = await countsResponse.json();
-          setFileCounts(countsData.counts || {});
-        }
+        setFileCounts(countsData.counts || {});
       }
       
       setIsModalOpen(false);
@@ -559,9 +601,19 @@ function ClassworksSection() {
         file_data: null
       });
       
+      setSnackbar({
+        open: true,
+        message: 'File uploaded successfully',
+        severity: 'success'
+      });
     } catch (err) {
       console.error('Error uploading file:', err);
       setError(err.message);
+      setSnackbar({
+        open: true,
+        message: err.message || 'Failed to upload file',
+        severity: 'error'
+      });
     } finally {
       setLoading(false);
     }
@@ -581,7 +633,11 @@ function ClassworksSection() {
 
   const handleDownload = async (fileId, fileName) => {
     try {
-      const response = await fetch(`http://localhost:3001/api/files/download/${fileId}`);
+      const response = await fetch(`${API_BASE_URL}/api/files/download/${fileId}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
       
       if (!response.ok) {
         throw new Error('Failed to download file');
@@ -600,6 +656,11 @@ function ClassworksSection() {
     } catch (err) {
       console.error('Error downloading file:', err);
       setError(err.message);
+      setSnackbar({
+        open: true,
+        message: 'Failed to download file',
+        severity: 'error'
+      });
     }
   };
 
@@ -616,294 +677,292 @@ function ClassworksSection() {
 
   if (loading && !selectedCategory) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-600"></div>
-      </div>
+      <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+        <CircularProgress />
+      </Box>
     );
   }
 
   if (error) {
     return (
-      <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-        Error: {error}
-      </div>
+      <Alert severity="error" sx={{ mb: 2 }}>
+        {error}
+      </Alert>
     );
   }
 
   return (
     <div className="text-gray-800">
-      {/* Main Header with Back Button */}
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center">
-          {(selectedAgeGroup || selectedCategory) && (
-            <button
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          {showBackButton && (
+            <Button
               onClick={handleBackClick}
-              className="flex items-center text-green-700 hover:text-green-900 mr-4"
+              startIcon={<ArrowBackIcon />}
+              sx={{ mr: 2 }}
             >
-              <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
-              {selectedCategory ? "Back to Categories" : "Back to Age Groups"}
-            </button>
+              {backButtonLabel}
+            </Button>
           )}
-          <h2 className="text-2xl font-bold">Developmental Domains</h2>
-        </div>
+          <Typography variant="h5" component="h2">
+            Developmental Domains
+          </Typography>
+        </Box>
 
-        {/* Age Group Selector - only show when not in a specific category */}
         {!selectedCategory && (
-          <div className="flex items-center space-x-4">
-            <label className="font-medium">Select Age Group:</label>
-            <select
-              className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600"
+          <FormControl sx={{ minWidth: 200 }} size="small">
+            <InputLabel>Select Age Group</InputLabel>
+            <Select
               value={selectedAgeGroup || ''}
+              label="Select Age Group"
               onChange={(e) => setSelectedAgeGroup(e.target.value)}
             >
-              <option value="">Select Age</option>
+              <MenuItem value="">Select Age</MenuItem>
               {ageGroups.map((ageGroup) => (
-                <option key={ageGroup.age_group_id} value={ageGroup.age_group_id}>
+                <MenuItem key={ageGroup.age_group_id} value={ageGroup.age_group_id}>
                   {ageGroup.age_range}
-                </option>
+                </MenuItem>
               ))}
-            </select>
-          </div>
+            </Select>
+          </FormControl>
         )}
-      </div>
+      </Box>
 
       {!selectedAgeGroup ? (
-        <div className="text-center py-10 text-gray-500">
-          Please select an age group to view categories
-        </div>
+        <Box sx={{ textAlign: 'center', py: 4 }}>
+          <Typography color="text.secondary">
+            Please select an age group to view categories
+          </Typography>
+        </Box>
       ) : selectedCategory ? (
-        <div>
-          {/* Category Header with Upload Button */}
-          <div className="flex justify-between items-center mb-6">
-            <div>
-              <h3 className="text-xl font-semibold">
-                {categories.find(c => c.category_id == selectedCategory)?.category_name} - 
-                {ageGroups.find(a => a.age_group_id == selectedAgeGroup)?.age_range}
-              </h3>
-            </div>
-            <button
-              className="px-4 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800 flex items-center"
+        <Box>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+            <Typography variant="h6">
+              {categories.find(c => c.category_id == selectedCategory)?.category_name} - 
+              {ageGroups.find(a => a.age_group_id == selectedAgeGroup)?.age_range}
+            </Typography>
+            <Button
+              variant="contained"
+              startIcon={<UploadIcon />}
               onClick={() => setIsModalOpen(true)}
             >
-              <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
               Upload File
-            </button>
-          </div>
+            </Button>
+          </Box>
 
-          {/* Files Grid with Empty State */}
           {files.length === 0 ? (
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center">
-              <svg
-                className="mx-auto h-12 w-12 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1}
-                  d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                />
-              </svg>
-              <h3 className="mt-2 text-lg font-medium text-gray-900">No files uploaded</h3>
-              <p className="mt-1 text-sm text-gray-500">
+            <Box sx={{ 
+              border: 2, 
+              borderColor: 'grey.300', 
+              borderStyle: 'dashed', 
+              borderRadius: 1, 
+              p: 6, 
+              textAlign: 'center',
+              my: 4
+            }}>
+              <Typography variant="h6" gutterBottom>
+                No files uploaded
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                 Get started by uploading a new file.
-              </p>
-              <div className="mt-6">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(true)}
-                  className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-700 hover:bg-green-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                >
-                  <svg className="-ml-1 mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  Upload File
-                </button>
-              </div>
-            </div>
+              </Typography>
+              <Button
+                onClick={() => setIsModalOpen(true)}
+                variant="contained"
+                startIcon={<UploadIcon />}
+              >
+                Upload File
+              </Button>
+            </Box>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <Grid container spacing={2}>
               {files.map((file) => (
-                <div key={file.file_id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h4 className="font-semibold">{file.file_name}</h4>
-                      <p className="text-sm text-gray-500">{file.file_type}</p>
-                      <p className="text-xs text-gray-400">
-                        Uploaded: {new Date(file.upload_date).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => handleDownload(file.file_id, file.file_name)}
-                      className="text-green-700 hover:text-green-900"
-                      title="Download"
-                    >
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
+                <Grid item xs={12} sm={6} md={4} key={file.file_id}>
+                  <Paper elevation={3} sx={{ p: 2, height: '100%' }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <Box>
+                        <Typography variant="subtitle1">{file.file_name}</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {file.file_type}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Uploaded: {new Date(file.upload_date).toLocaleDateString()}
+                        </Typography>
+                      </Box>
+                      <IconButton
+                        onClick={() => handleDownload(file.file_id, file.file_name)}
+                        color="primary"
+                      >
+                        <DownloadIcon />
+                      </IconButton>
+                    </Box>
+                  </Paper>
+                </Grid>
               ))}
-            </div>
+            </Grid>
           )}
-        </div>
+        </Box>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <Grid container spacing={3}>
           {categories.map((category) => (
-            <div
-              key={category.category_id}
-              className="border rounded-lg p-6 cursor-pointer hover:bg-green-50 hover:border-green-200 transition-all flex flex-col items-center justify-center text-center"
-              onClick={() => setSelectedCategory(category.category_id)}
-            >
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-3">
-                <svg className="w-8 h-8 text-green-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-              </div>
-              <h3 className="font-semibold text-lg">{category.category_name}</h3>
-              <p className="text-sm text-gray-500 mt-1">
-                {fileCounts[category.category_id] || 0} files
-              </p>
-            </div>
+            <Grid item xs={12} sm={6} md={4} lg={3} key={category.category_id}>
+              <Card 
+                sx={{ 
+                  height: '100%', 
+                  display: 'flex', 
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  p: 3,
+                  textAlign: 'center',
+                  cursor: 'pointer',
+                  '&:hover': {
+                    boxShadow: 4,
+                    bgcolor: 'primary.light',
+                    color: 'primary.contrastText',
+                    '& .MuiSvgIcon-root': {
+                      color: 'primary.contrastText'
+                    }
+                  }
+                }}
+                onClick={() => setSelectedCategory(category.category_id)}
+              >
+                <FolderIcon sx={{ fontSize: 60, color: 'primary.main', mb: 1 }} />
+                <Typography variant="h6" component="h3">
+                  {category.category_name}
+                </Typography>
+                <Typography variant="body2">
+                  {fileCounts[category.category_id] || 0} files
+                </Typography>
+              </Card>
+            </Grid>
           ))}
-        </div>
+        </Grid>
       )}
 
-      {/* Upload File Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-semibold">Upload New File</h3>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="text-gray-500 hover:text-gray-700"
+      <Modal open={isModalOpen} onClose={() => setIsModalOpen(false)}>
+        <Box sx={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: '90%',
+          maxWidth: 600,
+          bgcolor: 'background.paper',
+          boxShadow: 24,
+          p: 4,
+          borderRadius: 2
+        }}>
+          <Typography variant="h6" component="h2" sx={{ mb: 3 }}>
+            Upload New File
+          </Typography>
+          
+          <form onSubmit={handleFileUpload}>
+            <FormControl fullWidth sx={{ mb: 2 }}>
+              <InputLabel>Category</InputLabel>
+              <Select
+                value={newFile.category_id}
+                label="Category"
+                onChange={(e) => setNewFile({...newFile, category_id: e.target.value})}
+                required
               >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
+                <MenuItem value="">Select Category</MenuItem>
+                {categories.map((category) => (
+                  <MenuItem key={category.category_id} value={category.category_id}>
+                    {category.category_name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
             
-            <form onSubmit={handleFileUpload}>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                  <select
-                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600"
-                    value={newFile.category_id}
-                    onChange={(e) => setNewFile({...newFile, category_id: e.target.value})}
-                    required
-                  >
-                    <option value="">Select Category</option>
-                    {categories.map((category) => (
-                      <option key={category.category_id} value={category.category_id}>
-                        {category.category_name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Age Group</label>
-                  <select
-                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600"
-                    value={newFile.age_group_id}
-                    onChange={(e) => setNewFile({...newFile, age_group_id: e.target.value})}
-                    required
-                  >
-                    <option value="">Select Age Group</option>
-                    {ageGroups.map((ageGroup) => (
-                      <option key={ageGroup.age_group_id} value={ageGroup.age_group_id}>
-                        {ageGroup.age_range}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">File Name</label>
-                  <input
-                    type="text"
-                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600"
-                    value={newFile.file_name}
-                    onChange={(e) => setNewFile({...newFile, file_name: e.target.value})}
-                    required
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Select File</label>
-                  <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
-                    <div className="space-y-1 text-center">
-                      <svg
-                        className="mx-auto h-12 w-12 text-gray-400"
-                        stroke="currentColor"
-                        fill="none"
-                        viewBox="0 0 48 48"
-                      >
-                        <path
-                          d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
-                          strokeWidth={2}
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                      <div className="flex text-sm text-gray-600">
-                        <label
-                          htmlFor="file-upload"
-                          className="relative cursor-pointer bg-white rounded-md font-medium text-green-600 hover:text-green-500 focus-within:outline-none"
-                        >
-                          <span>Upload a file</span>
-                          <input
-                            id="file-upload"
-                            name="file-upload"
-                            type="file"
-                            className="sr-only"
-                            onChange={handleFileChange}
-                            required
-                          />
-                        </label>
-                        <p className="pl-1">or drag and drop</p>
-                      </div>
-                      <p className="text-xs text-gray-500">PDF, DOCX, XLSX up to 10MB</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="mt-6 flex justify-end space-x-3">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800 disabled:bg-green-300"
-                  disabled={loading}
-                >
-                  {loading ? 'Uploading...' : 'Upload File'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+            <FormControl fullWidth sx={{ mb: 2 }}>
+              <InputLabel>Age Group</InputLabel>
+              <Select
+                value={newFile.age_group_id}
+                label="Age Group"
+                onChange={(e) => setNewFile({...newFile, age_group_id: e.target.value})}
+                required
+              >
+                <MenuItem value="">Select Age Group</MenuItem>
+                {ageGroups.map((ageGroup) => (
+                  <MenuItem key={ageGroup.age_group_id} value={ageGroup.age_group_id}>
+                    {ageGroup.age_range}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            
+            <TextField
+              label="File Name"
+              fullWidth
+              required
+              value={newFile.file_name}
+              onChange={(e) => setNewFile({...newFile, file_name: e.target.value})}
+              sx={{ mb: 2 }}
+            />
+            
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="body2" sx={{ mb: 1 }}>Select File</Typography>
+              <Box sx={{
+                border: 2,
+                borderColor: 'grey.300',
+                borderStyle: 'dashed',
+                borderRadius: 1,
+                p: 3,
+                textAlign: 'center'
+              }}>
+                {newFile.file_name ? (
+                  <Typography>{newFile.file_name}</Typography>
+                ) : (
+                  <>
+                    <CloudUploadIcon sx={{ fontSize: 40, color: 'grey.500', mb: 1 }} />
+                    <Typography variant="body2" sx={{ mb: 1 }}>
+                      Drag and drop file here or click to browse
+                    </Typography>
+                    <Button
+                      variant="outlined"
+                      component="label"
+                    >
+                      Select File
+                      <input
+                        type="file"
+                        hidden
+                        onChange={handleFileChange}
+                        required
+                      />
+                    </Button>
+                    <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+                      PDF, DOCX, XLSX up to 10MB
+                    </Typography>
+                  </>
+                )}
+              </Box>
+            </Box>
+            
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+              <Button
+                onClick={() => setIsModalOpen(false)}
+                variant="outlined"
+                disabled={loading}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="contained"
+                disabled={loading}
+              >
+                {loading ? <CircularProgress size={24} /> : 'Upload File'}
+              </Button>
+            </Box>
+          </form>
+        </Box>
+      </Modal>
     </div>
   );
 }
 
-function StudentsSection() {
+function StudentsSection({ setSnackbar }) {
   const [students, setStudents] = useState([]);
   const [filteredStudents, setFilteredStudents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -917,15 +976,11 @@ function StudentsSection() {
         setLoading(true);
         setError(null);
         
-        const response = await fetch(
-          `http://localhost:3001/api/students?ageFilter=${ageFilter !== 'all' ? ageFilter : ''}`
-        );
+        const endpoint = ageFilter !== 'all' 
+          ? `/api/students?ageFilter=${ageFilter}`
+          : '/api/students';
         
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const data = await response.json();
+        const data = await apiRequest(endpoint);
         
         if (!data.success) {
           throw new Error(data.message || 'Failed to fetch students');
@@ -936,13 +991,18 @@ function StudentsSection() {
       } catch (error) {
         console.error('Error fetching students:', error);
         setError(error.message);
+        setSnackbar({
+          open: true,
+          message: 'Failed to fetch students',
+          severity: 'error'
+        });
       } finally {
         setLoading(false);
       }
     };
 
     fetchStudents();
-  }, [ageFilter]);
+  }, [ageFilter, setSnackbar]);
 
   useEffect(() => {
     if (searchQuery.trim() === '') {
@@ -956,89 +1016,100 @@ function StudentsSection() {
     }
   }, [searchQuery, students]);
 
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString();
+  };
+
+  const getFullName = (student) => {
+    return `${student.first_name} ${student.middle_name ? student.middle_name + ' ' : ''}${student.last_name}`;
+  };
+
   return (
     <div className="text-gray-800">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-        <h2 className="text-2xl font-bold">Student List</h2>
-        <div className="w-full md:w-1/2">
-          <label htmlFor="search" className="sr-only">Search students</label>
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg className="h-5 w-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <input
-              id="search"
-              type="text"
-              placeholder="Search students by name..."
-              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600 focus:border-transparent"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-        </div>
+      <Box sx={{ 
+        display: 'flex', 
+        flexDirection: { xs: 'column', md: 'row' }, 
+        justifyContent: 'space-between', 
+        alignItems: { xs: 'flex-start', md: 'center' }, 
+        gap: 2,
+        mb: 3 
+      }}>
+        <Typography variant="h5" component="h2">
+          Student List
+        </Typography>
         
-        <div className="flex items-center space-x-4 w-full md:w-auto">
-          <label className="font-medium">Filter by Age:</label>
-          <select 
-            className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600"
+        <TextField
+          label="Search students"
+          variant="outlined"
+          size="small"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          sx={{ width: { xs: '100%', md: 300 } }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon />
+              </InputAdornment>
+            ),
+          }}
+        />
+        
+        <FormControl sx={{ minWidth: 200 }} size="small">
+          <InputLabel>Filter by Age</InputLabel>
+          <Select
             value={ageFilter}
+            label="Filter by Age"
             onChange={(e) => setAgeFilter(e.target.value)}
           >
-            <option value="all">All Ages</option>
-            <option value="3-4">3.0 - 4.0 years</option>
-            <option value="4-5">4.1 - 5.0 years</option>
-            <option value="5-6">5.1 - 5.11 years</option>
-          </select>
-        </div>
-      </div>
+            <MenuItem value="all">All Ages</MenuItem>
+            <MenuItem value="3-4">3.0 - 4.0 years</MenuItem>
+            <MenuItem value="4-5">4.1 - 5.0 years</MenuItem>
+            <MenuItem value="5-6">5.1 - 5.11 years</MenuItem>
+          </Select>
+        </FormControl>
+      </Box>
 
       {error ? (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          Error: {error}
-        </div>
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
       ) : loading ? (
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-600"></div>
-        </div>
+        <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+          <CircularProgress />
+        </Box>
       ) : filteredStudents.length === 0 ? (
-        <div className="text-center py-10 text-gray-500">
-          {searchQuery ? 'No students match your search' : 'No students found'}
-        </div>
+        <Box sx={{ textAlign: 'center', py: 4 }}>
+          <Typography color="text.secondary">
+            {searchQuery ? 'No students match your search' : 'No students found'}
+          </Typography>
+        </Box>
       ) : (
-        <div className="overflow-x-auto">
-          <div className="relative">
-            <table className="min-w-full bg-white rounded-lg overflow-hidden">
-              <thead className="bg-green-700 text-white sticky top-0 z-10">
-                <tr>
-                  <th className="py-3 px-4 text-left">ID</th>
-                  <th className="py-3 px-4 text-left">Name</th>
-                  <th className="py-3 px-4 text-left">Age</th>
-                  <th className="py-3 px-4 text-left">Gender</th>
-                  <th className="py-3 px-4 text-left">Birthdate</th>
-                </tr>
-              </thead>
-            </table>
-            <div className="overflow-y-auto" style={{ maxHeight: '400px' }}>
-              <table className="min-w-full bg-white">
-                <tbody className="divide-y divide-gray-200">
-                  {filteredStudents.map((student) => (
-                    <tr key={student.student_id} className="hover:bg-gray-50">
-                      <td className="py-3 px-4">{student.student_id}</td>
-                      <td className="py-3 px-4">
-                        {student.first_name} {student.middle_name ? student.middle_name + ' ' : ''}{student.last_name}
-                      </td>
-                      <td className="py-3 px-4">{student.age}</td>
-                      <td className="py-3 px-4">{student.gender}</td>
-                      <td className="py-3 px-4">{new Date(student.birthdate).toLocaleDateString()}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
+        <Paper sx={{ width: '100%', overflow: 'hidden' }}>
+          <TableContainer sx={{ maxHeight: 440 }}>
+            <Table stickyHeader>
+              <TableHead>
+                <TableRow>
+                  <TableCell>ID</TableCell>
+                  <TableCell>Name</TableCell>
+                  <TableCell>Age</TableCell>
+                  <TableCell>Gender</TableCell>
+                  <TableCell>Birthdate</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {filteredStudents.map((student) => (
+                  <TableRow hover key={student.student_id}>
+                    <TableCell>{student.student_id}</TableCell>
+                    <TableCell>{getFullName(student)}</TableCell>
+                    <TableCell>{student.age}</TableCell>
+                    <TableCell>{student.gender}</TableCell>
+                    <TableCell>{formatDate(student.birthdate)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Paper>
       )}
     </div>
   );

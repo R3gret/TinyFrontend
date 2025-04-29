@@ -1,35 +1,61 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Outlet } from "react-router-dom";
+import { useAuth } from "../context/AuthContext"; // If you're using context
 
-// ProtectedRoute component checks if the user is allowed to access the route
-const ProtectedRoute = ({ children, allowedTypes }) => {
-  const [warning, setWarning] = useState(null);
-  const navigate = useNavigate(); // To navigate back to the previous page
-  const user = JSON.parse(localStorage.getItem("user")); // Get the user from localStorage
+const ProtectedRoute = ({ allowedTypes, children }) => {
+  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    // Show warning if the user is not logged in or doesn't have the correct access type
-    if (!user) {
-      setWarning("You must be logged in to access this page.");
-      setTimeout(() => navigate(-1), 3000); // Go back to the previous page after 3 seconds
-    } else if (!allowedTypes.includes(user.type)) {
-      setWarning("You do not have permission to access this page.");
-      setTimeout(() => navigate(-1), 3000); // Go back to the previous page after 3 seconds
-    }
-  }, [user, allowedTypes, navigate]);
+    const checkAuth = () => {
+      try {
+        const user = JSON.parse(localStorage.getItem("user"));
+        
+        if (!user) {
+          navigate("/", { 
+            state: { 
+              from: location.pathname,
+              message: "Please login to access this page"
+            },
+            replace: true
+          });
+          return;
+        }
 
-  // If there's a warning message, show it
-  if (warning) {
+        if (!allowedTypes.includes(user.type)) {
+          navigate("/unauthorized", { replace: true });
+          return;
+        }
+
+        setIsAuthorized(true);
+      } catch (error) {
+        console.error("Authentication check failed:", error);
+        navigate("/error", { state: { error: "Authentication failed" }, replace: true });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkAuth();
+  }, [allowedTypes, navigate]);
+
+  if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-r from-white to-green-400 backdrop-blur-sm">
-        <div className="bg-white p-6 rounded-lg shadow-lg text-center text-red-500">
-          <h1 className="text-xl font-semibold">{warning}</h1>
+      <div className="flex items-center justify-center min-h-screen bg-gray-100">
+        <div className="text-center">
+          <div className="spinner border-4 border-blue-500 border-t-transparent rounded-full w-12 h-12 animate-spin mx-auto"></div>
+          <p className="mt-4 text-gray-700">Verifying access...</p>
         </div>
       </div>
     );
   }
 
-  return children; // If allowed, render the child components (route)
+  if (!isAuthorized) {
+    return null; // Navigation is already handled in the effect
+  }
+
+  return children ? children : <Outlet />;
 };
 
 export default ProtectedRoute;

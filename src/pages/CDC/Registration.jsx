@@ -4,6 +4,7 @@ import Navbar from "../../components/all/Navbar";
 import Sidebar from "../../components/CDC/Sidebar";
 import bgImage from "../../assets/bg1.jpg";
 import RegistrationPDF from "../../forms/RegistrationPDF";
+import { Snackbar, Alert } from "@mui/material";
 
 // API Service Helper
 const apiRequest = async (endpoint, method = 'GET', body = null) => {
@@ -30,40 +31,52 @@ const apiRequest = async (endpoint, method = 'GET', body = null) => {
   return response.json();
 };
 
+// Initial form state
+const initialFormData = {
+  childLastName: "",
+  childFirstName: "",
+  childMiddleName: "",
+  childGender: "",
+  childAddress: "",
+  childBirthday: "",
+  childAge: "",
+  childFirstLanguage: "",
+  childSecondLanguage: "",
+  childRegistered: false,
+  guardianName: "",
+  guardianRelationship: "",
+  guardianEmail: "",
+  motherName: "",
+  motherOccupation: "",
+  motherAddress: "",
+  motherContactHome: "",
+  motherContactWork: "",
+  fatherName: "",
+  fatherOccupation: "",
+  fatherAddress: "",
+  fatherContactHome: "",
+  fatherContactWork: "",
+  emergencyName: "",
+  emergencyRelationship: "",
+  emergencyContactHome: "",
+  emergencyContactWork: "",
+};
+
 export default function Registration() {
   const [showPDF, setShowPDF] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
-
-  const [formData, setFormData] = useState({
-    childLastName: "",
-    childFirstName: "",
-    childMiddleName: "",
-    childGender: "",
-    childAddress: "",
-    childBirthday: "",
-    childAge: "",
-    childFirstLanguage: "",
-    childSecondLanguage: "",
-    childRegistered: false,
-    guardianName: "",
-    guardianRelationship: "",
-    guardianEmail: "",
-    motherName: "",
-    motherOccupation: "",
-    motherAddress: "",
-    motherContactHome: "",
-    motherContactWork: "",
-    fatherName: "",
-    fatherOccupation: "",
-    fatherAddress: "",
-    fatherContactHome: "",
-    fatherContactWork: "",
-    emergencyName: "",
-    emergencyRelationship: "",
-    emergencyContactHome: "",
-    emergencyContactWork: "",
+  const [formData, setFormData] = useState(initialFormData);
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success" // "success", "error", "warning", "info"
   });
+
+  // Handle snackbar close
+  const handleSnackbarClose = () => {
+    setSnackbar(prev => ({ ...prev, open: false }));
+  };
 
   useEffect(() => {
     if (formData.childBirthday) {
@@ -74,10 +87,7 @@ export default function Registration() {
       let months = today.getMonth() - birthDate.getMonth();
       let days = today.getDate() - birthDate.getDate();
   
-      if (days < 0) {
-        months--;
-      }
-  
+      if (days < 0) months--;
       if (months < 0) {
         years--;
         months += 12;
@@ -87,7 +97,6 @@ export default function Registration() {
       months = Math.max(0, months);
   
       const ageString = `${years} year${years !== 1 ? 's' : ''} and ${months} month${months !== 1 ? 's' : ''}`;
-      
       setFormData(prev => ({ ...prev, childAge: ageString }));
     }
   }, [formData.childBirthday]);
@@ -96,11 +105,20 @@ export default function Registration() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  const resetForm = () => {
+    setFormData(initialFormData);
+  };
+
   const handleRegister = async () => {
     // Validate required fields
     if (!formData.childFirstName || !formData.childLastName || 
         !formData.guardianName || !formData.motherName || !formData.fatherName) {
       setSubmitError('Required fields are missing');
+      setSnackbar({
+        open: true,
+        message: 'Please fill in all required fields',
+        severity: 'error'
+      });
       return;
     }
 
@@ -110,11 +128,25 @@ export default function Registration() {
     try {
       const response = await apiRequest('/api/register', 'POST', formData);
       console.log('Registration successful:', response);
-      alert('Registration successful!');
-      // Optionally reset form here
+      
+      // Show success notification
+      setSnackbar({
+        open: true,
+        message: 'Registration successful!',
+        severity: 'success'
+      });
+      
+      // Reset form
+      resetForm();
+      
     } catch (error) {
       console.error('Registration error:', error);
       setSubmitError(error.message || 'Registration failed. Please try again.');
+      setSnackbar({
+        open: true,
+        message: error.message || 'Registration failed. Please try again.',
+        severity: 'error'
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -168,6 +200,22 @@ export default function Registration() {
           )}
         </div>
       </div>
+
+      {/* Snackbar Notification */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={handleSnackbarClose}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert 
+          onClose={handleSnackbarClose} 
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </div>
   );
 }

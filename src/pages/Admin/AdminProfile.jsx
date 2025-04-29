@@ -8,6 +8,9 @@ import { FaPhone, FaEnvelope, FaMapMarkerAlt, FaLink, FaUserEdit, FaKey } from "
 import { ImSpinner8 } from "react-icons/im";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 
+// API configuration - using Vite environment variable
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+
 export default function Profile() {
   const [fadeIn, setFadeIn] = useState(false);
   const [activeTab, setActiveTab] = useState("profile");
@@ -17,17 +20,19 @@ export default function Profile() {
   const [success, setSuccess] = useState(null);
   const navigate = useNavigate();
 
+  // Animation on mount
   useEffect(() => {
     setTimeout(() => setFadeIn(true), 200);
   }, []);
 
-  // Fetch user data when profile tab becomes active
+  // Fetch user data when tab changes
   useEffect(() => {
     if (activeTab === "profile") {
       fetchUserData();
     }
   }, [activeTab]);
 
+  // Password visibility state
   const [showPasswords, setShowPasswords] = useState({
     current: false,
     new: false,
@@ -41,6 +46,7 @@ export default function Profile() {
     }));
   };
 
+  // Fetch user data
   const fetchUserData = async () => {
     try {
       setLoading(true);
@@ -48,27 +54,17 @@ export default function Profile() {
       setSuccess(null);
   
       const user = JSON.parse(localStorage.getItem('user'));
-      console.log('User from localStorage:', user); // Debug log
-  
-      if (!user || !user.id) {
+      if (!user?.id) {
         throw new Error('No user logged in');
       }
   
-      // Use params option for axios to properly send query parameters
       const response = await axios.get(
-        'http://localhost:3001/api/user_session/current-user/details',
-        {
-          params: { userId: user.id }
-        }
+        `${API_BASE_URL}/api/user_session/current-user/details`,
+        { params: { userId: user.id } }
       );
   
-      console.log('API Response:', response.data); // Debug log
-  
       if (response.data.success) {
-        console.log('API user data:', response.data.user);  // Debug
-  console.log('Organization field:', response.data.user.other_info.organization);  // Debug
-  setUserData(response.data.user);
-        
+        setUserData(response.data.user);
       } else {
         throw new Error(response.data.message || 'Failed to fetch user data');
       }
@@ -80,7 +76,7 @@ export default function Profile() {
     }
   };
 
-  // Edit form state
+  // Edit form state and effects
   const [editForm, setEditForm] = useState({
     full_name: '',
     email: '',
@@ -91,9 +87,8 @@ export default function Profile() {
     social_media: ''
   });
 
-  // Update edit form when userData changes
   useEffect(() => {
-    if (userData && userData.other_info) {
+    if (userData?.other_info) {
       setEditForm({
         full_name: userData.other_info.full_name || '',
         email: userData.other_info.email || userData.email || '',
@@ -103,20 +98,14 @@ export default function Profile() {
         website: userData.other_info.website || '',
         social_media: userData.other_info.social_media || ''
       });
-      
-      // Debug log to verify the values
-      console.log('Setting editForm with:', {
-        organization: userData.other_info.organization,
-        website: userData.other_info.website,
-        social_media: userData.other_info.social_media
-      });
     }
   }, [userData]);
 
+  // Form validation
   const validateEditForm = () => {
     const newErrors = {};
     
-    if (!editForm.full_name.trim()) {
+    if (!editForm.full_name?.trim()) {
       newErrors.full_name = 'Full name is required';
     } else if (editForm.full_name.trim().length < 2) {
       newErrors.full_name = 'Full name must be at least 2 characters';
@@ -161,24 +150,18 @@ export default function Profile() {
     try {
       setLoading(true);
       const user = JSON.parse(localStorage.getItem('user'));
-      if (!user || !user.id) {
+      if (!user?.id) {
         throw new Error('No user logged in');
       }
 
-      console.log('User ID ng update:', user.id); // Log the userId
-  
-      // Send the userId as part of the request body
       const response = await axios.put(
-        'http://localhost:3001/api/user_session/update-profile',
-        {
-          userId: user.id,
-          ...editForm
-        }
+        `${API_BASE_URL}/api/user_session/update-profile`,
+        { userId: user.id, ...editForm }
       );
   
       if (response.data.success) {
         setSuccess('Profile updated successfully!');
-        fetchUserData(); // Re-fetch user data after updating
+        fetchUserData();
         setTimeout(() => setActiveTab('profile'), 1500);
       } else {
         throw new Error(response.data.message || 'Update failed');
@@ -190,7 +173,7 @@ export default function Profile() {
     }
   };
 
-  // Password change state
+  // Password change state and handlers
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
     newPassword: '',
@@ -206,16 +189,22 @@ export default function Profile() {
     
     if (!passwordForm.newPassword) {
       newErrors.newPassword = 'New password is required';
-    } else if (passwordForm.newPassword.length < 8) {
-      newErrors.newPassword = 'Password must be at least 8 characters';
-    } else if (!/[A-Z]/.test(passwordForm.newPassword)) {
-      newErrors.newPassword = 'Must contain at least one uppercase letter';
-    } else if (!/[a-z]/.test(passwordForm.newPassword)) {
-      newErrors.newPassword = 'Must contain at least one lowercase letter';
-    } else if (!/[0-9]/.test(passwordForm.newPassword)) {
-      newErrors.newPassword = 'Must contain at least one number';
-    } else if (!/[^A-Za-z0-9]/.test(passwordForm.newPassword)) {
-      newErrors.newPassword = 'Must contain at least one special character';
+    } else {
+      if (passwordForm.newPassword.length < 8) {
+        newErrors.newPassword = 'Password must be at least 8 characters';
+      }
+      if (!/[A-Z]/.test(passwordForm.newPassword)) {
+        newErrors.newPassword = 'Must contain at least one uppercase letter';
+      }
+      if (!/[a-z]/.test(passwordForm.newPassword)) {
+        newErrors.newPassword = 'Must contain at least one lowercase letter';
+      }
+      if (!/[0-9]/.test(passwordForm.newPassword)) {
+        newErrors.newPassword = 'Must contain at least one number';
+      }
+      if (!/[^A-Za-z0-9]/.test(passwordForm.newPassword)) {
+        newErrors.newPassword = 'Must contain at least one special character';
+      }
     }
     
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
@@ -247,83 +236,46 @@ export default function Profile() {
     e.preventDefault();
     setErrors({});
     setSuccess(null);
-    
-    // Debug log before validation
-    console.log('Password form values:', {
-      current: passwordForm.currentPassword,
-      new: passwordForm.newPassword,
-      confirm: passwordForm.confirmPassword,
-      match: passwordForm.newPassword === passwordForm.confirmPassword
-    });
   
-    // Validate form before submission
-    if (!validatePasswordForm()) {
-      console.log('Password form validation failed');
-      return;
-    }
+    if (!validatePasswordForm()) return;
   
     try {
       setLoading(true);
       const user = JSON.parse(localStorage.getItem('user'));
-      if (!user || !user.id) {
+      if (!user?.id) {
         throw new Error('No user logged in');
       }
   
-      // Prepare request data
-      const requestData = {
-        userId: user.id,
-        currentPassword: passwordForm.currentPassword,
-        newPassword: passwordForm.newPassword,
-        confirmPassword: passwordForm.confirmPassword
-      };
-  
-      console.log('Sending password change request:', requestData);
-  
       const response = await axios.put(
-        'http://localhost:3001/api/user_session/change-password',
-        requestData,
+        `${API_BASE_URL}/api/user_session/change-password`,
         {
-          params: { userId: user.id }, // Send userId as query parameter
-          headers: {
-            'Content-Type': 'application/json'
-          }
+          userId: user.id,
+          currentPassword: passwordForm.currentPassword,
+          newPassword: passwordForm.newPassword,
+          confirmPassword: passwordForm.confirmPassword
         }
       );
   
       if (response.data.success) {
-        console.log('Password changed successfully');
         setSuccess('Password updated successfully!');
-        // Reset form
         setPasswordForm({
           currentPassword: '',
           newPassword: '',
           confirmPassword: ''
         });
-        // Hide success message after 3 seconds
-        setTimeout(() => {
-          setActiveTab('profile');
-        }, 3000);
+        setTimeout(() => setActiveTab('profile'), 3000);
       } else {
         throw new Error(response.data.message || 'Password change failed');
       }
     } catch (err) {
-      console.error('Password change error:', {
-        status: err.response?.status,
-        data: err.response?.data,
-        message: err.message
-      });
-  
       if (err.response?.data?.errors) {
-        // Handle validation errors from server
         const serverErrors = err.response.data.errors.reduce((acc, error) => {
           acc[error.path] = error.msg;
           return acc;
         }, {});
         setErrors(serverErrors);
-      } else if (err.response?.data?.message) {
-        setErrors({ general: err.response.data.message });
       } else {
-        setErrors({ general: err.message || 'Failed to change password' });
+        setErrors({ general: err.response?.data?.message || err.message || 'Failed to change password' });
       }
     } finally {
       setLoading(false);
@@ -335,11 +287,16 @@ export default function Profile() {
       localStorage.removeItem('user');
       navigate('/login');
     } else if (err.response?.data?.errors) {
-      // Handle validation errors from server
       setErrors(err.response.data.errors);
     } else {
       setErrors({ general: err.response?.data?.message || err.message || 'An error occurred' });
     }
+  };
+
+  // Helper function to format URLs
+  const formatUrl = (url) => {
+    if (!url) return '';
+    return url.startsWith('http') ? url : `https://${url}`;
   };
 
   return (
@@ -390,7 +347,7 @@ export default function Profile() {
               </div>
             </div>
 
-            {/* Main Content Area with Fixed Height */}
+            {/* Main Content Area */}
             <div className="min-h-[300px] relative">
               {loading && (
                 <div className="absolute inset-0 bg-white/70 flex items-center justify-center z-10">
@@ -404,10 +361,15 @@ export default function Profile() {
                 </div>
               )}
 
+              {success && (
+                <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+                  {success}
+                </div>
+              )}
 
               {activeTab === "profile" && userData && (
                 <div className="flex flex-col md:flex-row items-center md:items-start">
-                  {/* Left Side: Profile Image and Name */}
+                  {/* Profile Image and Basic Info */}
                   <div className="flex flex-col items-center md:items-start w-full md:w-1/3 p-4">
                     <img
                       src={userData.other_info?.profile_pic || userData.profile_pic || "https://via.placeholder.com/150"}
@@ -422,7 +384,7 @@ export default function Profile() {
                     </p>
                   </div>
 
-                  {/* Right Side: Contact Details */}
+                  {/* Contact Details */}
                   <div className="w-full md:w-2/3 p-4 space-y-4">
                     <h3 className="text-lg font-semibold text-gray-800">
                       Contact Information
@@ -443,61 +405,39 @@ export default function Profile() {
                     </div>
 
                     {/* Quick Links */}
-<h3 className="text-lg font-semibold text-gray-800 mt-6">
-  Quick Links
-</h3>
-<div className="mt-3 space-y-2">
-  {userData.other_info?.website && (
-    <a
-      href={
-        userData.other_info.website.startsWith('http')
-          ? userData.other_info.website
-          : `https://${userData.other_info.website}`
-      }
-      target="_blank"
-      rel="noopener noreferrer"
-      className="flex items-center text-green-600 hover:text-green-800 transition-all"
-    >
-      <FaLink className="mr-2" />
-      Personal Website
-    </a>
-  )}
+                    <h3 className="text-lg font-semibold text-gray-800 mt-6">
+                      Quick Links
+                    </h3>
+                    <div className="mt-3 space-y-2">
+                      {userData.other_info?.website && (
+                        <a
+                          href={formatUrl(userData.other_info.website)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center text-green-600 hover:text-green-800 transition-all"
+                        >
+                          <FaLink className="mr-2" />
+                          Personal Website
+                        </a>
+                      )}
 
-  {userData.other_info?.social_media && (
-    <a
-      href={
-        userData.other_info.social_media.startsWith('http')
-          ? userData.other_info.social_media
-          : `https://${userData.other_info.social_media}`
-      }
-      target="_blank"
-      rel="noopener noreferrer"
-      className="flex items-center text-green-600 hover:text-green-800 transition-all"
-    >
-      <FaLink className="mr-2" />
-      Social Media
-    </a>
-  )}
+                      {userData.other_info?.social_media && (
+                        <a
+                          href={formatUrl(userData.other_info.social_media)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center text-green-600 hover:text-green-800 transition-all"
+                        >
+                          <FaLink className="mr-2" />
+                          Social Media
+                        </a>
+                      )}
 
-  {userData.other_info?.organization ? (
-    <a
-      href="#"
-      className="flex items-center text-green-600 hover:text-green-800 transition-all"
-    >
-      <FaLink className="mr-2" />
-      Organization: ({userData.other_info.organization})
-    </a>
-  ) : (
-    <a
-      href="#"
-      className="flex items-center text-green-600 hover:text-green-800 transition-all"
-    >
-      <FaLink className="mr-2" />
-      Community Support Groups
-    </a>
-  )}
-</div>
-
+                      <div className="flex items-center text-green-600">
+                        <FaLink className="mr-2" />
+                        Organization: {userData.other_info?.organization || 'Not specified'}
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -619,141 +559,128 @@ export default function Profile() {
                 </div>
               )}
 
-{activeTab === "password" && (
-  <div className="p-4">
-    <h3 className="text-xl font-semibold text-gray-800 mb-4">Change Password</h3>
-    
-    {errors.general && (
-      <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-        {errors.general}
-      </div>
-    )}
+              {activeTab === "password" && (
+                <div className="p-4">
+                  <h3 className="text-xl font-semibold text-gray-800 mb-4">Change Password</h3>
+                  <form onSubmit={handlePasswordSubmit} className="space-y-4 max-w-md mx-auto">
+                    {/* Current Password Field */}
+                    <div>
+                      <label className="block text-gray-700 font-medium mb-1">
+                        Current Password *
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showPasswords.current ? "text" : "password"}
+                          name="currentPassword"
+                          value={passwordForm.currentPassword}
+                          onChange={handlePasswordChange}
+                          className={`w-full p-2 border rounded-md ${errors.currentPassword ? 'border-red-500' : ''}`}
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={() => togglePasswordVisibility('current')}
+                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                        >
+                          {showPasswords.current ? <FaEyeSlash /> : <FaEye />}
+                        </button>
+                      </div>
+                      {errors.currentPassword && (
+                        <p className="text-red-500 text-sm mt-1">{errors.currentPassword}</p>
+                      )}
+                    </div>
 
-    {success && (
-      <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-        {success}
-      </div>
-    )}
+                    {/* New Password Field */}
+                    <div>
+                      <label className="block text-gray-700 font-medium mb-1">
+                        New Password *
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showPasswords.new ? "text" : "password"}
+                          name="newPassword"
+                          value={passwordForm.newPassword}
+                          onChange={handlePasswordChange}
+                          className={`w-full p-2 border rounded-md ${errors.newPassword ? 'border-red-500' : ''}`}
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={() => togglePasswordVisibility('new')}
+                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                        >
+                          {showPasswords.new ? <FaEyeSlash /> : <FaEye />}
+                        </button>
+                      </div>
+                      {errors.newPassword && (
+                        <p className="text-red-500 text-sm mt-1">{errors.newPassword}</p>
+                      )}
+                      <div className="text-xs text-gray-500 mt-1">
+                        Password must contain:
+                        <ul className="list-disc pl-5">
+                          <li>At least 8 characters</li>
+                          <li>One uppercase letter</li>
+                          <li>One lowercase letter</li>
+                          <li>One number</li>
+                          <li>One special character</li>
+                        </ul>
+                      </div>
+                    </div>
 
-    <form onSubmit={handlePasswordSubmit} className="space-y-4 max-w-md mx-auto">
-      {/* Current Password Field */}
-      <div>
-        <label className="block text-gray-700 font-medium mb-1">
-          Current Password *
-        </label>
-        <div className="relative">
-          <input
-            type={showPasswords.current ? "text" : "password"}
-            name="currentPassword"
-            value={passwordForm.currentPassword}
-            onChange={handlePasswordChange}
-            className={`w-full p-2 border rounded-md ${errors.currentPassword ? 'border-red-500' : ''}`}
-            required
-          />
-          <button
-            type="button"
-            onClick={() => togglePasswordVisibility('current')}
-            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
-          >
-            {showPasswords.current ? <FaEyeSlash /> : <FaEye />}
-          </button>
-        </div>
-        {errors.currentPassword && (
-          <p className="text-red-500 text-sm mt-1">{errors.currentPassword}</p>
-        )}
-      </div>
+                    {/* Confirm Password Field */}
+                    <div>
+                      <label className="block text-gray-700 font-medium mb-1">
+                        Confirm New Password *
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showPasswords.confirm ? "text" : "password"}
+                          name="confirmPassword"
+                          value={passwordForm.confirmPassword}
+                          onChange={handlePasswordChange}
+                          className={`w-full p-2 border rounded-md ${errors.confirmPassword ? 'border-red-500' : ''}`}
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={() => togglePasswordVisibility('confirm')}
+                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                        >
+                          {showPasswords.confirm ? <FaEyeSlash /> : <FaEye />}
+                        </button>
+                      </div>
+                      {errors.confirmPassword && (
+                        <p className="text-red-500 text-sm mt-1">{errors.confirmPassword}</p>
+                      )}
+                    </div>
 
-      {/* New Password Field */}
-      <div>
-        <label className="block text-gray-700 font-medium mb-1">
-          New Password *
-        </label>
-        <div className="relative">
-          <input
-            type={showPasswords.new ? "text" : "password"}
-            name="newPassword"
-            value={passwordForm.newPassword}
-            onChange={handlePasswordChange}
-            className={`w-full p-2 border rounded-md ${errors.newPassword ? 'border-red-500' : ''}`}
-            required
-          />
-          <button
-            type="button"
-            onClick={() => togglePasswordVisibility('new')}
-            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
-          >
-            {showPasswords.new ? <FaEyeSlash /> : <FaEye />}
-          </button>
-        </div>
-        {errors.newPassword && (
-          <p className="text-red-500 text-sm mt-1">{errors.newPassword}</p>
-        )}
-        <div className="text-xs text-gray-500 mt-1">
-          Password must contain:
-          <ul className="list-disc pl-5">
-            <li>At least 8 characters</li>
-            <li>One uppercase letter</li>
-            <li>One lowercase letter</li>
-            <li>One number</li>
-            <li>One special character</li>
-          </ul>
-        </div>
-      </div>
-
-      {/* Confirm Password Field */}
-      <div>
-        <label className="block text-gray-700 font-medium mb-1">
-          Confirm New Password *
-        </label>
-        <div className="relative">
-          <input
-            type={showPasswords.confirm ? "text" : "password"}
-            name="confirmPassword"
-            value={passwordForm.confirmPassword}
-            onChange={handlePasswordChange}
-            className={`w-full p-2 border rounded-md ${errors.confirmPassword ? 'border-red-500' : ''}`}
-            required
-          />
-          <button
-            type="button"
-            onClick={() => togglePasswordVisibility('confirm')}
-            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
-          >
-            {showPasswords.confirm ? <FaEyeSlash /> : <FaEye />}
-          </button>
-        </div>
-        {errors.confirmPassword && (
-          <p className="text-red-500 text-sm mt-1">{errors.confirmPassword}</p>
-        )}
-      </div>
-
-      <div className="flex justify-end space-x-4">
-        <button
-          type="button"
-          onClick={() => setActiveTab('profile')}
-          className="px-4 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400 transition-all"
-          disabled={loading}
-        >
-          Cancel
-        </button>
-        <button
-          type="submit"
-          className="px-4 py-2 bg-green-700 text-white rounded-md hover:bg-green-800 transition-all flex items-center justify-center"
-          disabled={loading}
-        >
-          {loading ? (
-            <>
-              <ImSpinner8 className="animate-spin mr-2" />
-              Updating...
-            </>
-          ) : (
-            'Update Password'
-          )}
-        </button>
-      </div>
-    </form>
-  </div>
-)}
+                    <div className="flex justify-end space-x-4">
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('profile')}
+                        className="px-4 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400 transition-all"
+                        disabled={loading}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-4 py-2 bg-green-700 text-white rounded-md hover:bg-green-800 transition-all flex items-center justify-center"
+                        disabled={loading}
+                      >
+                        {loading ? (
+                          <>
+                            <ImSpinner8 className="animate-spin mr-2" />
+                            Updating...
+                          </>
+                        ) : (
+                          'Update Password'
+                        )}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
             </div>
           </div>
         </div>

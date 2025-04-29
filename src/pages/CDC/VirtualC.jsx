@@ -23,6 +23,15 @@ import {
   Snackbar,
   Alert
 } from "@mui/material";
+import {
+  Upload as UploadIcon,
+  Download as DownloadIcon,
+  Folder as FolderIcon,
+  InsertDriveFile as InsertDriveFileIcon,
+  ArrowBack as ArrowBackIcon,
+  Search as SearchIcon,
+  CloudUpload as CloudUploadIcon
+} from "@mui/icons-material";
 
 // API Service Helper
 const apiRequest = async (endpoint, method = 'GET', body = null, isFormData = false) => {

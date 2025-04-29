@@ -16,13 +16,9 @@ export default defineConfig(({ mode }) => {
           target: env.VITE_API_URL || 'http://localhost:3001',
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api/, ''),
-          secure: false // Only for local development with HTTP
+          secure: true // Only for local development with HTTP
         }
       }
     },
-    // Optional: Define global constants
-    define: {
-      'process.env.VITE_API_URL': JSON.stringify(env.VITE_API_URL)
-    }
   };
 });

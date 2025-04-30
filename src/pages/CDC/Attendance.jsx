@@ -4,44 +4,29 @@ import Sidebar from "../../components/CDC/Sidebar";
 import bgImage from "../../assets/bg1.jpg";
 import { CheckSquare, CalendarPlus, X, Filter } from "lucide-react";
 
-// API base URL - can be configured using environment variables or fallback to localhost
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+// API Service Helper
+const apiRequest = async (endpoint, method = 'GET', body = null) => {
+  const token = localStorage.getItem('token');
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(token && { 'Authorization': `Bearer ${token}` })
+  };
 
-const apiService = {
-  async fetchStudents() {
-    const response = await fetch(`${API_BASE_URL}/api/students`);
-    if (!response.ok) throw new Error('Failed to fetch students');
-    const data = await response.json();
-    if (!data.success) throw new Error(data.message || 'Failed to fetch students');
-    return data.students;
-  },
+  const config = {
+    method,
+    headers,
+    ...(body && { body: JSON.stringify(body) })
+  };
 
-  async fetchAttendance() {
-    const response = await fetch(`${API_BASE_URL}/api/attendance`);
-    if (!response.ok) throw new Error('Failed to fetch attendance');
-    const data = await response.json();
-    if (!data.success) throw new Error(data.message || 'Failed to fetch attendance');
-    return data.attendance;
-  },
-
-  async saveAttendanceData(studentId, selectedDate, status) {
-    const response = await fetch(`${API_BASE_URL}/api/attendance`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        student_id: studentId,
-        attendance_date: selectedDate,
-        status: status
-      })
-    });
-
-    if (!response.ok) throw new Error(`Failed to save attendance for student ${studentId}`);
-    const data = await response.json();
-    if (!data.success) throw new Error(data.message || `Failed to save attendance for student ${studentId}`);
-    return data;
+  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+  
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.message || 'Request failed');
   }
+
+  return response.json();
 };
 
 export default function AttendancePage() {
@@ -67,35 +52,71 @@ export default function AttendancePage() {
     Late: "bg-yellow-500 text-black"
   };
 
-  // Fetch students and attendance data
+  // Set default dates (yesterday, today, tomorrow) when component mounts
+  useEffect(() => {
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+  
+    // Adjust for timezone offset
+    const adjustForTimezone = (date) => {
+      const offset = date.getTimezoneOffset() * 60000;
+      return new Date(date.getTime() - offset);
+    };
+  
+    const formatDate = (date) => adjustForTimezone(date).toISOString().split('T')[0];
+    
+    setFilteredDates([
+      formatDate(yesterday),
+      formatDate(today),
+      formatDate(tomorrow)
+    ]);
+  }, []);
+
+  // Set current date when modal opens
+  useEffect(() => {
+    if (showModal) {
+      const today = new Date();
+      const formattedDate = today.toISOString().split('T')[0];
+      setSelectedDate(formattedDate);
+    }
+  }, [showModal]);
+
+  // Fetch students and attendance from backend
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const studentsData = await apiService.fetchStudents();
-        const attendanceData = await apiService.fetchAttendance();
         
-        // Format students data
-        const formattedStudents = studentsData.map(student => ({
+        // Fetch students and attendance in parallel
+        const [studentsData, attendanceData] = await Promise.all([
+          apiRequest('/api/students'),
+          apiRequest('/api/attendance')
+        ]);
+
+        // Format students
+        const formattedStudents = studentsData.students.map(student => ({
           id: student.student_id,
           name: `${student.first_name}${student.middle_name ? ` ${student.middle_name}` : ''} ${student.last_name}`,
           ...student
         }));
-
-        // Format attendance data
+        
+        // Transform attendance data
         const attendanceMap = {};
-        attendanceData.forEach(record => {
-          const formattedDate = record.formatted_date || record.attendance_date.split('T')[0];
+        attendanceData.attendance.forEach(record => {
           if (!attendanceMap[record.student_id]) {
             attendanceMap[record.student_id] = {};
           }
+          const formattedDate = record.formatted_date || record.attendance_date.split('T')[0];
           attendanceMap[record.student_id][formattedDate] = record.status;
         });
-
+        
         setStudents(formattedStudents);
         setAttendance(attendanceMap);
         setLoading(false);
-
+        
       } catch (err) {
         console.error('Error fetching data:', err);
         setError(err.message);
@@ -118,10 +139,22 @@ export default function AttendancePage() {
     setSaveError(null);
 
     try {
-      for (const student of students) {
-        const status = attendance[student.id]?.[selectedDate] || 'Absent';
-        await apiService.saveAttendanceData(student.id, selectedDate, status);
+      // Prepare all attendance records
+      const attendanceRecords = students.map(student => ({
+        student_id: student.id,
+        attendance_date: selectedDate,
+        status: attendance[student.id]?.[selectedDate] || 'Absent'
+      }));
+
+      // Save all attendance records at once
+      const response = await apiRequest('/api/attendance/bulk', 'POST', {
+        records: attendanceRecords
+      });
+
+      if (!response.success) {
+        throw new Error(response.message || 'Failed to save attendance');
       }
+
       setShowModal(false);
     } catch (err) {
       console.error('Error saving attendance:', err);
@@ -214,7 +247,10 @@ export default function AttendancePage() {
                     {filteredDates.map(date => {
                       const status = attendance[student.id]?.[date];
                       return (
-                        <td key={date} className={`border p-2 ${statusColors[status] || ""}`}>
+                        <td 
+                          key={date} 
+                          className={`border p-2 ${statusColors[status] || ""}`}
+                        >
                           {status || "-"}
                         </td>
                       );
@@ -248,46 +284,70 @@ export default function AttendancePage() {
                 {/* Date Display (non-editable) */}
                 <div className="mt-4">
                   <label className="block text-gray-700 font-medium">Date:</label>
-                  <div className="text-lg font-bold">{selectedDate}</div>
+                  <div className="w-full p-2 border rounded mt-1 bg-gray-100">
+                    {selectedDate}
+                  </div>
                 </div>
 
-                {/* Attendance Form */}
-                <div className="mt-4 space-y-3">
-                  {students.map(student => (
-                    <div key={student.id} className="flex justify-between items-center">
-                      <span className="font-medium">{student.name}</span>
-                      <div className="space-x-2">
-                        {['Present', 'Absent', 'Excused', 'Late'].map(status => (
-                          <button
-                            key={status}
-                            className={`px-4 py-1 rounded-lg ${statusColors[status]}`}
-                            onClick={() => handleStatusChange(student.id, selectedDate, status)}
-                          >
-                            {status}
-                          </button>
-                        ))}
+                {/* Student List with Scrollable Container */}
+                <div className="mt-4">
+                  <h3 className="text-gray-700 font-medium">Mark Attendance</h3>
+                  <div className="max-h-[300px] overflow-y-auto border rounded-lg p-2">
+                    {students.map(student => (
+                      <div key={student.id} className="mt-2 p-2 border rounded-lg">
+                        <p className="text-gray-700 font-medium">{student.name}</p>
+                        <div className="flex justify-between mt-2">
+                          {["Present", "Absent", "Excused", "Late"].map(status => (
+                            <label 
+                              key={status} 
+                              className={`cursor-pointer px-2 py-1 rounded ${statusColors[status]} ${
+                                attendance[student.id]?.[selectedDate] === status ? 'ring-2 ring-offset-2 ring-gray-400' : ''
+                              }`}
+                            >
+                              <input
+                                type="radio"
+                                name={`attendance-${student.id}`}
+                                className="hidden"
+                                checked={attendance[student.id]?.[selectedDate] === status}
+                                onChange={() => handleStatusChange(student.id, selectedDate, status)}
+                              />
+                              {status}
+                            </label>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
 
-                <div className="mt-6 flex justify-end">
-                  <button
-                    onClick={saveAttendance}
-                    disabled={saveLoading}
-                    className="bg-green-500 text-white px-4 py-2 rounded-lg shadow-md hover:bg-green-600 disabled:bg-gray-300 transition"
-                  >
-                    {saveLoading ? "Saving..." : "Save Attendance"}
-                  </button>
-                </div>
+                {/* Error message */}
                 {saveError && (
-                  <div className="mt-4 text-red-500">{saveError}</div>
+                  <div className="mt-2 text-red-500 text-sm">{saveError}</div>
                 )}
+
+                {/* Save Button */}
+                <button
+                  className="mt-4 w-full bg-green-700 text-white py-2 rounded-lg shadow-md hover:bg-green-800 transition flex justify-center items-center"
+                  onClick={saveAttendance}
+                  disabled={saveLoading}
+                >
+                  {saveLoading ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Attendance"
+                  )}
+                </button>
               </div>
             </div>
           )}
 
-          {/* Filter Modal */}
+          {/* Modal for Filtering */}
           {showFilterModal && (
             <div 
               className="fixed inset-0 flex items-center justify-center z-50"
@@ -295,60 +355,48 @@ export default function AttendancePage() {
             >
               <div className="bg-white p-6 rounded-lg shadow-lg w-96">
                 <div className="flex justify-between items-center">
-                  <h2 className="text-lg font-bold text-gray-700">Filter Dates</h2>
-                  <button 
-                    onClick={() => setShowFilterModal(false)} 
-                    className="text-gray-500 hover:text-red-500"
-                  >
+                  <h2 className="text-lg font-bold text-gray-700">Filter Attendance</h2>
+                  <button onClick={() => setShowFilterModal(false)} className="text-gray-500 hover:text-red-500">
                     <X size={20} />
                   </button>
                 </div>
 
-                <div className="mt-4">
-                  <label className="block text-gray-700 font-medium">Select Month:</label>
-                  <select
-                    value={selectedMonth}
-                    onChange={(e) => setSelectedMonth(e.target.value)}
-                    className="mt-2 block w-full border-gray-300 rounded-lg"
-                  >
-                    <option value="">Select Month</option>
-                    <option value="01">January</option>
-                    <option value="02">February</option>
-                    <option value="03">March</option>
-                    {/* Add more months as needed */}
-                  </select>
+                {/* Month Selection */}
+                <label className="block text-gray-700 font-medium mt-4">Select Month:</label>
+                <input
+                  type="month"
+                  className="w-full p-2 border rounded"
+                  onChange={(e) => setSelectedMonth(e.target.value.split("-")[1])}
+                />
+
+                {/* Start & End Day */}
+                <div className="mt-4 flex gap-4">
+                  <div>
+                    <label className="block text-gray-700 font-medium">Start Day:</label>
+                    <input 
+                      type="number" 
+                      min="1" 
+                      max="31" 
+                      className="w-full p-2 border rounded" 
+                      onChange={(e) => setStartDay(e.target.value)} 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-gray-700 font-medium">End Day:</label>
+                    <input 
+                      type="number" 
+                      min="1" 
+                      max="31" 
+                      className="w-full p-2 border rounded" 
+                      onChange={(e) => setEndDay(e.target.value)} 
+                    />
+                  </div>
                 </div>
 
-                <div className="mt-4">
-                  <label className="block text-gray-700 font-medium">Start Day:</label>
-                  <input
-                    type="number"
-                    value={startDay}
-                    onChange={(e) => setStartDay(e.target.value)}
-                    className="mt-2 block w-full border-gray-300 rounded-lg"
-                    placeholder="Enter start day"
-                  />
-                </div>
-
-                <div className="mt-4">
-                  <label className="block text-gray-700 font-medium">End Day:</label>
-                  <input
-                    type="number"
-                    value={endDay}
-                    onChange={(e) => setEndDay(e.target.value)}
-                    className="mt-2 block w-full border-gray-300 rounded-lg"
-                    placeholder="Enter end day"
-                  />
-                </div>
-
-                <div className="mt-6 flex justify-end">
-                  <button
-                    onClick={applyFilter}
-                    className="bg-blue-500 text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-600 transition"
-                  >
-                    Apply Filter
-                  </button>
-                </div>
+                {/* Apply Filter Button */}
+                <button className="mt-4 w-full bg-blue-700 text-white py-2 rounded-lg" onClick={applyFilter}>
+                  Apply Filter
+                </button>
               </div>
             </div>
           )}

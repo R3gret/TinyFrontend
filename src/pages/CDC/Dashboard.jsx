@@ -29,8 +29,8 @@ const apiRequest = async (endpoint, method = 'GET', body = null) => {
 
   const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
   
-  // Use dummy data in development
-  if (import.meta.env.MODE === 'development') {
+  // Only mock other data, not enrollment stats
+  if (import.meta.env.MODE === 'development' && endpoint !== '/api/students/enrollment-stats') {
     console.log(`Mocking API call to ${endpoint}`);
     return new Promise(resolve => {
       setTimeout(() => {
@@ -38,35 +38,26 @@ const apiRequest = async (endpoint, method = 'GET', body = null) => {
           resolve({ 
             success: true,
             distribution: { 
-              Male: 68, 
-              Female: 56,
-              Other: 3
-            }
-          });
-        } else if (endpoint === '/api/students/enrollment-stats') {
-          resolve({
-            success: true,
-            stats: {
-              total: 127,
-              currentMonth: 15,
-              lastMonth: 12,
-              difference: 3
+              Male: 4,
+              Female: 7,
+              Other: 0
             }
           });
         } else {
           resolve({ 
-            students: Array(124).fill({ 
-              age: 4.5, 
-              gender: 'male',
-              first_name: 'Student'
-            }),
-            attendance: Array(100).fill({ status: 'Present' }),
+            students: Array(11).fill({}).map((_, i) => ({
+              student_id: i+1,
+              first_name: ['Sophia', 'Liam', 'Ethan', 'Isabella', 'Mia', 'Chloe', 'Ella', 'Lucas', 'Aria', 'Samantha', 'asdfg'][i],
+              last_name: ['Reyes', 'Santos', 'Cruz', 'Lopez', 'Gonzales', 'Torres', 'Flores', 'Ramos', 'Delos Reyes', 'Navarro', 'zxcv'][i],
+              gender: ['Female', 'Male', 'Male', 'Female', 'Female', 'Female', 'Female', 'Male', 'Female', 'Female', 'Male'][i]
+            })),
+            attendance: Array(11).fill({ status: 'Present' }),
             data: {
-              'Self-Help': { first: { yes: 82, total: 100 } },
-              'Cognitive': { first: { yes: 78, total: 100 } },
-              'Language': { first: { yes: 75, total: 100 } },
-              'Social': { first: { yes: 68, total: 100 } },
-              'Physical': { first: { yes: 65, total: 100 } }
+              'Self-Help': { first: { yes: 8, total: 11 } },
+              'Cognitive': { first: { yes: 7, total: 11 } },
+              'Language': { first: { yes: 7, total: 11 } },
+              'Social': { first: { yes: 6, total: 11 } },
+              'Physical': { first: { yes: 6, total: 11 } }
             }
           });
         }
@@ -109,13 +100,13 @@ export default function Dashboard() {
         // Fetch all data in parallel
         const [genderRes, enrollmentRes, studentsRes, attendanceRes, domainsRes] = await Promise.all([
           apiRequest('/api/students/gender-distribution'),
-          apiRequest('/api/students/enrollment-stats'),
+          apiRequest('/api/students/enrollment-stats'), // Real endpoint
           apiRequest('/api/students'),
           apiRequest('/api/attendance'),
           apiRequest('/api/domains/evaluations/scores/sample')
         ]);
 
-        // Process enrollment stats
+        // Process enrollment stats from real endpoint
         const enrollmentStats = enrollmentRes.success ? enrollmentRes.stats : {
           total: 0,
           currentMonth: 0,
@@ -126,14 +117,14 @@ export default function Dashboard() {
         // Process gender distribution
         const genderDistribution = genderRes.success ? genderRes.distribution : { Male: 0, Female: 0, Other: 0 };
 
-        // Process other data (using dummy data in this example)
-        const ageGroups = { '3-4': 42, '4-5': 58, '5-6': 24 };
+        // Process other data
+        const ageGroups = { '3-4': 5, '4-5': 4, '5-6': 2 }; // Example age distribution
         const domainProgress = [
-          { name: 'Self-Help', progress: '82.5' },
-          { name: 'Cognitive', progress: '78.3' },
-          { name: 'Language', progress: '75.0' },
-          { name: 'Social', progress: '68.7' },
-          { name: 'Physical', progress: '65.2' }
+          { name: 'Self-Help', progress: '72.7' },  // 8/11
+          { name: 'Cognitive', progress: '63.6' },   // 7/11
+          { name: 'Language', progress: '63.6' },    // 7/11
+          { name: 'Social', progress: '54.5' },      // 6/11
+          { name: 'Physical', progress: '54.5' }     // 6/11
         ];
 
         setDashboardData({
@@ -143,15 +134,15 @@ export default function Dashboard() {
             totalStudents: enrollmentStats.total,
             currentMonthEnrollments: enrollmentStats.currentMonth,
             enrollmentDifference: enrollmentStats.difference,
-            attendanceRate: 94,
+            attendanceRate: 85, // Example attendance rate
             ageGroups,
             genderDistribution,
             domainProgress
           },
           recentEvaluations: [
-            { evaluation_period: "1st Quarter", average_score: 75 },
-            { evaluation_period: "2nd Quarter", average_score: 82 },
-            { evaluation_period: "3rd Quarter", average_score: 79 }
+            { evaluation_period: "1st Quarter", average_score: 70 },
+            { evaluation_period: "2nd Quarter", average_score: 75 },
+            { evaluation_period: "3rd Quarter", average_score: 72 }
           ]
         });
 
@@ -231,8 +222,8 @@ export default function Dashboard() {
                 dashboardData.stats.enrollmentDifference > 0 
                   ? `+${dashboardData.stats.enrollmentDifference} from last month`
                   : dashboardData.stats.enrollmentDifference < 0
-                    ? `${dashboardData.stats.enrollmentDifference} from last month`
-                    : `No change from last month`
+                    ? `${Math.abs(dashboardData.stats.enrollmentDifference)} fewer than last month`
+                    : `Same as last month`
               }
             />
             <StatCard 
@@ -332,7 +323,7 @@ export default function Dashboard() {
 // Component: Stat Card
 function StatCard({ icon, title, value, trend }) {
   const isPositive = trend?.includes('+');
-  const isNegative = trend?.includes('-') && !trend?.includes('from last month');
+  const isNegative = trend?.includes('fewer') || (trend?.includes('-') && !trend?.includes('from last month'));
 
   return (
     <div className="bg-white rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">

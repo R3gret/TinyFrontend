@@ -43,6 +43,16 @@ const apiRequest = async (endpoint, method = 'GET', body = null) => {
               Other: 3
             }
           });
+        } else if (endpoint === '/api/students/enrollment-stats') {
+          resolve({
+            success: true,
+            stats: {
+              total: 127,
+              currentMonth: 15,
+              lastMonth: 12,
+              difference: 3
+            }
+          });
         } else {
           resolve({ 
             students: Array(124).fill({ 
@@ -80,6 +90,8 @@ export default function Dashboard() {
     error: null,
     stats: {
       totalStudents: 0,
+      currentMonthEnrollments: 0,
+      enrollmentDifference: 0,
       attendanceRate: 0,
       ageGroups: { '3-4': 0, '4-5': 0, '5-6': 0 },
       genderDistribution: { Male: 0, Female: 0, Other: 0 },
@@ -94,13 +106,22 @@ export default function Dashboard() {
       try {
         setDashboardData(prev => ({ ...prev, loading: true, error: null }));
         
-        // Fetch gender distribution from the new endpoint
-        const [genderRes, studentsRes, attendanceRes, domainsRes] = await Promise.all([
+        // Fetch all data in parallel
+        const [genderRes, enrollmentRes, studentsRes, attendanceRes, domainsRes] = await Promise.all([
           apiRequest('/api/students/gender-distribution'),
+          apiRequest('/api/students/enrollment-stats'),
           apiRequest('/api/students'),
           apiRequest('/api/attendance'),
           apiRequest('/api/domains/evaluations/scores/sample')
         ]);
+
+        // Process enrollment stats
+        const enrollmentStats = enrollmentRes.success ? enrollmentRes.stats : {
+          total: 0,
+          currentMonth: 0,
+          lastMonth: 0,
+          difference: 0
+        };
 
         // Process gender distribution
         const genderDistribution = genderRes.success ? genderRes.distribution : { Male: 0, Female: 0, Other: 0 };
@@ -119,7 +140,9 @@ export default function Dashboard() {
           loading: false,
           error: null,
           stats: {
-            totalStudents: Object.values(genderDistribution).reduce((a, b) => a + b, 0),
+            totalStudents: enrollmentStats.total,
+            currentMonthEnrollments: enrollmentStats.currentMonth,
+            enrollmentDifference: enrollmentStats.difference,
             attendanceRate: 94,
             ageGroups,
             genderDistribution,
@@ -204,7 +227,13 @@ export default function Dashboard() {
               icon={<FiUsers className="text-blue-500" size={24} />}
               title="Total Students"
               value={dashboardData.stats.totalStudents}
-              trend="+3 from last month"
+              trend={
+                dashboardData.stats.enrollmentDifference > 0 
+                  ? `+${dashboardData.stats.enrollmentDifference} from last month`
+                  : dashboardData.stats.enrollmentDifference < 0
+                    ? `${dashboardData.stats.enrollmentDifference} from last month`
+                    : `No change from last month`
+              }
             />
             <StatCard 
               icon={<FiCalendar className="text-green-500" size={24} />}
@@ -302,13 +331,22 @@ export default function Dashboard() {
 
 // Component: Stat Card
 function StatCard({ icon, title, value, trend }) {
+  const isPositive = trend?.includes('+');
+  const isNegative = trend?.includes('-') && !trend?.includes('from last month');
+
   return (
     <div className="bg-white rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-gray-500 text-sm font-medium">{title}</p>
           <p className="text-2xl font-bold mt-1">{value}</p>
-          <p className="text-xs text-gray-400 mt-1">{trend}</p>
+          <p className={`text-xs mt-1 ${
+            isPositive ? 'text-green-500' : 
+            isNegative ? 'text-red-500' : 
+            'text-gray-400'
+          }`}>
+            {trend}
+          </p>
         </div>
         <div className="p-2 rounded-lg bg-opacity-20 bg-gray-200">
           {icon}

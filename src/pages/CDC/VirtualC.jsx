@@ -42,30 +42,49 @@ const apiRequest = async (endpoint, method = 'GET', body = null, isFormData = fa
   const token = localStorage.getItem('token');
   const headers = {};
   
-  if (!isFormData) {
-    headers['Content-Type'] = 'application/json';
-  }
-  
+  // Always include Authorization if token exists
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  // Only set Content-Type for non-FormData requests
+  if (!isFormData && method !== 'GET') {
+    headers['Content-Type'] = 'application/json';
   }
 
   const config = {
     method,
     headers,
-    credentials: 'include',
+    credentials: 'include', // Only needed if using cookies
     ...(body && { body: isFormData ? body : JSON.stringify(body) })
   };
 
   const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
   
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.message || 'Request failed');
-  }
+  try {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+    
+    // Handle 401 specifically to trigger token refresh/logout
+    if (response.status === 401) {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+      throw new Error('Session expired. Please login again.');
+    }
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `Request failed with status ${response.status}`);
+    }
 
-  return response.json();
+    return await response.json();
+  } catch (error) {
+    console.error('API request error:', {
+      endpoint,
+      method,
+      error: error.message
+    });
+    throw error;
+  }
 };
 
 export default function Dashboard() {

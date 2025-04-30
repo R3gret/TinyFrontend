@@ -841,8 +841,7 @@ function ClassworksSection({ setSnackbar }) {
             <Grid item xs={12} sm={6} md={4} lg={3} key={category.category_id}>
               <Card 
                 sx={{ 
-                  height: 200, // Fixed height
-                  minWidth: 200, // Minimum width
+                  height: '100%', 
                   display: 'flex', 
                   flexDirection: 'column',
                   alignItems: 'center',
@@ -850,35 +849,22 @@ function ClassworksSection({ setSnackbar }) {
                   p: 3,
                   textAlign: 'center',
                   cursor: 'pointer',
-                  backgroundColor: '#2e7d32', // Dark green background
-                  color: 'white', // White text
-                  transition: 'all 0.3s ease',
                   '&:hover': {
                     boxShadow: 4,
-                    backgroundColor: '#1b5e20', // Darker green on hover
-                    transform: 'translateY(-4px)'
+                    bgcolor: 'primary.light',
+                    color: 'primary.contrastText',
+                    '& .MuiSvgIcon-root': {
+                      color: 'primary.contrastText'
+                    }
                   }
                 }}
                 onClick={() => setSelectedCategory(category.category_id)}
               >
-                <FolderIcon sx={{ 
-                  fontSize: 60, 
-                  color: 'white', // White icon
-                  mb: 1 
-                }} />
-                <Typography variant="h6" component="h3" sx={{ 
-                  fontWeight: 'bold',
-                  wordBreak: 'break-word',
-                  maxWidth: '100%'
-                }}>
+                <FolderIcon sx={{ fontSize: 60, color: 'primary.main', mb: 1 }} />
+                <Typography variant="h6" component="h3">
                   {category.category_name}
                 </Typography>
-                <Typography variant="body2" sx={{ 
-                  backgroundColor: 'rgba(255,255,255,0.2)',
-                  px: 1,
-                  borderRadius: 1,
-                  mt: 1
-                }}>
+                <Typography variant="body2">
                   {fileCounts[category.category_id] || 0} files
                 </Typography>
               </Card>

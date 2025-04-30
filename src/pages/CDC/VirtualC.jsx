@@ -26,7 +26,7 @@ import {
   Grid,
   Card,
   InputAdornment,
-  IconButton
+  IconButton 
 } from "@mui/material";
 import {
   Upload as UploadIcon,
@@ -35,8 +35,7 @@ import {
   InsertDriveFile as InsertDriveFileIcon,
   ArrowBack as ArrowBackIcon,
   Search as SearchIcon,
-  CloudUpload as CloudUploadIcon,
-  Close as CloseIcon
+  CloudUpload as CloudUploadIcon
 } from "@mui/icons-material";
 
 // API Service Helper
@@ -727,35 +726,22 @@ function ClassworksSection({ setSnackbar }) {
 
   return (
     <div className="text-gray-800">
-      {/* Main Header with Back Button */}
-      <Box sx={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center', 
-        mb: 4 
-      }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          {(selectedAgeGroup || selectedCategory) && (
+          {showBackButton && (
             <Button
               onClick={handleBackClick}
               startIcon={<ArrowBackIcon />}
-              sx={{ 
-                mr: 2,
-                color: 'primary.main',
-                '&:hover': {
-                  color: 'primary.dark'
-                }
-              }}
+              sx={{ mr: 2 }}
             >
-              {selectedCategory ? "Back to Categories" : "Back to Age Groups"}
+              {backButtonLabel}
             </Button>
           )}
-          <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold' }}>
+          <Typography variant="h5" component="h2">
             Developmental Domains
           </Typography>
         </Box>
 
-        {/* Age Group Selector - only show when not in a specific category */}
         {!selectedCategory && (
           <FormControl sx={{ minWidth: 200 }} size="small">
             <InputLabel>Select Age Group</InputLabel>
@@ -763,15 +749,6 @@ function ClassworksSection({ setSnackbar }) {
               value={selectedAgeGroup || ''}
               label="Select Age Group"
               onChange={(e) => setSelectedAgeGroup(e.target.value)}
-              sx={{
-                '& .MuiOutlinedInput-notchedOutline': {
-                  borderColor: 'grey.300',
-                  borderRadius: '8px'
-                },
-                '&:hover .MuiOutlinedInput-notchedOutline': {
-                  borderColor: 'primary.main'
-                }
-              }}
             >
               <MenuItem value="">Select Age</MenuItem>
               {ageGroups.map((ageGroup) => (
@@ -785,21 +762,15 @@ function ClassworksSection({ setSnackbar }) {
       </Box>
 
       {!selectedAgeGroup ? (
-        <Box sx={{ textAlign: 'center', py: 6 }}>
+        <Box sx={{ textAlign: 'center', py: 4 }}>
           <Typography color="text.secondary">
             Please select an age group to view categories
           </Typography>
         </Box>
       ) : selectedCategory ? (
         <Box>
-          {/* Category Header with Upload Button */}
-          <Box sx={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center', 
-            mb: 4 
-          }}>
-            <Typography variant="h6" sx={{ fontWeight: 'semibold' }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+            <Typography variant="h6">
               {categories.find(c => c.category_id == selectedCategory)?.category_name} - 
               {ageGroups.find(a => a.age_group_id == selectedAgeGroup)?.age_range}
             </Typography>
@@ -807,68 +778,43 @@ function ClassworksSection({ setSnackbar }) {
               variant="contained"
               startIcon={<UploadIcon />}
               onClick={() => setIsModalOpen(true)}
-              sx={{
-                bgcolor: 'primary.main',
-                '&:hover': { bgcolor: 'primary.dark' }
-              }}
             >
               Upload File
             </Button>
           </Box>
 
-          {/* Files Grid with Empty State */}
           {files.length === 0 ? (
             <Box sx={{ 
               border: 2, 
               borderColor: 'grey.300', 
               borderStyle: 'dashed', 
-              borderRadius: 2, 
-              p: 8, 
+              borderRadius: 1, 
+              p: 6, 
               textAlign: 'center',
               my: 4
             }}>
-              <CloudUploadIcon sx={{ fontSize: 48, color: 'grey.400', mb: 2 }} />
               <Typography variant="h6" gutterBottom>
                 No files uploaded
               </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                 Get started by uploading a new file.
               </Typography>
               <Button
                 onClick={() => setIsModalOpen(true)}
                 variant="contained"
                 startIcon={<UploadIcon />}
-                sx={{
-                  bgcolor: 'primary.main',
-                  '&:hover': { bgcolor: 'primary.dark' }
-                }}
               >
                 Upload File
               </Button>
             </Box>
           ) : (
-            <Grid container spacing={3}>
+            <Grid container spacing={2}>
               {files.map((file) => (
                 <Grid item xs={12} sm={6} md={4} key={file.file_id}>
-                  <Paper 
-                    elevation={0} 
-                    sx={{ 
-                      p: 3, 
-                      border: 1, 
-                      borderColor: 'grey.200',
-                      borderRadius: 2,
-                      '&:hover': {
-                        boxShadow: 3,
-                        borderColor: 'primary.light'
-                      },
-                      transition: 'all 0.3s ease'
-                    }}
-                  >
+                  <Paper elevation={3} sx={{ p: 2, height: '100%' }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                       <Box>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 'medium' }}>
-                          {file.file_name}
-                        </Typography>
+                        <Typography variant="subtitle1">{file.file_name}</Typography>
                         <Typography variant="body2" color="text.secondary">
                           {file.file_type}
                         </Typography>
@@ -878,7 +824,7 @@ function ClassworksSection({ setSnackbar }) {
                       </Box>
                       <IconButton
                         onClick={() => handleDownload(file.file_id, file.file_name)}
-                        sx={{ color: 'primary.main' }}
+                        color="primary"
                       >
                         <DownloadIcon />
                       </IconButton>
@@ -890,58 +836,56 @@ function ClassworksSection({ setSnackbar }) {
           )}
         </Box>
       ) : (
-        <Grid container spacing={4}>
-          {categories.map((category) => (
-            <Grid item xs={12} sm={6} md={4} lg={3} key={category.category_id}>
-              <Paper 
-                elevation={0}
-                sx={{
-                  p: 4,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  textAlign: 'center',
-                  cursor: 'pointer',
-                  border: 1,
-                  borderColor: 'grey.200',
-                  borderRadius: 2,
-                  '&:hover': {
-                    bgcolor: 'primary.light',
-                    borderColor: 'primary.main',
-                    transform: 'translateY(-4px)',
-                    boxShadow: 3
-                  },
-                  transition: 'all 0.3s ease',
-                  height: '100%'
-                }}
-                onClick={() => setSelectedCategory(category.category_id)}
-              >
-                <Box sx={{
-                  width: 64,
-                  height: 64,
-                  bgcolor: 'primary.light',
-                  borderRadius: '50%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  mb: 2
-                }}>
-                  <FolderIcon sx={{ fontSize: 32, color: 'primary.main' }} />
-                </Box>
-                <Typography variant="h6" sx={{ fontWeight: 'semibold' }}>
-                  {category.category_name}
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                  {fileCounts[category.category_id] || 0} files
-                </Typography>
-              </Paper>
-            </Grid>
-          ))}
-        </Grid>
+        <Grid container spacing={3}>
+  {categories.map((category) => (
+    <Grid item xs={12} sm={6} md={4} lg={3} key={category.category_id}>
+      <Card 
+        sx={{ 
+          height: 200, // Fixed height for all cards
+          display: 'flex', 
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          p: 2, // Reduced padding to fit content better
+          textAlign: 'center',
+          cursor: 'pointer',
+          transition: 'all 0.3s ease',
+          '&:hover': {
+            boxShadow: 4,
+            bgcolor: 'primary.light',
+            color: 'primary.contrastText',
+            '& .MuiSvgIcon-root': {
+              color: 'primary.contrastText'
+            }
+          }
+        }}
+        onClick={() => setSelectedCategory(category.category_id)}
+      >
+        <FolderIcon sx={{ 
+          fontSize: 60, 
+          color: 'primary.main', 
+          mb: 1,
+          transition: 'color 0.3s ease' // Smooth color transition on hover
+        }} />
+        <Typography variant="h6" component="h3" sx={{
+          mb: 0.5,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          display: '-webkit-box',
+          WebkitLineClamp: 2, // Limit to 2 lines
+          WebkitBoxOrient: 'vertical'
+        }}>
+          {category.category_name}
+        </Typography>
+        <Typography variant="body2" sx={{ color: 'inherit' }}>
+          {fileCounts[category.category_id] || 0} files
+        </Typography>
+      </Card>
+    </Grid>
+  ))}
+</Grid>
       )}
 
-      {/* Upload File Modal */}
       <Modal open={isModalOpen} onClose={() => setIsModalOpen(false)}>
         <Box sx={{
           position: 'absolute',
@@ -949,40 +893,24 @@ function ClassworksSection({ setSnackbar }) {
           left: '50%',
           transform: 'translate(-50%, -50%)',
           width: '90%',
-          maxWidth: 500,
+          maxWidth: 600,
           bgcolor: 'background.paper',
           boxShadow: 24,
           p: 4,
           borderRadius: 2
         }}>
-          <Box sx={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center', 
-            mb: 3 
-          }}>
-            <Typography variant="h6" component="h3">
-              Upload New File
-            </Typography>
-            <IconButton onClick={() => setIsModalOpen(false)}>
-              <CloseIcon />
-            </IconButton>
-          </Box>
+          <Typography variant="h6" component="h2" sx={{ mb: 3 }}>
+            Upload New File
+          </Typography>
           
           <form onSubmit={handleFileUpload}>
-            <FormControl fullWidth sx={{ mb: 3 }}>
+            <FormControl fullWidth sx={{ mb: 2 }}>
               <InputLabel>Category</InputLabel>
               <Select
                 value={newFile.category_id}
                 label="Category"
                 onChange={(e) => setNewFile({...newFile, category_id: e.target.value})}
                 required
-                sx={{
-                  '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: 'grey.300',
-                    borderRadius: '8px'
-                  }
-                }}
               >
                 <MenuItem value="">Select Category</MenuItem>
                 {categories.map((category) => (
@@ -993,19 +921,13 @@ function ClassworksSection({ setSnackbar }) {
               </Select>
             </FormControl>
             
-            <FormControl fullWidth sx={{ mb: 3 }}>
+            <FormControl fullWidth sx={{ mb: 2 }}>
               <InputLabel>Age Group</InputLabel>
               <Select
                 value={newFile.age_group_id}
                 label="Age Group"
                 onChange={(e) => setNewFile({...newFile, age_group_id: e.target.value})}
                 required
-                sx={{
-                  '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: 'grey.300',
-                    borderRadius: '8px'
-                  }
-                }}
               >
                 <MenuItem value="">Select Age Group</MenuItem>
                 {ageGroups.map((ageGroup) => (
@@ -1022,7 +944,7 @@ function ClassworksSection({ setSnackbar }) {
               required
               value={newFile.file_name}
               onChange={(e) => setNewFile({...newFile, file_name: e.target.value})}
-              sx={{ mb: 3 }}
+              sx={{ mb: 2 }}
             />
             
             <Box sx={{ mb: 3 }}>
@@ -1032,15 +954,15 @@ function ClassworksSection({ setSnackbar }) {
                 borderColor: 'grey.300',
                 borderStyle: 'dashed',
                 borderRadius: 1,
-                p: 4,
+                p: 3,
                 textAlign: 'center'
               }}>
                 {newFile.file_name ? (
                   <Typography>{newFile.file_name}</Typography>
                 ) : (
                   <>
-                    <CloudUploadIcon sx={{ fontSize: 48, color: 'grey.500', mb: 1 }} />
-                    <Typography variant="body2" sx={{ mb: 2 }}>
+                    <CloudUploadIcon sx={{ fontSize: 40, color: 'grey.500', mb: 1 }} />
+                    <Typography variant="body2" sx={{ mb: 1 }}>
                       Drag and drop file here or click to browse
                     </Typography>
                     <Button
@@ -1055,7 +977,7 @@ function ClassworksSection({ setSnackbar }) {
                         required
                       />
                     </Button>
-                    <Typography variant="caption" display="block" sx={{ mt: 2 }}>
+                    <Typography variant="caption" display="block" sx={{ mt: 1 }}>
                       PDF, DOCX, XLSX up to 10MB
                     </Typography>
                   </>
@@ -1075,10 +997,6 @@ function ClassworksSection({ setSnackbar }) {
                 type="submit"
                 variant="contained"
                 disabled={loading}
-                sx={{
-                  bgcolor: 'primary.main',
-                  '&:hover': { bgcolor: 'primary.dark' }
-                }}
               >
                 {loading ? <CircularProgress size={24} /> : 'Upload File'}
               </Button>

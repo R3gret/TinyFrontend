@@ -26,7 +26,8 @@ import {
   Grid,
   Card,
   InputAdornment,
-  IconButton 
+  IconButton,
+  CloseIcon
 } from "@mui/material";
 import {
   Upload as UploadIcon,

@@ -137,7 +137,7 @@ export default function AttendancePage() {
   const saveAttendance = async () => {
     setSaveLoading(true);
     setSaveError(null);
-
+  
     try {
       // Prepare all attendance records
       const attendanceRecords = students.map(student => ({
@@ -145,16 +145,14 @@ export default function AttendancePage() {
         attendance_date: selectedDate,
         status: attendance[student.id]?.[selectedDate] || 'Absent'
       }));
-
+  
       // Save all attendance records at once
-      const response = await apiRequest('/api/attendance/bulk', 'POST', {
-        records: attendanceRecords
-      });
-
+      const response = await apiRequest('/api/attendance/bulk', 'POST', attendanceRecords);
+  
       if (!response.success) {
         throw new Error(response.message || 'Failed to save attendance');
       }
-
+  
       setShowModal(false);
     } catch (err) {
       console.error('Error saving attendance:', err);

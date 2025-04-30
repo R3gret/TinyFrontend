@@ -851,7 +851,7 @@ function ClassworksSection({ setSnackbar }) {
                   cursor: 'pointer',
                   '&:hover': {
                     boxShadow: 4,
-                    bgcolor: 'primary.light',
+                    bgcolor: 'success.light',
                     color: 'primary.contrastText',
                     '& .MuiSvgIcon-root': {
                       color: 'primary.contrastText'
@@ -860,7 +860,7 @@ function ClassworksSection({ setSnackbar }) {
                 }}
                 onClick={() => setSelectedCategory(category.category_id)}
               >
-                <FolderIcon sx={{ fontSize: 60, color: 'primary.main', mb: 1 }} />
+                <FolderIcon sx={{ fontSize: 60, color: 'success.main', mb: 1 }} />
                 <Typography variant="h6" component="h3">
                   {category.category_name}
                 </Typography>

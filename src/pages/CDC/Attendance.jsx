@@ -29,11 +29,41 @@ const apiRequest = async (endpoint, method = 'GET', body = null) => {
   return response.json();
 };
 
+// Snackbar Component
+const Snackbar = ({ message, type, onClose }) => {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      onClose();
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  const bgColor = type === "success" ? "bg-green-600" : "bg-red-600";
+
+  return (
+    <div className={`fixed bottom-4 right-4 ${bgColor} text-white p-4 rounded-lg shadow-lg flex items-center z-50 transition-all duration-300`}>
+      <div className="flex items-center">
+        {type === "success" ? (
+          <CheckSquare className="mr-2" />
+        ) : (
+          <X className="mr-2" />
+        )}
+        <span>{message}</span>
+      </div>
+      <button onClick={onClose} className="ml-4">
+        <X size={18} />
+      </button>
+    </div>
+  );
+};
+
 export default function AttendancePage() {
   const [showModal, setShowModal] = useState(false);
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState("");
   const [attendance, setAttendance] = useState({});
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState("");
   const [startDay, setStartDay] = useState("");
   const [endDay, setEndDay] = useState("");
@@ -43,6 +73,11 @@ export default function AttendancePage() {
   const [error, setError] = useState(null);
   const [saveLoading, setSaveLoading] = useState(false);
   const [saveError, setSaveError] = useState(null);
+  const [snackbar, setSnackbar] = useState({
+    show: false,
+    message: "",
+    type: "success"
+  });
 
   // Status colors
   const statusColors = {
@@ -154,9 +189,19 @@ export default function AttendancePage() {
       }
   
       setShowModal(false);
+      setSnackbar({
+        show: true,
+        message: "Attendance saved successfully!",
+        type: "success"
+      });
     } catch (err) {
       console.error('Error saving attendance:', err);
       setSaveError(err.message);
+      setSnackbar({
+        show: true,
+        message: err.message || "Failed to save attendance",
+        type: "error"
+      });
     } finally {
       setSaveLoading(false);
     }
@@ -166,11 +211,11 @@ export default function AttendancePage() {
   const applyFilter = () => {
     if (!selectedMonth || !startDay || !endDay) return;
 
-    const year = "2024"; // Static year, adjust based on actual data
     const newDates = [];
     for (let day = parseInt(startDay); day <= parseInt(endDay); day++) {
       const formattedDay = day < 10 ? `0${day}` : day;
-      newDates.push(`${year}-${selectedMonth}-${formattedDay}`);
+      const formattedMonth = selectedMonth < 10 ? `0${selectedMonth}` : selectedMonth;
+      newDates.push(`${selectedYear}-${formattedMonth}-${formattedDay}`);
     }
     setFilteredDates(newDates);
     setShowFilterModal(false);
@@ -359,13 +404,32 @@ export default function AttendancePage() {
                   </button>
                 </div>
 
+                {/* Year Selection */}
+                <label className="block text-gray-700 font-medium mt-4">Select Year:</label>
+                <select
+                  className="w-full p-2 border rounded"
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(e.target.value)}
+                >
+                  {Array.from({length: 10}, (_, i) => new Date().getFullYear() - 5 + i).map(year => (
+                    <option key={year} value={year}>{year}</option>
+                  ))}
+                </select>
+
                 {/* Month Selection */}
                 <label className="block text-gray-700 font-medium mt-4">Select Month:</label>
-                <input
-                  type="month"
+                <select
                   className="w-full p-2 border rounded"
-                  onChange={(e) => setSelectedMonth(e.target.value.split("-")[1])}
-                />
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                >
+                  <option value="">Select Month</option>
+                  {Array.from({length: 12}, (_, i) => i + 1).map(month => (
+                    <option key={month} value={month}>
+                      {new Date(selectedYear, month - 1, 1).toLocaleString('default', {month: 'long'})}
+                    </option>
+                  ))}
+                </select>
 
                 {/* Start & End Day */}
                 <div className="mt-4 flex gap-4">
@@ -376,6 +440,7 @@ export default function AttendancePage() {
                       min="1" 
                       max="31" 
                       className="w-full p-2 border rounded" 
+                      value={startDay}
                       onChange={(e) => setStartDay(e.target.value)} 
                     />
                   </div>
@@ -386,6 +451,7 @@ export default function AttendancePage() {
                       min="1" 
                       max="31" 
                       className="w-full p-2 border rounded" 
+                      value={endDay}
                       onChange={(e) => setEndDay(e.target.value)} 
                     />
                   </div>
@@ -397,6 +463,15 @@ export default function AttendancePage() {
                 </button>
               </div>
             </div>
+          )}
+
+          {/* Snackbar Notification */}
+          {snackbar.show && (
+            <Snackbar
+              message={snackbar.message}
+              type={snackbar.type}
+              onClose={() => setSnackbar(prev => ({ ...prev, show: false }))}
+            />
           )}
         </div>
       </div>

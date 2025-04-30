@@ -28,7 +28,7 @@ export default function App() {
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem("user"));
     if (user) {
-      setUserType(user.type); // Set user type from localStorage
+      setUserType(user.type); // Set user type from localStorages
     }
   }, []);
 

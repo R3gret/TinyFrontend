@@ -9,7 +9,7 @@ export default function Sidebar() {
   return (
     <aside className="bg-white text-gray-700 w-16 h-screen fixed top-0 left-0 flex flex-col items-center py-4 shadow-md z-50">
       <div className="mt-16 flex flex-col space-y-4">
-        <SidebarItem to="/students" icon={List} label="Student List" />
+        <SidebarItem to="/dashboard" icon={List} label="Dashboard" />
         <SidebarItem to="/registration" icon={ClipboardEdit} label="Registration" />
 
         <SidebarItemWithSubmenu 

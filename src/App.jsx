@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 
 import Dashboard from "./pages/CDC/Dashboard";
-import StudentList from "./pages/CDC/StudentList";
 import Registration from "./pages/CDC/Registration";
 import VirtualC from "./pages/CDC/VirtualC";
 import Profile from "./pages/CDC/Profile";
@@ -45,14 +44,6 @@ export default function App() {
           element={
             <ProtectedRoute allowedTypes={["worker"]}>
               <Dashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/students"
-          element={
-            <ProtectedRoute allowedTypes={["worker", "admin"]}>
-              <StudentList />
             </ProtectedRoute>
           }
         />

@@ -44,9 +44,6 @@ const Navbar = () => {
           <div className="flex items-center space-x-6">
             {userType && (
               <>
-                <Link to={dashboardLink || "/"} className="text-gray-600 hover:text-gray-900 text-sm font-semibold">
-                  Dashboard
-                </Link>
                 <img src={userProfilePic} alt="Profile" className="w-10 h-10 rounded-full object-cover" />
                 <button
                   onClick={handleLogout}

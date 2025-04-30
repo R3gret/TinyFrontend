@@ -95,13 +95,10 @@ export default function AttendancePage() {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
   
-    // Adjust for timezone offset
-    const adjustForTimezone = (date) => {
+    const formatDate = (date) => {
       const offset = date.getTimezoneOffset() * 60000;
-      return new Date(date.getTime() - offset);
+      return new Date(date.getTime() - offset).toISOString().split('T')[0];
     };
-  
-    const formatDate = (date) => adjustForTimezone(date).toISOString().split('T')[0];
     
     setFilteredDates([
       formatDate(yesterday),
@@ -125,20 +122,17 @@ export default function AttendancePage() {
       try {
         setLoading(true);
         
-        // Fetch students and attendance in parallel
         const [studentsData, attendanceData] = await Promise.all([
           apiRequest('/api/students'),
           apiRequest('/api/attendance')
         ]);
 
-        // Format students
         const formattedStudents = studentsData.students.map(student => ({
           id: student.student_id,
           name: `${student.first_name}${student.middle_name ? ` ${student.middle_name}` : ''} ${student.last_name}`,
           ...student
         }));
         
-        // Transform attendance data
         const attendanceMap = {};
         attendanceData.attendance.forEach(record => {
           if (!attendanceMap[record.student_id]) {
@@ -174,14 +168,12 @@ export default function AttendancePage() {
     setSaveError(null);
   
     try {
-      // Prepare all attendance records
       const attendanceRecords = students.map(student => ({
         student_id: student.id,
         attendance_date: selectedDate,
         status: attendance[student.id]?.[selectedDate] || 'Absent'
       }));
   
-      // Save all attendance records at once
       const response = await apiRequest('/api/attendance/bulk', 'POST', attendanceRecords);
   
       if (!response.success) {
@@ -207,16 +199,25 @@ export default function AttendancePage() {
     }
   };
 
-  // Apply filter and update date range
+  // Fixed applyFilter function to use selected year correctly
   const applyFilter = () => {
     if (!selectedMonth || !startDay || !endDay) return;
 
+    const month = parseInt(selectedMonth);
+    const start = parseInt(startDay);
+    const end = parseInt(endDay);
+    const year = parseInt(selectedYear);
+    
+    // Get last day of the month
+    const lastDay = new Date(year, month, 0).getDate();
+    
     const newDates = [];
-    for (let day = parseInt(startDay); day <= parseInt(endDay); day++) {
+    for (let day = Math.max(1, start); day <= Math.min(lastDay, end); day++) {
       const formattedDay = day < 10 ? `0${day}` : day;
-      const formattedMonth = selectedMonth < 10 ? `0${selectedMonth}` : selectedMonth;
-      newDates.push(`${selectedYear}-${formattedMonth}-${formattedDay}`);
+      const formattedMonth = month < 10 ? `0${month}` : month;
+      newDates.push(`${year}-${formattedMonth}-${formattedDay}`);
     }
+    
     setFilteredDates(newDates);
     setShowFilterModal(false);
   };
@@ -239,7 +240,6 @@ export default function AttendancePage() {
 
   return (
     <div className="w-screen h-screen flex overflow-hidden">
-      {/* Background Image */}
       <div
         className="absolute inset-0 bg-cover bg-center"
         style={{ backgroundImage: `url(${bgImage})`, zIndex: -1 }}
@@ -253,7 +253,6 @@ export default function AttendancePage() {
         <div className="p-10">
           <h1 className="text-2xl font-bold text-gray-700 mb-4">Attendance</h1>
 
-          {/* Buttons */}
           <div className="flex gap-4">
             <button
               className="flex items-center bg-green-700 text-white px-4 py-2 rounded-lg shadow-md hover:bg-green-800 transition"
@@ -272,7 +271,6 @@ export default function AttendancePage() {
             </button>
           </div>
 
-          {/* Attendance Table */}
           <div className="mt-6 overflow-x-auto bg-white shadow-lg rounded-lg p-6">
             <table className="w-full border-collapse border border-gray-300">
               <thead>
@@ -304,27 +302,19 @@ export default function AttendancePage() {
             </table>
           </div>
 
-          {/* Modal for Adding Attendance */}
           {showModal && (
-            <div 
-              className="fixed inset-0 flex items-center justify-center z-50"
-              style={{ backgroundColor: "rgba(128, 128, 128, 0.7)" }}
-            >
+            <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/50">
               <div className="bg-white p-6 rounded-lg shadow-lg w-96">
                 <div className="flex justify-between items-center">
                   <h2 className="text-lg font-bold text-gray-700">Add Attendance</h2>
                   <button 
-                    onClick={() => {
-                      setShowModal(false);
-                      setSaveError(null);
-                    }} 
+                    onClick={() => setShowModal(false)} 
                     className="text-gray-500 hover:text-red-500"
                   >
                     <X size={20} />
                   </button>
                 </div>
 
-                {/* Date Display (non-editable) */}
                 <div className="mt-4">
                   <label className="block text-gray-700 font-medium">Date:</label>
                   <div className="w-full p-2 border rounded mt-1 bg-gray-100">
@@ -332,7 +322,6 @@ export default function AttendancePage() {
                   </div>
                 </div>
 
-                {/* Student List with Scrollable Container */}
                 <div className="mt-4">
                   <h3 className="text-gray-700 font-medium">Mark Attendance</h3>
                   <div className="max-h-[300px] overflow-y-auto border rounded-lg p-2">
@@ -363,12 +352,10 @@ export default function AttendancePage() {
                   </div>
                 </div>
 
-                {/* Error message */}
                 {saveError && (
                   <div className="mt-2 text-red-500 text-sm">{saveError}</div>
                 )}
 
-                {/* Save Button */}
                 <button
                   className="mt-4 w-full bg-green-700 text-white py-2 rounded-lg shadow-md hover:bg-green-800 transition flex justify-center items-center"
                   onClick={saveAttendance}
@@ -390,12 +377,8 @@ export default function AttendancePage() {
             </div>
           )}
 
-          {/* Modal for Filtering */}
           {showFilterModal && (
-            <div 
-              className="fixed inset-0 flex items-center justify-center z-50"
-              style={{ backgroundColor: "rgba(128, 128, 128, 0.7)" }}
-            >
+            <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/50">
               <div className="bg-white p-6 rounded-lg shadow-lg w-96">
                 <div className="flex justify-between items-center">
                   <h2 className="text-lg font-bold text-gray-700">Filter Attendance</h2>
@@ -404,19 +387,17 @@ export default function AttendancePage() {
                   </button>
                 </div>
 
-                {/* Year Selection */}
                 <label className="block text-gray-700 font-medium mt-4">Select Year:</label>
                 <select
                   className="w-full p-2 border rounded"
                   value={selectedYear}
-                  onChange={(e) => setSelectedYear(e.target.value)}
+                  onChange={(e) => setSelectedYear(parseInt(e.target.value))}
                 >
                   {Array.from({length: 10}, (_, i) => new Date().getFullYear() - 5 + i).map(year => (
                     <option key={year} value={year}>{year}</option>
                   ))}
                 </select>
 
-                {/* Month Selection */}
                 <label className="block text-gray-700 font-medium mt-4">Select Month:</label>
                 <select
                   className="w-full p-2 border rounded"
@@ -424,14 +405,16 @@ export default function AttendancePage() {
                   onChange={(e) => setSelectedMonth(e.target.value)}
                 >
                   <option value="">Select Month</option>
-                  {Array.from({length: 12}, (_, i) => i + 1).map(month => (
-                    <option key={month} value={month}>
-                      {new Date(selectedYear, month - 1, 1).toLocaleString('default', {month: 'long'})}
-                    </option>
-                  ))}
+                  {Array.from({length: 12}, (_, i) => {
+                    const monthValue = i + 1;
+                    return (
+                      <option key={monthValue} value={monthValue}>
+                        {new Date(selectedYear, monthValue - 1, 1).toLocaleString('default', {month: 'long'})}
+                      </option>
+                    );
+                  })}
                 </select>
 
-                {/* Start & End Day */}
                 <div className="mt-4 flex gap-4">
                   <div>
                     <label className="block text-gray-700 font-medium">Start Day:</label>
@@ -457,7 +440,6 @@ export default function AttendancePage() {
                   </div>
                 </div>
 
-                {/* Apply Filter Button */}
                 <button className="mt-4 w-full bg-blue-700 text-white py-2 rounded-lg" onClick={applyFilter}>
                   Apply Filter
                 </button>
@@ -465,7 +447,6 @@ export default function AttendancePage() {
             </div>
           )}
 
-          {/* Snackbar Notification */}
           {snackbar.show && (
             <Snackbar
               message={snackbar.message}

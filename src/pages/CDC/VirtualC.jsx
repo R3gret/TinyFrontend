@@ -837,53 +837,54 @@ function ClassworksSection({ setSnackbar }) {
         </Box>
       ) : (
         <Grid container spacing={3}>
-  {categories.map((category) => (
-    <Grid item xs={12} sm={6} md={4} lg={3} key={category.category_id}>
-      <Card 
-        sx={{ 
-          height: 200, // Fixed height for all cards
-          display: 'flex', 
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          p: 2, // Reduced padding to fit content better
-          textAlign: 'center',
-          cursor: 'pointer',
-          transition: 'all 0.3s ease',
-          '&:hover': {
-            boxShadow: 4,
-            bgcolor: 'primary.light',
-            color: 'primary.contrastText',
-            '& .MuiSvgIcon-root': {
-              color: 'primary.contrastText'
-            }
-          }
-        }}
-        onClick={() => setSelectedCategory(category.category_id)}
-      >
-        <FolderIcon sx={{ 
-          fontSize: 60, 
-          color: 'primary.main', 
-          mb: 1,
-          transition: 'color 0.3s ease' // Smooth color transition on hover
-        }} />
-        <Typography variant="h6" component="h3" sx={{
-          mb: 0.5,
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          display: '-webkit-box',
-          WebkitLineClamp: 2, // Limit to 2 lines
-          WebkitBoxOrient: 'vertical'
-        }}>
-          {category.category_name}
-        </Typography>
-        <Typography variant="body2" sx={{ color: 'inherit' }}>
-          {fileCounts[category.category_id] || 0} files
-        </Typography>
-      </Card>
-    </Grid>
-  ))}
-</Grid>
+          {categories.map((category) => (
+            <Grid item xs={12} sm={6} md={4} lg={3} key={category.category_id}>
+              <Card 
+                sx={{ 
+                  height: 200, // Fixed height
+                  minWidth: 200, // Minimum width
+                  display: 'flex', 
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  p: 3,
+                  textAlign: 'center',
+                  cursor: 'pointer',
+                  backgroundColor: '#2e7d32', // Dark green background
+                  color: 'white', // White text
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    boxShadow: 4,
+                    backgroundColor: '#1b5e20', // Darker green on hover
+                    transform: 'translateY(-4px)'
+                  }
+                }}
+                onClick={() => setSelectedCategory(category.category_id)}
+              >
+                <FolderIcon sx={{ 
+                  fontSize: 60, 
+                  color: 'white', // White icon
+                  mb: 1 
+                }} />
+                <Typography variant="h6" component="h3" sx={{ 
+                  fontWeight: 'bold',
+                  wordBreak: 'break-word',
+                  maxWidth: '100%'
+                }}>
+                  {category.category_name}
+                </Typography>
+                <Typography variant="body2" sx={{ 
+                  backgroundColor: 'rgba(255,255,255,0.2)',
+                  px: 1,
+                  borderRadius: 1,
+                  mt: 1
+                }}>
+                  {fileCounts[category.category_id] || 0} files
+                </Typography>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
       )}
 
       <Modal open={isModalOpen} onClose={() => setIsModalOpen(false)}>

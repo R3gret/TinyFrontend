@@ -101,10 +101,17 @@ export default function Dashboard() {
         const [genderRes, enrollmentRes, studentsRes, attendanceRes, domainsRes] = await Promise.all([
           apiRequest('/api/students/gender-distribution'),
           apiRequest('/api/students/enrollment-stats'), // Real endpoint
-          apiRequest('/api/students'),
+          apiRequest('/api/domains/evaluations/average-progress'), // New endpoint
           apiRequest('/api/attendance/stats'), // New attendance stats endpoint
           apiRequest('/api/domains/evaluations/scores/sample')
         ]);
+
+        const progressStats = progressRes.success ? progressRes.stats : {
+          averageProgress: 0,
+          totalMastered: 0,
+          totalItems: 0,
+          domains: []
+        };    
 
         const attendanceStats = attendanceRes.success ? attendanceRes.stats : {
           attendanceRate: 0,
@@ -143,9 +150,12 @@ export default function Dashboard() {
             attendanceRate: attendanceStats.attendanceRate,
             presentRecords: attendanceStats.presentRecords,
             totalAttendanceRecords: attendanceStats.totalRecords,
+            averageProgress: progressStats.averageProgress,
+        masteredDomains: progressStats.totalMastered,
+        totalDomains: progressStats.totalItems,
+        domainProgress: progressStats.domains,
             ageGroups,
             genderDistribution,
-            domainProgress
           },
           recentEvaluations: [
             { evaluation_period: "1st Quarter", average_score: 70 },
@@ -234,12 +244,12 @@ export default function Dashboard() {
   value={`${dashboardData.stats.attendanceRate}%`}
   subtitle={`${dashboardData.stats.presentRecords}/${dashboardData.stats.totalAttendanceRecords} present`}
 />
-            <StatCard 
-              icon={<FiAward className="text-amber-500" size={24} />}
-              title="Avg. Progress"
-              value="68%"
-              trend="4 domains mastered"
-            />
+<StatCard 
+  icon={<FiAward className="text-amber-500" size={24} />}
+  title="Avg. Progress"
+  value={`${dashboardData.stats.averageProgress}%`}
+  subtitle={`${dashboardData.stats.masteredDomains}/${dashboardData.stats.totalDomains} mastered`}
+/>
             <StatCard 
               icon={<FiClipboard className="text-purple-500" size={24} />}
               title="Pending Evals"

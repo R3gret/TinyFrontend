@@ -109,8 +109,8 @@ export default function Dashboard() {
         // Process enrollment stats from real endpoint
         const enrollmentStats = enrollmentRes.success ? enrollmentRes.stats : {
           total: 0,
-          currentMonth: 0,
-          lastMonth: 0,
+          currentMonthEnrollments: 0,
+          lastMonthEnrollments: 0,
           difference: 0
         };
 
@@ -132,7 +132,7 @@ export default function Dashboard() {
           error: null,
           stats: {
             totalStudents: enrollmentStats.total,
-            currentMonthEnrollments: enrollmentStats.currentMonth,
+            newThisMonth: enrollmentStats.currentMonthEnrollments,
             enrollmentDifference: enrollmentStats.difference,
             attendanceRate: 85, // Example attendance rate
             ageGroups,
@@ -214,18 +214,19 @@ export default function Dashboard() {
 
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <StatCard 
-              icon={<FiUsers className="text-blue-500" size={24} />}
-              title="Total Students"
-              value={dashboardData.stats.totalStudents}
-              trend={
-                dashboardData.stats.enrollmentDifference > 0 
-                  ? `+${dashboardData.stats.enrollmentDifference} from last month`
-                  : dashboardData.stats.enrollmentDifference < 0
-                    ? `${Math.abs(dashboardData.stats.enrollmentDifference)} fewer than last month`
-                    : `Same as last month`
-              }
-            />
+          <StatCard 
+  icon={<FiUsers className="text-blue-500" size={24} />}
+  title="Total Students"
+  value={dashboardData.stats.totalStudents}
+  subtitle={`${dashboardData.stats.newThisMonth} new this month`}
+  trend={
+    dashboardData.stats.enrollmentDifference > 0 
+      ? `+${dashboardData.stats.enrollmentDifference} from last month`
+      : dashboardData.stats.enrollmentDifference < 0
+        ? `${Math.abs(dashboardData.stats.enrollmentDifference)} fewer than last month`
+        : `Same as last month`
+  }
+/>
             <StatCard 
               icon={<FiCalendar className="text-green-500" size={24} />}
               title="Attendance Rate"

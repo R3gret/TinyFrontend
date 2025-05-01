@@ -120,11 +120,11 @@ export default function Dashboard() {
           apiRequest('/api/attendance/stats')
         ]);
 
-        const domainStats = domainsRes.success ? domainsRes.stats : {
-          averageProgress: 0,
-          totalMastered: 0,
-          totalItems: 0,
-          domains: []
+        const safeDomainStats = {
+          averageProgress: domainStats.averageProgress || 0,
+          totalMastered: domainStats.totalMastered || 0,
+          totalItems: domainStats.totalItems || 0,
+          domains: domainStats.domains || []
         };
 
         const attendanceStats = attendanceRes.success ? attendanceRes.stats : {

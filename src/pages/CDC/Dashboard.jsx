@@ -120,12 +120,17 @@ export default function Dashboard() {
           apiRequest('/api/attendance/stats')
         ]);
 
-        const safeDomainStats = {
-          averageProgress: domainStats.averageProgress || 0,
-          totalMastered: domainStats.totalMastered || 0,
-          totalItems: domainStats.totalItems || 0,
-          domains: domainStats.domains || []
-        };
+         const domainResponse = domainsRes || {};
+      const domainStats = {
+        averageProgress: domainResponse.stats?.averageProgress || 
+                         domainResponse.data?.averageProgress || 0,
+        totalMastered: domainResponse.stats?.totalMastered || 
+                      domainResponse.data?.totalMastered || 0,
+        totalItems: domainResponse.stats?.totalItems || 
+                    domainResponse.data?.totalItems || 0,
+        domains: domainResponse.stats?.domains || 
+                 domainResponse.data?.domains || []
+      };
 
         const attendanceStats = attendanceRes.success ? attendanceRes.stats : {
           attendanceRate: 0,

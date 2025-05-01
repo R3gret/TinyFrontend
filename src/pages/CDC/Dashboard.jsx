@@ -106,7 +106,7 @@ export default function Dashboard() {
           apiRequest('/api/domains/evaluations/scores/sample')
         ]);
 
-        const progressStats = progressRes.success ? progressRes.stats : {
+        const domainStats = progressRes.success ? progressRes.stats : {
           averageProgress: 0,
           totalMastered: 0,
           totalItems: 0,
@@ -150,10 +150,10 @@ export default function Dashboard() {
             attendanceRate: attendanceStats.attendanceRate,
             presentRecords: attendanceStats.presentRecords,
             totalAttendanceRecords: attendanceStats.totalRecords,
-            averageProgress: progressStats.averageProgress,
-        masteredDomains: progressStats.totalMastered,
-        totalDomains: progressStats.totalItems,
-        domainProgress: progressStats.domains,
+            averageProgress: domainStats.averageProgress,
+        masteredDomains: domainStats.totalMastered,
+        totalDomains: domainStats.totalItems,
+        domainProgress: domainStats.domains,
             ageGroups,
             genderDistribution,
           },

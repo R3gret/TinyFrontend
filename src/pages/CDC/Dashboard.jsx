@@ -1,3 +1,4 @@
+import React from 'react';  // Add this import at the top
 import { useState, useEffect } from "react";
 import { PieChart, BarChart, LineChart } from "../../components/Charts";
 import Navbar from "../../components/all/Navbar";

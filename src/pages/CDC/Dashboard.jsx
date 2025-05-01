@@ -322,7 +322,7 @@ export default function Dashboard() {
 }
 
 // Component: Stat Card
-function StatCard({ icon, title, value, trend }) {
+function StatCard({ icon, title, value, subtitle, trend }) {
   const isPositive = trend?.includes('+');
   const isNegative = trend?.includes('fewer') || (trend?.includes('-') && !trend?.includes('from last month'));
 
@@ -332,6 +332,7 @@ function StatCard({ icon, title, value, trend }) {
         <div>
           <p className="text-gray-500 text-sm font-medium">{title}</p>
           <p className="text-2xl font-bold mt-1">{value}</p>
+          {subtitle && <p className="text-xs text-gray-500 mt-1">{subtitle}</p>}
           <p className={`text-xs mt-1 ${
             isPositive ? 'text-green-500' : 
             isNegative ? 'text-red-500' : 

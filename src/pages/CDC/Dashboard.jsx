@@ -279,12 +279,13 @@ export default function Dashboard() {
 
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <StatCard 
-              icon={<FiUsers className="text-blue-500" size={24} />}
-              title="Total Students"
-              value={dashboardData.stats.totalStudents}
-              subtitle={`${dashboardData.stats.newThisMonth} new enrollments this month`}
-            />
+          <StatCard 
+  icon={<FiUsers className="text-blue-500" size={24} />}
+  title="Total Students"
+  value={dashboardData.stats.totalStudents}
+  subtitle={`${dashboardData.stats.newThisMonth} new enrollments this month`}
+  genderBreakdown={dashboardData.stats.genderDistribution}
+/>
             <StatCard 
               icon={<FiCalendar className="text-green-500" size={24} />}
               title="Attendance Rate"
@@ -447,13 +448,25 @@ export default function Dashboard() {
 }
 
 // Component: Stat Card
-function StatCard({ icon, title, value, subtitle, trend }) {
+function StatCard({ icon, title, value, subtitle, trend, genderBreakdown }) {
   return (
     <div className="bg-white rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-gray-500 text-sm font-medium">{title}</p>
           <p className="text-2xl font-bold mt-1">{value}</p>
+          {genderBreakdown && (
+            <div className="flex gap-4 mt-2">
+              <span className="text-xs text-blue-500">
+                <FiUsers className="inline mr-1" size={12} />
+                {genderBreakdown.Male || 0} Boys
+              </span>
+              <span className="text-xs text-pink-500">
+                <FiUsers className="inline mr-1" size={12} />
+                {genderBreakdown.Female || 0} Girls
+              </span>
+            </div>
+          )}
           {subtitle && <p className="text-xs text-gray-500 mt-1">{subtitle}</p>}
           {trend && <p className="text-xs text-gray-400 mt-1">{trend}</p>}
         </div>
@@ -464,6 +477,7 @@ function StatCard({ icon, title, value, subtitle, trend }) {
     </div>
   );
 }
+
 
 // Component: Domain Progress Card
 function DomainProgressCard({ name, progress, color }) {

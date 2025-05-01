@@ -218,14 +218,8 @@ export default function Dashboard() {
   icon={<FiUsers className="text-blue-500" size={24} />}
   title="Total Students"
   value={dashboardData.stats.totalStudents}
-  subtitle={`${dashboardData.stats.newThisMonth} new this month`}
-  trend={
-    dashboardData.stats.enrollmentDifference > 0 
-      ? `+${dashboardData.stats.enrollmentDifference} from last month`
-      : dashboardData.stats.enrollmentDifference < 0
-        ? `${Math.abs(dashboardData.stats.enrollmentDifference)} fewer than last month`
-        : `Same as last month`
-  }
+  subtitle={`${dashboardData.stats.newThisMonth} new enrollments`}
+  trend="Current month"
 />
             <StatCard 
               icon={<FiCalendar className="text-green-500" size={24} />}
@@ -323,9 +317,6 @@ export default function Dashboard() {
 
 // Component: Stat Card
 function StatCard({ icon, title, value, subtitle, trend }) {
-  const isPositive = trend?.includes('+');
-  const isNegative = trend?.includes('fewer') || (trend?.includes('-') && !trend?.includes('from last month'));
-
   return (
     <div className="bg-white rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
       <div className="flex items-center justify-between">
@@ -333,13 +324,7 @@ function StatCard({ icon, title, value, subtitle, trend }) {
           <p className="text-gray-500 text-sm font-medium">{title}</p>
           <p className="text-2xl font-bold mt-1">{value}</p>
           {subtitle && <p className="text-xs text-gray-500 mt-1">{subtitle}</p>}
-          <p className={`text-xs mt-1 ${
-            isPositive ? 'text-green-500' : 
-            isNegative ? 'text-red-500' : 
-            'text-gray-400'
-          }`}>
-            {trend}
-          </p>
+          {trend && <p className="text-xs text-gray-400 mt-1">{trend}</p>}
         </div>
         <div className="p-2 rounded-lg bg-opacity-20 bg-gray-200">
           {icon}

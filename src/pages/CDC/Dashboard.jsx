@@ -218,7 +218,9 @@ export default function Dashboard() {
   icon={<FiUsers className="text-blue-500" size={24} />}
   title="Total Students"
   value={dashboardData.stats.totalStudents}
-  subtitle={`${dashboardData.stats.newThisMonth} new enrollments this month`}
+  subtitle={<span className="text-green-500"> 
+    {dashboardData.stats.newThisMonth} new this month
+  </span>}
 />
             <StatCard 
               icon={<FiCalendar className="text-green-500" size={24} />}
@@ -322,8 +324,11 @@ function StatCard({ icon, title, value, subtitle, trend }) {
         <div>
           <p className="text-gray-500 text-sm font-medium">{title}</p>
           <p className="text-2xl font-bold mt-1">{value}</p>
-          {subtitle && <p className="text-xs text-gray-500 mt-1">{subtitle}</p>}
-          {trend && <p className="text-xs text-gray-400 mt-1">{trend}</p>}
+          {subtitle && (
+            typeof subtitle === 'string' 
+              ? <p className="text-xs text-gray-500 mt-1">{subtitle}</p>
+              : subtitle
+          )}
         </div>
         <div className="p-2 rounded-lg bg-opacity-20 bg-gray-200">
           {icon}

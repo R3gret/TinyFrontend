@@ -156,13 +156,13 @@ export default function Dashboard() {
             attendanceRate: attendanceStats.attendanceRate,
             presentRecords: attendanceStats.presentRecords,
             totalAttendanceRecords: attendanceStats.totalRecords,
-            averageProgress: domainStats.averageProgress,
-            masteredDomains: domainStats.totalMastered,
-            totalDomains: domainStats.totalItems,
-            domainProgress: domainStats.domains.map(d => ({
-              name: d.domain,
-              progress: d.progress.toString()
-            })),
+            averageProgress: domainStats.averageProgress || 0,
+masteredDomains: domainStats.totalMastered || 0,
+totalDomains: domainStats.totalItems || 0,
+domainProgress: (domainStats.domains || []).map(d => ({
+  name: d.domain || 'Unknown',
+  progress: d.progress ? d.progress.toString() : '0'
+})),
             ageGroups: { '3-4': 0, '4-5': 0, '5-6': 0 }, // Will be populated by real data
             genderDistribution
           },

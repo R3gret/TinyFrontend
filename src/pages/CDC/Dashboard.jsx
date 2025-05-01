@@ -11,7 +11,8 @@ import {
   FiAward,
   FiTrendingUp,
   FiChevronLeft,
-  FiChevronRight
+  FiChevronRight,
+  FiBell
 } from "react-icons/fi";
 import { CircularProgress, Alert, Button } from "@mui/material";
 
@@ -61,7 +62,7 @@ const apiRequest = async (endpoint, method = 'GET', body = null) => {
               {
                 id: 2,
                 title: "Field Trip Permission",
-                message: "Permission slips for the museum trip are due by Wednesday.",
+                message: "Permission slips for the museum trip are due by Wednesday. Don't forget to pack a lunch for your child.",
                 author: "Teacher Sarah",
                 ageFilter: "4-5",
                 createdAt: new Date(Date.now() - 86400000).toISOString(),
@@ -70,7 +71,7 @@ const apiRequest = async (endpoint, method = 'GET', body = null) => {
               {
                 id: 3,
                 title: "Holiday Closure",
-                message: "Center will be closed next Monday for Memorial Day.",
+                message: "Center will be closed next Monday for Memorial Day. We will reopen on Tuesday at regular hours.",
                 author: "Admin",
                 ageFilter: "all",
                 createdAt: new Date(Date.now() - 172800000).toISOString(),
@@ -291,101 +292,83 @@ export default function Dashboard() {
               subtitle={`${dashboardData.stats.presentRecords}/${dashboardData.stats.totalAttendanceRecords} present`}
             />
             
-            {/* Combined Progress & Announcements Card */}
+            {/* Announcements Card - Now taking full width of two columns */}
             <div className="bg-white rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow col-span-2">
-              <div className="flex h-full">
-                {/* Progress Section */}
-                <div className="w-1/2 border-r pr-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <FiAward className="text-amber-500" size={20} />
-                      <p className="text-gray-500 text-sm font-medium">Avg. Progress</p>
-                    </div>
-                    <div className="text-2xl font-bold">68%</div>
-                  </div>
-                  <p className="text-xs text-gray-500 mb-4">4 domains mastered</p>
-                  
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <FiClipboard className="text-purple-500" size={20} />
-                      <p className="text-gray-500 text-sm font-medium">Pending Evals</p>
-                    </div>
-                    <div className="text-2xl font-bold">8</div>
-                  </div>
-                  <p className="text-xs text-gray-500">Due this week</p>
-                </div>
-                
-                {/* Announcements Carousel */}
-                <div className="w-1/2 pl-4 relative">
-                  <h3 className="text-sm font-medium text-gray-500 mb-2">Announcements</h3>
-                  
-                  {dashboardData.announcements.length > 0 ? (
-                    <div className="relative h-full">
-                      {/* Announcement Content */}
-                      <div className="overflow-hidden h-full">
-                        <div className="h-full transition-all duration-300 ease-in-out">
-                          <div className="h-full flex flex-col">
-                            <h4 className="font-semibold text-gray-800 truncate">
-                              {dashboardData.announcements[activeAnnouncementIndex].title}
-                            </h4>
-                            <p className="text-sm text-gray-600 mt-1 line-clamp-2">
-                              {dashboardData.announcements[activeAnnouncementIndex].message}
-                            </p>
-                            <div className="mt-auto text-xs text-gray-400">
-                              <p>
-                                {new Date(dashboardData.announcements[activeAnnouncementIndex].createdAt)
-                                  .toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                              </p>
-                              <p className="text-gray-500">
-                                {dashboardData.announcements[activeAnnouncementIndex].author}
-                              </p>
-                            </div>
-                          </div>
+              <div className="flex items-center gap-2 mb-4">
+                <FiBell className="text-purple-500" size={20} />
+                <h3 className="text-lg font-semibold text-gray-800">Announcements</h3>
+              </div>
+              
+              {dashboardData.announcements.length > 0 ? (
+                <div className="relative h-40">
+                  {/* Announcement Content */}
+                  <div className="overflow-hidden h-full">
+                    <div className="h-full transition-all duration-300 ease-in-out">
+                      <div className="h-full flex flex-col justify-between">
+                        <div>
+                          <h4 className="font-semibold text-gray-800 text-lg">
+                            {dashboardData.announcements[activeAnnouncementIndex].title}
+                          </h4>
+                          <p className="text-gray-600 mt-2">
+                            {dashboardData.announcements[activeAnnouncementIndex].message}
+                          </p>
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          <p>
+                            {new Date(dashboardData.announcements[activeAnnouncementIndex].createdAt)
+                              .toLocaleDateString('en-US', { 
+                                month: 'short', 
+                                day: 'numeric',
+                                year: 'numeric'
+                              })}
+                            {' • '}
+                            {dashboardData.announcements[activeAnnouncementIndex].author}
+                          </p>
                         </div>
                       </div>
-                      
-                      {/* Navigation Arrows */}
-                      {dashboardData.announcements.length > 1 && (
-                        <>
-                          <button 
-                            onClick={() => setActiveAnnouncementIndex(prev => 
-                              prev === 0 ? dashboardData.announcements.length - 1 : prev - 1
-                            )}
-                            className="absolute left-0 top-1/2 -translate-y-1/2 -ml-2 p-1 rounded-full bg-gray-100 hover:bg-gray-200"
-                          >
-                            <FiChevronLeft className="text-gray-600" size={16} />
-                          </button>
-                          <button 
-                            onClick={() => setActiveAnnouncementIndex(prev => 
-                              prev === dashboardData.announcements.length - 1 ? 0 : prev + 1
-                            )}
-                            className="absolute right-0 top-1/2 -translate-y-1/2 -mr-2 p-1 rounded-full bg-gray-100 hover:bg-gray-200"
-                          >
-                            <FiChevronRight className="text-gray-600" size={16} />
-                          </button>
-                        </>
-                      )}
-                      
-                      {/* Indicators */}
-                      {dashboardData.announcements.length > 1 && (
-                        <div className="absolute bottom-0 left-0 right-0 flex justify-center gap-1">
-                          {dashboardData.announcements.map((_, index) => (
-                            <button
-                              key={index}
-                              onClick={() => setActiveAnnouncementIndex(index)}
-                              className={`w-2 h-2 rounded-full transition-colors ${index === activeAnnouncementIndex ? 'bg-gray-600' : 'bg-gray-300'}`}
-                            />
-                          ))}
-                        </div>
-                      )}
                     </div>
-                  ) : (
-                    <div className="h-full flex items-center justify-center text-gray-400 text-sm">
-                      No announcements available
+                  </div>
+                  
+                  {/* Navigation Arrows */}
+                  {dashboardData.announcements.length > 1 && (
+                    <>
+                      <button 
+                        onClick={() => setActiveAnnouncementIndex(prev => 
+                          prev === 0 ? dashboardData.announcements.length - 1 : prev - 1
+                        )}
+                        className="absolute left-0 top-1/2 -translate-y-1/2 -ml-2 p-2 rounded-full bg-gray-100 hover:bg-gray-200 shadow"
+                      >
+                        <FiChevronLeft className="text-gray-600" size={20} />
+                      </button>
+                      <button 
+                        onClick={() => setActiveAnnouncementIndex(prev => 
+                          prev === dashboardData.announcements.length - 1 ? 0 : prev + 1
+                        )}
+                        className="absolute right-0 top-1/2 -translate-y-1/2 -mr-2 p-2 rounded-full bg-gray-100 hover:bg-gray-200 shadow"
+                      >
+                        <FiChevronRight className="text-gray-600" size={20} />
+                      </button>
+                    </>
+                  )}
+                  
+                  {/* Indicators */}
+                  {dashboardData.announcements.length > 1 && (
+                    <div className="absolute bottom-0 left-0 right-0 flex justify-center gap-2">
+                      {dashboardData.announcements.map((_, index) => (
+                        <button
+                          key={index}
+                          onClick={() => setActiveAnnouncementIndex(index)}
+                          className={`w-3 h-3 rounded-full transition-colors ${index === activeAnnouncementIndex ? 'bg-purple-500' : 'bg-gray-300'}`}
+                        />
+                      ))}
                     </div>
                   )}
                 </div>
-              </div>
+              ) : (
+                <div className="h-40 flex items-center justify-center text-gray-400">
+                  No announcements available
+                </div>
+              )}
             </div>
           </div>
 

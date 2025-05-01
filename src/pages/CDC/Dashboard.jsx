@@ -139,11 +139,11 @@ export default function Dashboard() {
         // Fetch all data in parallel
         const [genderRes, enrollmentRes, studentsRes, attendanceRes, domainsRes, announcementsRes] = await Promise.all([
           apiRequest('/api/students/gender-distribution'),
-          apiRequest('/api/students/enrollment-stats'), // Real endpoint
+          apiRequest('/api/students/enrollment-stats'),
           apiRequest('/api/students'),
-          apiRequest('/api/attendance/stats'), // New attendance stats endpoint
+          apiRequest('/api/attendance/stats'),
           apiRequest('/api/domains/evaluations/scores/sample'),
-          apiRequest('/api/announcements') // New announcements endpoint
+          apiRequest('/api/announcements')
         ]);
 
         const attendanceStats = attendanceRes.success ? attendanceRes.stats : {
@@ -152,7 +152,6 @@ export default function Dashboard() {
           totalRecords: 0
         };
 
-        // Process enrollment stats from real endpoint
         const enrollmentStats = enrollmentRes.success ? enrollmentRes.stats : {
           total: 0,
           currentMonthEnrollments: 0,
@@ -160,20 +159,16 @@ export default function Dashboard() {
           difference: 0
         };
 
-        // Process gender distribution
         const genderDistribution = genderRes.success ? genderRes.distribution : { Male: 0, Female: 0, Other: 0 };
-
-        // Process announcements
         const announcements = announcementsRes.success ? announcementsRes.announcements : [];
 
-        // Process other data
-        const ageGroups = { '3-4': 5, '4-5': 4, '5-6': 2 }; // Example age distribution
+        const ageGroups = { '3-4': 5, '4-5': 4, '5-6': 2 };
         const domainProgress = [
-          { name: 'Self-Help', progress: '72.7' },  // 8/11
-          { name: 'Cognitive', progress: '63.6' },   // 7/11
-          { name: 'Language', progress: '63.6' },    // 7/11
-          { name: 'Social', progress: '54.5' },      // 6/11
-          { name: 'Physical', progress: '54.5' }     // 6/11
+          { name: 'Self-Help', progress: '72.7' },
+          { name: 'Cognitive', progress: '63.6' },
+          { name: 'Language', progress: '63.6' },
+          { name: 'Social', progress: '54.5' },
+          { name: 'Physical', progress: '54.5' }
         ];
 
         setDashboardData({
@@ -266,9 +261,9 @@ export default function Dashboard() {
         {/* Dashboard Content */}
         <div className="p-6 space-y-6">
           {/* Header */}
-          <div className="mb-6">
-            <h1 className="text-3xl font-bold text-gray-800">CDC Analytics Dashboard</h1>
-            <p className="text-gray-600">
+          <div className="mb-4">
+            <h1 className="text-2xl font-bold text-gray-800">CDC Analytics Dashboard</h1>
+            <p className="text-sm text-gray-600">
               {new Date().toLocaleDateString('en-US', { 
                 weekday: 'long', 
                 month: 'long', 
@@ -278,43 +273,47 @@ export default function Dashboard() {
           </div>
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <StatCard 
-  icon={<FiUsers className="text-blue-500" size={24} />}
-  title="Total Students"
-  value={dashboardData.stats.totalStudents}
-  subtitle={`${dashboardData.stats.newThisMonth} new enrollments this month`}
-  genderBreakdown={dashboardData.stats.genderDistribution}
-/>
-            <StatCard 
-              icon={<FiCalendar className="text-green-500" size={24} />}
-              title="Attendance Rate"
-              value={`${dashboardData.stats.attendanceRate}%`}
-              subtitle={`${dashboardData.stats.presentRecords}/${dashboardData.stats.totalAttendanceRecords} present`}
-            />
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="h-36">
+              <StatCard 
+                icon={<FiUsers className="text-blue-500" />}
+                title="Total Students"
+                value={dashboardData.stats.totalStudents}
+                subtitle={`${dashboardData.stats.newThisMonth} new enrollments this month`}
+                genderBreakdown={dashboardData.stats.genderDistribution}
+              />
+            </div>
+            <div className="h-36">
+              <StatCard 
+                icon={<FiCalendar className="text-green-500" />}
+                title="Attendance Rate"
+                value={`${dashboardData.stats.attendanceRate}%`}
+                subtitle={`${dashboardData.stats.presentRecords}/${dashboardData.stats.totalAttendanceRecords} present`}
+              />
+            </div>
             
-            {/* Announcements Card - Now taking full width of two columns */}
-            <div className="bg-white rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow col-span-2">
-              <div className="flex items-center gap-2 mb-4">
-                <FiBell className="text-purple-500" size={20} />
-                <h3 className="text-lg font-semibold text-gray-800">Announcements</h3>
+            {/* Announcements Card */}
+            <div className="bg-white rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow col-span-2">
+              <div className="flex items-center gap-2 mb-2">
+                <FiBell className="text-purple-500" size={16} />
+                <h3 className="text-md font-semibold text-gray-800">Announcements</h3>
               </div>
               
               {dashboardData.announcements.length > 0 ? (
-                <div className="relative h-40">
+                <div className="relative h-28">
                   {/* Announcement Content */}
                   <div className="overflow-hidden h-full">
                     <div className="h-full transition-all duration-300 ease-in-out">
                       <div className="h-full flex flex-col justify-between">
                         <div>
-                          <h4 className="font-semibold text-gray-800 text-lg">
+                          <h4 className="font-medium text-gray-800 text-md">
                             {dashboardData.announcements[activeAnnouncementIndex].title}
                           </h4>
-                          <p className="text-gray-600 mt-2">
+                          <p className="text-gray-600 text-sm mt-1 line-clamp-2">
                             {dashboardData.announcements[activeAnnouncementIndex].message}
                           </p>
                         </div>
-                        <div className="text-sm text-gray-500">
+                        <div className="text-xs text-gray-500">
                           <p>
                             {new Date(dashboardData.announcements[activeAnnouncementIndex].createdAt)
                               .toLocaleDateString('en-US', { 
@@ -337,36 +336,36 @@ export default function Dashboard() {
                         onClick={() => setActiveAnnouncementIndex(prev => 
                           prev === 0 ? dashboardData.announcements.length - 1 : prev - 1
                         )}
-                        className="absolute left-0 top-1/2 -translate-y-1/2 -ml-2 p-2 rounded-full bg-gray-100 hover:bg-gray-200 shadow"
+                        className="absolute left-0 top-1/2 -translate-y-1/2 -ml-1 p-1 rounded-full bg-gray-100 hover:bg-gray-200 shadow"
                       >
-                        <FiChevronLeft className="text-gray-600" size={20} />
+                        <FiChevronLeft className="text-gray-600" size={16} />
                       </button>
                       <button 
                         onClick={() => setActiveAnnouncementIndex(prev => 
                           prev === dashboardData.announcements.length - 1 ? 0 : prev + 1
                         )}
-                        className="absolute right-0 top-1/2 -translate-y-1/2 -mr-2 p-2 rounded-full bg-gray-100 hover:bg-gray-200 shadow"
+                        className="absolute right-0 top-1/2 -translate-y-1/2 -mr-1 p-1 rounded-full bg-gray-100 hover:bg-gray-200 shadow"
                       >
-                        <FiChevronRight className="text-gray-600" size={20} />
+                        <FiChevronRight className="text-gray-600" size={16} />
                       </button>
                     </>
                   )}
                   
                   {/* Indicators */}
                   {dashboardData.announcements.length > 1 && (
-                    <div className="absolute bottom-0 left-0 right-0 flex justify-center gap-2">
+                    <div className="absolute bottom-0 left-0 right-0 flex justify-center gap-1">
                       {dashboardData.announcements.map((_, index) => (
                         <button
                           key={index}
                           onClick={() => setActiveAnnouncementIndex(index)}
-                          className={`w-3 h-3 rounded-full transition-colors ${index === activeAnnouncementIndex ? 'bg-purple-500' : 'bg-gray-300'}`}
+                          className={`w-2 h-2 rounded-full transition-colors ${index === activeAnnouncementIndex ? 'bg-purple-500' : 'bg-gray-300'}`}
                         />
                       ))}
                     </div>
                   )}
                 </div>
               ) : (
-                <div className="h-40 flex items-center justify-center text-gray-400">
+                <div className="h-28 flex items-center justify-center text-gray-400 text-sm">
                   No announcements available
                 </div>
               )}
@@ -450,34 +449,36 @@ export default function Dashboard() {
 // Component: Stat Card
 function StatCard({ icon, title, value, subtitle, trend, genderBreakdown }) {
   return (
-    <div className="bg-white rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-gray-500 text-sm font-medium">{title}</p>
-          <p className="text-2xl font-bold mt-1">{value}</p>
-          {genderBreakdown && (
-            <div className="flex gap-4 mt-2">
-              <span className="text-xs text-blue-500">
-                <FiUsers className="inline mr-1" size={12} />
-                {genderBreakdown.Male || 0} Boys
-              </span>
-              <span className="text-xs text-pink-500">
-                <FiUsers className="inline mr-1" size={12} />
-                {genderBreakdown.Female || 0} Girls
-              </span>
-            </div>
-          )}
-          {subtitle && <p className="text-xs text-gray-500 mt-1">{subtitle}</p>}
-          {trend && <p className="text-xs text-gray-400 mt-1">{trend}</p>}
+    <div className="bg-white rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow h-full">
+      <div className="flex items-center justify-between h-full">
+        <div className="flex flex-col justify-between h-full">
+          <div>
+            <p className="text-gray-500 text-xs font-medium">{title}</p>
+            <p className="text-xl font-bold mt-1">{value}</p>
+          </div>
+          <div>
+            {genderBreakdown && (
+              <div className="flex gap-2 mt-1">
+                <span className="text-xs text-blue-500">
+                  <FiUsers className="inline mr-1" size={10} />
+                  {genderBreakdown.Male || 0} Boys
+                </span>
+                <span className="text-xs text-pink-500">
+                  <FiUsers className="inline mr-1" size={10} />
+                  {genderBreakdown.Female || 0} Girls
+                </span>
+              </div>
+            )}
+            {subtitle && <p className="text-xs text-gray-500 mt-1">{subtitle}</p>}
+          </div>
         </div>
-        <div className="p-2 rounded-lg bg-opacity-20 bg-gray-200">
-          {icon}
+        <div className="p-1.5 rounded-lg bg-opacity-20 bg-gray-200">
+          {React.cloneElement(icon, { size: 20 })}
         </div>
       </div>
     </div>
   );
 }
-
 
 // Component: Domain Progress Card
 function DomainProgressCard({ name, progress, color }) {

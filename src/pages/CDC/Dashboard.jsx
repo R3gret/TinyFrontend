@@ -102,9 +102,15 @@ export default function Dashboard() {
           apiRequest('/api/students/gender-distribution'),
           apiRequest('/api/students/enrollment-stats'), // Real endpoint
           apiRequest('/api/students'),
-          apiRequest('/api/attendance'),
+          apiRequest('/api/attendance/stats'), // New attendance stats endpoint
           apiRequest('/api/domains/evaluations/scores/sample')
         ]);
+
+        const attendanceStats = attendanceRes.success ? attendanceRes.stats : {
+          attendanceRate: 0,
+          presentRecords: 0,
+          totalRecords: 0
+        };
 
         // Process enrollment stats from real endpoint
         const enrollmentStats = enrollmentRes.success ? enrollmentRes.stats : {
@@ -134,7 +140,9 @@ export default function Dashboard() {
             totalStudents: enrollmentStats.total,
             newThisMonth: enrollmentStats.currentMonthEnrollments,
             enrollmentDifference: enrollmentStats.difference,
-            attendanceRate: 85, // Example attendance rate
+            attendanceRate: attendanceStats.attendanceRate,
+            presentRecords: attendanceStats.presentRecords,
+            totalAttendanceRecords: attendanceStats.totalRecords,
             ageGroups,
             genderDistribution,
             domainProgress
@@ -220,12 +228,12 @@ export default function Dashboard() {
   value={dashboardData.stats.totalStudents}
   subtitle={`${dashboardData.stats.newThisMonth} new enrollments this month`}
 />
-            <StatCard 
-              icon={<FiCalendar className="text-green-500" size={24} />}
-              title="Attendance Rate"
-              value={`${dashboardData.stats.attendanceRate}%`}
-              trend="2% improvement"
-            />
+<StatCard 
+  icon={<FiCalendar className="text-green-500" size={24} />}
+  title="Attendance Rate"
+  value={`${dashboardData.stats.attendanceRate}%`}
+  subtitle={`${dashboardData.stats.presentRecords}/${dashboardData.stats.totalAttendanceRecords} present`}
+/>
             <StatCard 
               icon={<FiAward className="text-amber-500" size={24} />}
               title="Avg. Progress"

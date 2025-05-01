@@ -151,9 +151,12 @@ export default function Dashboard() {
             presentRecords: attendanceStats.presentRecords,
             totalAttendanceRecords: attendanceStats.totalRecords,
             averageProgress: domainStats.averageProgress,
-        masteredDomains: domainStats.totalMastered,
-        totalDomains: domainStats.totalItems,
-        domainProgress: domainStats.domains,
+  masteredDomains: domainStats.totalMastered,
+  totalDomains: domainStats.totalItems,
+  domainProgress: domainStats.domains.map(d => ({
+    name: d.domain,
+    progress: d.progress.toString()
+  })),
             ageGroups,
             genderDistribution,
           },

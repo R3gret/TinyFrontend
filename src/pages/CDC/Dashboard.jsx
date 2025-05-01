@@ -218,8 +218,7 @@ export default function Dashboard() {
   icon={<FiUsers className="text-blue-500" size={24} />}
   title="Total Students"
   value={dashboardData.stats.totalStudents}
-  subtitle={`${dashboardData.stats.newThisMonth} new enrollments`}
-  trend="Current month"
+  subtitle={`${dashboardData.stats.newThisMonth} new enrollments this month`}
 />
             <StatCard 
               icon={<FiCalendar className="text-green-500" size={24} />}

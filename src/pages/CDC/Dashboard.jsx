@@ -106,7 +106,7 @@ export default function Dashboard() {
           apiRequest('/api/domains/evaluations/scores/sample')
         ]);
 
-        const domainStats = progressRes.success ? progressRes.stats : {
+        const domainStats = domainRes.success ? domainRes.stats : {
           averageProgress: 0,
           totalMastered: 0,
           totalItems: 0,

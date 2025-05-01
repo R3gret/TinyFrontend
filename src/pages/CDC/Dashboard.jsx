@@ -29,7 +29,6 @@ const apiRequest = async (endpoint, method = 'GET', body = null) => {
 
   const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
   
-  // Only mock other data, not enrollment stats
   if (import.meta.env.MODE === 'development' && endpoint !== '/api/students/enrollment-stats') {
     console.log(`Mocking API call to ${endpoint}`);
     return new Promise(resolve => {
@@ -43,6 +42,24 @@ const apiRequest = async (endpoint, method = 'GET', body = null) => {
               Other: 0
             }
           });
+        } else if (endpoint === '/api/domains/evaluations/average-progress') {
+          resolve({
+            success: true,
+            stats: {
+              averageProgress: 15,
+              totalMastered: 12,
+              totalItems: 80,
+              domains: [
+                { domain: "Cognitive", progress: 10, mastered: 2, total: 21 },
+                { domain: "Self-Help", progress: 7, mastered: 2, total: 27 },
+                { domain: "Expressive Language", progress: 25, mastered: 2, total: 8 },
+                { domain: "Fine Motor", progress: 18, mastered: 2, total: 11 },
+                { domain: "Gross Motor", progress: 15, mastered: 2, total: 13 },
+                { domain: "Receptive Language", progress: 40, mastered: 2, total: 5 },
+                { domain: "Social-Emotional", progress: 8, mastered: 2, total: 24 }
+              ]
+            }
+          });
         } else {
           resolve({ 
             students: Array(11).fill({}).map((_, i) => ({
@@ -51,14 +68,7 @@ const apiRequest = async (endpoint, method = 'GET', body = null) => {
               last_name: ['Reyes', 'Santos', 'Cruz', 'Lopez', 'Gonzales', 'Torres', 'Flores', 'Ramos', 'Delos Reyes', 'Navarro', 'zxcv'][i],
               gender: ['Female', 'Male', 'Male', 'Female', 'Female', 'Female', 'Female', 'Male', 'Female', 'Female', 'Male'][i]
             })),
-            attendance: Array(11).fill({ status: 'Present' }),
-            data: {
-              'Self-Help': { first: { yes: 8, total: 11 } },
-              'Cognitive': { first: { yes: 7, total: 11 } },
-              'Language': { first: { yes: 7, total: 11 } },
-              'Social': { first: { yes: 6, total: 11 } },
-              'Physical': { first: { yes: 6, total: 11 } }
-            }
+            attendance: Array(11).fill({ status: 'Present' })
           });
         }
       }, 500);
@@ -81,12 +91,17 @@ export default function Dashboard() {
     error: null,
     stats: {
       totalStudents: 0,
-      currentMonthEnrollments: 0,
+      newThisMonth: 0,
       enrollmentDifference: 0,
       attendanceRate: 0,
+      presentRecords: 0,
+      totalAttendanceRecords: 0,
+      averageProgress: 0,
+      masteredDomains: 0,
+      totalDomains: 0,
+      domainProgress: [],
       ageGroups: { '3-4': 0, '4-5': 0, '5-6': 0 },
-      genderDistribution: { Male: 0, Female: 0, Other: 0 },
-      domainProgress: []
+      genderDistribution: { Male: 0, Female: 0, Other: 0 }
     },
     recentEvaluations: []
   });
@@ -98,12 +113,11 @@ export default function Dashboard() {
         setDashboardData(prev => ({ ...prev, loading: true, error: null }));
         
         // Fetch all data in parallel
-        const [genderRes, enrollmentRes, studentsRes, attendanceRes, domainsRes] = await Promise.all([
+        const [genderRes, enrollmentRes, domainsRes, attendanceRes] = await Promise.all([
           apiRequest('/api/students/gender-distribution'),
-          apiRequest('/api/students/enrollment-stats'), // Real endpoint
-          apiRequest('/api/domains/evaluations/average-progress'), // New endpoint
-          apiRequest('/api/attendance/stats'), // New attendance stats endpoint
-          apiRequest('/api/domains/evaluations/scores/sample')
+          apiRequest('/api/students/enrollment-stats'),
+          apiRequest('/api/domains/evaluations/average-progress'),
+          apiRequest('/api/attendance/stats')
         ]);
 
         const domainStats = domainsRes.success ? domainsRes.stats : {
@@ -111,7 +125,7 @@ export default function Dashboard() {
           totalMastered: 0,
           totalItems: 0,
           domains: []
-        };    
+        };
 
         const attendanceStats = attendanceRes.success ? attendanceRes.stats : {
           attendanceRate: 0,
@@ -119,7 +133,6 @@ export default function Dashboard() {
           totalRecords: 0
         };
 
-        // Process enrollment stats from real endpoint
         const enrollmentStats = enrollmentRes.success ? enrollmentRes.stats : {
           total: 0,
           currentMonthEnrollments: 0,
@@ -127,18 +140,11 @@ export default function Dashboard() {
           difference: 0
         };
 
-        // Process gender distribution
-        const genderDistribution = genderRes.success ? genderRes.distribution : { Male: 0, Female: 0, Other: 0 };
-
-        // Process other data
-        const ageGroups = { '3-4': 5, '4-5': 4, '5-6': 2 }; // Example age distribution
-        const domainProgress = [
-          { name: 'Self-Help', progress: '72.7' },  // 8/11
-          { name: 'Cognitive', progress: '63.6' },   // 7/11
-          { name: 'Language', progress: '63.6' },    // 7/11
-          { name: 'Social', progress: '54.5' },      // 6/11
-          { name: 'Physical', progress: '54.5' }     // 6/11
-        ];
+        const genderDistribution = genderRes.success ? genderRes.distribution : { 
+          Male: 0, 
+          Female: 0, 
+          Other: 0 
+        };
 
         setDashboardData({
           loading: false,
@@ -151,14 +157,14 @@ export default function Dashboard() {
             presentRecords: attendanceStats.presentRecords,
             totalAttendanceRecords: attendanceStats.totalRecords,
             averageProgress: domainStats.averageProgress,
-  masteredDomains: domainStats.totalMastered,
-  totalDomains: domainStats.totalItems,
-  domainProgress: domainStats.domains.map(d => ({
-    name: d.domain,
-    progress: d.progress.toString()
-  })),
-            ageGroups,
-            genderDistribution,
+            masteredDomains: domainStats.totalMastered,
+            totalDomains: domainStats.totalItems,
+            domainProgress: domainStats.domains.map(d => ({
+              name: d.domain,
+              progress: d.progress.toString()
+            })),
+            ageGroups: { '3-4': 0, '4-5': 0, '5-6': 0 }, // Will be populated by real data
+            genderDistribution
           },
           recentEvaluations: [
             { evaluation_period: "1st Quarter", average_score: 70 },
@@ -235,24 +241,24 @@ export default function Dashboard() {
 
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <StatCard 
-  icon={<FiUsers className="text-blue-500" size={24} />}
-  title="Total Students"
-  value={dashboardData.stats.totalStudents}
-  subtitle={`${dashboardData.stats.newThisMonth} new enrollments this month`}
-/>
-<StatCard 
-  icon={<FiCalendar className="text-green-500" size={24} />}
-  title="Attendance Rate"
-  value={`${dashboardData.stats.attendanceRate}%`}
-  subtitle={`${dashboardData.stats.presentRecords}/${dashboardData.stats.totalAttendanceRecords} present`}
-/>
-<StatCard 
-  icon={<FiAward className="text-amber-500" size={24} />}
-  title="Avg. Progress"
-  value={`${dashboardData.stats.averageProgress}%`}
-  subtitle={`${dashboardData.stats.masteredDomains}/${dashboardData.stats.totalDomains} mastered`}
-/>
+            <StatCard 
+              icon={<FiUsers className="text-blue-500" size={24} />}
+              title="Total Students"
+              value={dashboardData.stats.totalStudents}
+              subtitle={`${dashboardData.stats.newThisMonth} new enrollments this month`}
+            />
+            <StatCard 
+              icon={<FiCalendar className="text-green-500" size={24} />}
+              title="Attendance Rate"
+              value={`${dashboardData.stats.attendanceRate}%`}
+              subtitle={`${dashboardData.stats.presentRecords}/${dashboardData.stats.totalAttendanceRecords} present`}
+            />
+            <StatCard 
+              icon={<FiAward className="text-amber-500" size={24} />}
+              title="Avg. Progress"
+              value={`${dashboardData.stats.averageProgress}%`}
+              subtitle={`${dashboardData.stats.masteredDomains}/${dashboardData.stats.totalDomains} mastered`}
+            />
             <StatCard 
               icon={<FiClipboard className="text-purple-500" size={24} />}
               title="Pending Evals"

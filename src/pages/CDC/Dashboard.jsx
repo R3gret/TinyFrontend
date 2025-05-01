@@ -294,23 +294,23 @@ export default function Dashboard() {
             </div>
             
             {/* Announcements Card */}
-            <div className="bg-white rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow col-span-2">
+            <div className="bg-white rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow col-span-2 h-36">
               <div className="flex items-center gap-2 mb-2">
                 <FiBell className="text-purple-500" size={16} />
                 <h3 className="text-md font-semibold text-gray-800">Announcements</h3>
               </div>
               
               {dashboardData.announcements.length > 0 ? (
-                <div className="relative h-28">
+                <div className="relative h-24">
                   {/* Announcement Content */}
                   <div className="overflow-hidden h-full">
                     <div className="h-full transition-all duration-300 ease-in-out">
                       <div className="h-full flex flex-col justify-between">
                         <div>
-                          <h4 className="font-medium text-gray-800 text-md">
+                          <h4 className="font-medium text-gray-800 text-sm line-clamp-1">
                             {dashboardData.announcements[activeAnnouncementIndex].title}
                           </h4>
-                          <p className="text-gray-600 text-sm mt-1 line-clamp-2">
+                          <p className="text-gray-600 text-xs mt-1 line-clamp-2">
                             {dashboardData.announcements[activeAnnouncementIndex].message}
                           </p>
                         </div>

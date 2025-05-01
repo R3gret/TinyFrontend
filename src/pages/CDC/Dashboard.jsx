@@ -9,7 +9,9 @@ import {
   FiClipboard, 
   FiPieChart, 
   FiAward,
-  FiTrendingUp
+  FiTrendingUp,
+  FiChevronLeft,
+  FiChevronRight
 } from "react-icons/fi";
 import { CircularProgress, Alert, Button } from "@mui/material";
 
@@ -29,6 +31,7 @@ const apiRequest = async (endpoint, method = 'GET', body = null) => {
 
   const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
   
+  // Only mock other data, not enrollment stats
   if (import.meta.env.MODE === 'development' && endpoint !== '/api/students/enrollment-stats') {
     console.log(`Mocking API call to ${endpoint}`);
     return new Promise(resolve => {
@@ -42,24 +45,6 @@ const apiRequest = async (endpoint, method = 'GET', body = null) => {
               Other: 0
             }
           });
-        } else if (endpoint === '/api/domains/evaluations/average-progress') {
-          resolve({
-            success: true,
-            stats: {
-              averageProgress: 15,
-              totalMastered: 12,
-              totalItems: 80,
-              domains: [
-                { domain: "Cognitive", progress: 10, mastered: 2, total: 21 },
-                { domain: "Self-Help", progress: 7, mastered: 2, total: 27 },
-                { domain: "Expressive Language", progress: 25, mastered: 2, total: 8 },
-                { domain: "Fine Motor", progress: 18, mastered: 2, total: 11 },
-                { domain: "Gross Motor", progress: 15, mastered: 2, total: 13 },
-                { domain: "Receptive Language", progress: 40, mastered: 2, total: 5 },
-                { domain: "Social-Emotional", progress: 8, mastered: 2, total: 24 }
-              ]
-            }
-          });
         } else {
           resolve({ 
             students: Array(11).fill({}).map((_, i) => ({
@@ -68,7 +53,14 @@ const apiRequest = async (endpoint, method = 'GET', body = null) => {
               last_name: ['Reyes', 'Santos', 'Cruz', 'Lopez', 'Gonzales', 'Torres', 'Flores', 'Ramos', 'Delos Reyes', 'Navarro', 'zxcv'][i],
               gender: ['Female', 'Male', 'Male', 'Female', 'Female', 'Female', 'Female', 'Male', 'Female', 'Female', 'Male'][i]
             })),
-            attendance: Array(11).fill({ status: 'Present' })
+            attendance: Array(11).fill({ status: 'Present' }),
+            data: {
+              'Self-Help': { first: { yes: 8, total: 11 } },
+              'Cognitive': { first: { yes: 7, total: 11 } },
+              'Language': { first: { yes: 7, total: 11 } },
+              'Social': { first: { yes: 6, total: 11 } },
+              'Physical': { first: { yes: 6, total: 11 } }
+            }
           });
         }
       }, 500);
@@ -91,17 +83,12 @@ export default function Dashboard() {
     error: null,
     stats: {
       totalStudents: 0,
-      newThisMonth: 0,
+      currentMonthEnrollments: 0,
       enrollmentDifference: 0,
       attendanceRate: 0,
-      presentRecords: 0,
-      totalAttendanceRecords: 0,
-      averageProgress: 0,
-      masteredDomains: 0,
-      totalDomains: 0,
-      domainProgress: [],
       ageGroups: { '3-4': 0, '4-5': 0, '5-6': 0 },
-      genderDistribution: { Male: 0, Female: 0, Other: 0 }
+      genderDistribution: { Male: 0, Female: 0, Other: 0 },
+      domainProgress: []
     },
     recentEvaluations: []
   });
@@ -113,24 +100,13 @@ export default function Dashboard() {
         setDashboardData(prev => ({ ...prev, loading: true, error: null }));
         
         // Fetch all data in parallel
-        const [genderRes, enrollmentRes, domainsRes, attendanceRes] = await Promise.all([
+        const [genderRes, enrollmentRes, studentsRes, attendanceRes, domainsRes] = await Promise.all([
           apiRequest('/api/students/gender-distribution'),
-          apiRequest('/api/students/enrollment-stats'),
-          apiRequest('/api/domains/evaluations/average-progress'),
-          apiRequest('/api/attendance/stats')
+          apiRequest('/api/students/enrollment-stats'), // Real endpoint
+          apiRequest('/api/students'),
+          apiRequest('/api/attendance/stats'), // New attendance stats endpoint
+          apiRequest('/api/domains/evaluations/scores/sample')
         ]);
-
-         const domainResponse = domainsRes || {};
-      const domainStats = {
-        averageProgress: domainResponse.stats?.averageProgress || 
-                         domainResponse.data?.averageProgress || 0,
-        totalMastered: domainResponse.stats?.totalMastered || 
-                      domainResponse.data?.totalMastered || 0,
-        totalItems: domainResponse.stats?.totalItems || 
-                    domainResponse.data?.totalItems || 0,
-        domains: domainResponse.stats?.domains || 
-                 domainResponse.data?.domains || []
-      };
 
         const attendanceStats = attendanceRes.success ? attendanceRes.stats : {
           attendanceRate: 0,
@@ -138,6 +114,7 @@ export default function Dashboard() {
           totalRecords: 0
         };
 
+        // Process enrollment stats from real endpoint
         const enrollmentStats = enrollmentRes.success ? enrollmentRes.stats : {
           total: 0,
           currentMonthEnrollments: 0,
@@ -145,11 +122,18 @@ export default function Dashboard() {
           difference: 0
         };
 
-        const genderDistribution = genderRes.success ? genderRes.distribution : { 
-          Male: 0, 
-          Female: 0, 
-          Other: 0 
-        };
+        // Process gender distribution
+        const genderDistribution = genderRes.success ? genderRes.distribution : { Male: 0, Female: 0, Other: 0 };
+
+        // Process other data
+        const ageGroups = { '3-4': 5, '4-5': 4, '5-6': 2 }; // Example age distribution
+        const domainProgress = [
+          { name: 'Self-Help', progress: '72.7' },  // 8/11
+          { name: 'Cognitive', progress: '63.6' },   // 7/11
+          { name: 'Language', progress: '63.6' },    // 7/11
+          { name: 'Social', progress: '54.5' },      // 6/11
+          { name: 'Physical', progress: '54.5' }     // 6/11
+        ];
 
         setDashboardData({
           loading: false,
@@ -161,15 +145,9 @@ export default function Dashboard() {
             attendanceRate: attendanceStats.attendanceRate,
             presentRecords: attendanceStats.presentRecords,
             totalAttendanceRecords: attendanceStats.totalRecords,
-            averageProgress: domainStats.averageProgress || 0,
-masteredDomains: domainStats.totalMastered || 0,
-totalDomains: domainStats.totalItems || 0,
-domainProgress: (domainStats.domains || []).map(d => ({
-  name: d.domain || 'Unknown',
-  progress: d.progress ? d.progress.toString() : '0'
-})),
-            ageGroups: { '3-4': 0, '4-5': 0, '5-6': 0 }, // Will be populated by real data
-            genderDistribution
+            ageGroups,
+            genderDistribution,
+            domainProgress
           },
           recentEvaluations: [
             { evaluation_period: "1st Quarter", average_score: 70 },
@@ -245,7 +223,7 @@ domainProgress: (domainStats.domains || []).map(d => ({
           </div>
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <StatCard 
               icon={<FiUsers className="text-blue-500" size={24} />}
               title="Total Students"
@@ -258,17 +236,13 @@ domainProgress: (domainStats.domains || []).map(d => ({
               value={`${dashboardData.stats.attendanceRate}%`}
               subtitle={`${dashboardData.stats.presentRecords}/${dashboardData.stats.totalAttendanceRecords} present`}
             />
-            <StatCard 
-              icon={<FiAward className="text-amber-500" size={24} />}
-              title="Avg. Progress"
-              value={`${dashboardData.stats.averageProgress}%`}
-              subtitle={`${dashboardData.stats.masteredDomains}/${dashboardData.stats.totalDomains} mastered`}
-            />
-            <StatCard 
-              icon={<FiClipboard className="text-purple-500" size={24} />}
-              title="Pending Evals"
-              value="8"
-              trend="Due this week"
+            
+            {/* Combined Progress & Evaluations Card */}
+            <ProgressEvalsCombinedCard 
+              progressValue="68%"
+              progressTrend="4 domains mastered"
+              pendingEvals="8"
+              evalsTrend="Due this week"
             />
           </div>
 
@@ -360,6 +334,84 @@ function StatCard({ icon, title, value, subtitle, trend }) {
         <div className="p-2 rounded-lg bg-opacity-20 bg-gray-200">
           {icon}
         </div>
+      </div>
+    </div>
+  );
+}
+
+// Component: Combined Progress & Evaluations Card with Carousel
+function ProgressEvalsCombinedCard({ progressValue, progressTrend, pendingEvals, evalsTrend }) {
+  const [activeSlide, setActiveSlide] = useState(0);
+  const slides = [
+    {
+      icon: <FiAward className="text-amber-500" size={24} />,
+      title: "Avg. Progress",
+      value: progressValue,
+      subtitle: progressTrend
+    },
+    {
+      icon: <FiClipboard className="text-purple-500" size={24} />,
+      title: "Pending Evals",
+      value: pendingEvals,
+      subtitle: evalsTrend
+    }
+  ];
+
+  const nextSlide = () => {
+    setActiveSlide((prev) => (prev + 1) % slides.length);
+  };
+
+  const prevSlide = () => {
+    setActiveSlide((prev) => (prev - 1 + slides.length) % slides.length);
+  };
+
+  return (
+    <div className="bg-white rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+      {/* Navigation Arrows */}
+      <button 
+        onClick={prevSlide}
+        className="absolute left-2 top-1/2 transform -translate-y-1/2 z-10 p-1 rounded-full bg-gray-100 hover:bg-gray-200"
+      >
+        <FiChevronLeft className="text-gray-600" />
+      </button>
+      <button 
+        onClick={nextSlide}
+        className="absolute right-2 top-1/2 transform -translate-y-1/2 z-10 p-1 rounded-full bg-gray-100 hover:bg-gray-200"
+      >
+        <FiChevronRight className="text-gray-600" />
+      </button>
+      
+      {/* Slide Indicators */}
+      <div className="absolute bottom-2 left-0 right-0 flex justify-center space-x-1">
+        {slides.map((_, index) => (
+          <button
+            key={index}
+            onClick={() => setActiveSlide(index)}
+            className={`w-2 h-2 rounded-full ${index === activeSlide ? 'bg-gray-600' : 'bg-gray-300'}`}
+          />
+        ))}
+      </div>
+      
+      {/* Slides */}
+      <div className="flex transition-transform duration-300" style={{ transform: `translateX(-${activeSlide * 100}%)` }}>
+        {slides.map((slide, index) => (
+          <div 
+            key={index}
+            className="w-full flex-shrink-0 px-2"
+            style={{ display: index === activeSlide ? 'block' : 'none' }}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-500 text-sm font-medium">{slide.title}</p>
+                <p className="text-2xl font-bold mt-1">{slide.value}</p>
+                {slide.subtitle && <p className="text-xs text-gray-500 mt-1">{slide.subtitle}</p>}
+              </div>
+              <div className="p-2 rounded-lg bg-opacity-20 bg-gray-200">
+                {slide.icon}
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

@@ -455,7 +455,7 @@ function StatCard({ icon, title, value, subtitle, trend, genderBreakdown }) {
         <div className="flex flex-col justify-between h-full">
           <div>
             <p className="text-gray-500 text-xs font-medium">{title}</p>
-            <p className="text-xl font-bold mt-1">{value}</p>
+            <p className="text-3xl font-bold mt-1">{value}</p>
           </div>
           <div>
             {genderBreakdown && (

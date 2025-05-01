@@ -45,6 +45,39 @@ const apiRequest = async (endpoint, method = 'GET', body = null) => {
               Other: 0
             }
           });
+        } else if (endpoint === '/api/announcements') {
+          resolve({
+            success: true,
+            announcements: [
+              {
+                id: 1,
+                title: "Parent-Teacher Meeting",
+                message: "Scheduled for next Friday at 2 PM. Please bring your child's progress report.",
+                author: "Admin",
+                ageFilter: "all",
+                createdAt: new Date().toISOString(),
+                attachmentUrl: null
+              },
+              {
+                id: 2,
+                title: "Field Trip Permission",
+                message: "Permission slips for the museum trip are due by Wednesday.",
+                author: "Teacher Sarah",
+                ageFilter: "4-5",
+                createdAt: new Date(Date.now() - 86400000).toISOString(),
+                attachmentUrl: null
+              },
+              {
+                id: 3,
+                title: "Holiday Closure",
+                message: "Center will be closed next Monday for Memorial Day.",
+                author: "Admin",
+                ageFilter: "all",
+                createdAt: new Date(Date.now() - 172800000).toISOString(),
+                attachmentUrl: null
+              }
+            ]
+          });
         } else {
           resolve({ 
             students: Array(11).fill({}).map((_, i) => ({
@@ -90,8 +123,11 @@ export default function Dashboard() {
       genderDistribution: { Male: 0, Female: 0, Other: 0 },
       domainProgress: []
     },
-    recentEvaluations: []
+    recentEvaluations: [],
+    announcements: []
   });
+
+  const [activeAnnouncementIndex, setActiveAnnouncementIndex] = useState(0);
 
   // Fetch all dashboard data
   useEffect(() => {
@@ -100,12 +136,13 @@ export default function Dashboard() {
         setDashboardData(prev => ({ ...prev, loading: true, error: null }));
         
         // Fetch all data in parallel
-        const [genderRes, enrollmentRes, studentsRes, attendanceRes, domainsRes] = await Promise.all([
+        const [genderRes, enrollmentRes, studentsRes, attendanceRes, domainsRes, announcementsRes] = await Promise.all([
           apiRequest('/api/students/gender-distribution'),
           apiRequest('/api/students/enrollment-stats'), // Real endpoint
           apiRequest('/api/students'),
           apiRequest('/api/attendance/stats'), // New attendance stats endpoint
-          apiRequest('/api/domains/evaluations/scores/sample')
+          apiRequest('/api/domains/evaluations/scores/sample'),
+          apiRequest('/api/announcements') // New announcements endpoint
         ]);
 
         const attendanceStats = attendanceRes.success ? attendanceRes.stats : {
@@ -124,6 +161,9 @@ export default function Dashboard() {
 
         // Process gender distribution
         const genderDistribution = genderRes.success ? genderRes.distribution : { Male: 0, Female: 0, Other: 0 };
+
+        // Process announcements
+        const announcements = announcementsRes.success ? announcementsRes.announcements : [];
 
         // Process other data
         const ageGroups = { '3-4': 5, '4-5': 4, '5-6': 2 }; // Example age distribution
@@ -153,7 +193,8 @@ export default function Dashboard() {
             { evaluation_period: "1st Quarter", average_score: 70 },
             { evaluation_period: "2nd Quarter", average_score: 75 },
             { evaluation_period: "3rd Quarter", average_score: 72 }
-          ]
+          ],
+          announcements
         });
 
       } catch (err) {
@@ -168,6 +209,19 @@ export default function Dashboard() {
 
     fetchDashboardData();
   }, []);
+
+  // Set up carousel auto-rotation
+  useEffect(() => {
+    if (dashboardData.announcements.length <= 1) return;
+
+    const interval = setInterval(() => {
+      setActiveAnnouncementIndex(prev => 
+        prev === dashboardData.announcements.length - 1 ? 0 : prev + 1
+      );
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [dashboardData.announcements.length]);
 
   if (dashboardData.loading) {
     return (
@@ -223,7 +277,7 @@ export default function Dashboard() {
           </div>
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <StatCard 
               icon={<FiUsers className="text-blue-500" size={24} />}
               title="Total Students"
@@ -237,13 +291,102 @@ export default function Dashboard() {
               subtitle={`${dashboardData.stats.presentRecords}/${dashboardData.stats.totalAttendanceRecords} present`}
             />
             
-            {/* Combined Progress & Evaluations Card */}
-            <ProgressEvalsCombinedCard 
-              progressValue="68%"
-              progressTrend="4 domains mastered"
-              pendingEvals="8"
-              evalsTrend="Due this week"
-            />
+            {/* Combined Progress & Announcements Card */}
+            <div className="bg-white rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow col-span-2">
+              <div className="flex h-full">
+                {/* Progress Section */}
+                <div className="w-1/2 border-r pr-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <FiAward className="text-amber-500" size={20} />
+                      <p className="text-gray-500 text-sm font-medium">Avg. Progress</p>
+                    </div>
+                    <div className="text-2xl font-bold">68%</div>
+                  </div>
+                  <p className="text-xs text-gray-500 mb-4">4 domains mastered</p>
+                  
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <FiClipboard className="text-purple-500" size={20} />
+                      <p className="text-gray-500 text-sm font-medium">Pending Evals</p>
+                    </div>
+                    <div className="text-2xl font-bold">8</div>
+                  </div>
+                  <p className="text-xs text-gray-500">Due this week</p>
+                </div>
+                
+                {/* Announcements Carousel */}
+                <div className="w-1/2 pl-4 relative">
+                  <h3 className="text-sm font-medium text-gray-500 mb-2">Announcements</h3>
+                  
+                  {dashboardData.announcements.length > 0 ? (
+                    <div className="relative h-full">
+                      {/* Announcement Content */}
+                      <div className="overflow-hidden h-full">
+                        <div className="h-full transition-all duration-300 ease-in-out">
+                          <div className="h-full flex flex-col">
+                            <h4 className="font-semibold text-gray-800 truncate">
+                              {dashboardData.announcements[activeAnnouncementIndex].title}
+                            </h4>
+                            <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                              {dashboardData.announcements[activeAnnouncementIndex].message}
+                            </p>
+                            <div className="mt-auto text-xs text-gray-400">
+                              <p>
+                                {new Date(dashboardData.announcements[activeAnnouncementIndex].createdAt)
+                                  .toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                              </p>
+                              <p className="text-gray-500">
+                                {dashboardData.announcements[activeAnnouncementIndex].author}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Navigation Arrows */}
+                      {dashboardData.announcements.length > 1 && (
+                        <>
+                          <button 
+                            onClick={() => setActiveAnnouncementIndex(prev => 
+                              prev === 0 ? dashboardData.announcements.length - 1 : prev - 1
+                            )}
+                            className="absolute left-0 top-1/2 -translate-y-1/2 -ml-2 p-1 rounded-full bg-gray-100 hover:bg-gray-200"
+                          >
+                            <FiChevronLeft className="text-gray-600" size={16} />
+                          </button>
+                          <button 
+                            onClick={() => setActiveAnnouncementIndex(prev => 
+                              prev === dashboardData.announcements.length - 1 ? 0 : prev + 1
+                            )}
+                            className="absolute right-0 top-1/2 -translate-y-1/2 -mr-2 p-1 rounded-full bg-gray-100 hover:bg-gray-200"
+                          >
+                            <FiChevronRight className="text-gray-600" size={16} />
+                          </button>
+                        </>
+                      )}
+                      
+                      {/* Indicators */}
+                      {dashboardData.announcements.length > 1 && (
+                        <div className="absolute bottom-0 left-0 right-0 flex justify-center gap-1">
+                          {dashboardData.announcements.map((_, index) => (
+                            <button
+                              key={index}
+                              onClick={() => setActiveAnnouncementIndex(index)}
+                              className={`w-2 h-2 rounded-full transition-colors ${index === activeAnnouncementIndex ? 'bg-gray-600' : 'bg-gray-300'}`}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="h-full flex items-center justify-center text-gray-400 text-sm">
+                      No announcements available
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Data Visualization Section */}
@@ -334,84 +477,6 @@ function StatCard({ icon, title, value, subtitle, trend }) {
         <div className="p-2 rounded-lg bg-opacity-20 bg-gray-200">
           {icon}
         </div>
-      </div>
-    </div>
-  );
-}
-
-// Component: Combined Progress & Evaluations Card with Carousel
-function ProgressEvalsCombinedCard({ progressValue, progressTrend, pendingEvals, evalsTrend }) {
-  const [activeSlide, setActiveSlide] = useState(0);
-  const slides = [
-    {
-      icon: <FiAward className="text-amber-500" size={24} />,
-      title: "Avg. Progress",
-      value: progressValue,
-      subtitle: progressTrend
-    },
-    {
-      icon: <FiClipboard className="text-purple-500" size={24} />,
-      title: "Pending Evals",
-      value: pendingEvals,
-      subtitle: evalsTrend
-    }
-  ];
-
-  const nextSlide = () => {
-    setActiveSlide((prev) => (prev + 1) % slides.length);
-  };
-
-  const prevSlide = () => {
-    setActiveSlide((prev) => (prev - 1 + slides.length) % slides.length);
-  };
-
-  return (
-    <div className="bg-white rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
-      {/* Navigation Arrows */}
-      <button 
-        onClick={prevSlide}
-        className="absolute left-2 top-1/2 transform -translate-y-1/2 z-10 p-1 rounded-full bg-gray-100 hover:bg-gray-200"
-      >
-        <FiChevronLeft className="text-gray-600" />
-      </button>
-      <button 
-        onClick={nextSlide}
-        className="absolute right-2 top-1/2 transform -translate-y-1/2 z-10 p-1 rounded-full bg-gray-100 hover:bg-gray-200"
-      >
-        <FiChevronRight className="text-gray-600" />
-      </button>
-      
-      {/* Slide Indicators */}
-      <div className="absolute bottom-2 left-0 right-0 flex justify-center space-x-1">
-        {slides.map((_, index) => (
-          <button
-            key={index}
-            onClick={() => setActiveSlide(index)}
-            className={`w-2 h-2 rounded-full ${index === activeSlide ? 'bg-gray-600' : 'bg-gray-300'}`}
-          />
-        ))}
-      </div>
-      
-      {/* Slides */}
-      <div className="flex transition-transform duration-300" style={{ transform: `translateX(-${activeSlide * 100}%)` }}>
-        {slides.map((slide, index) => (
-          <div 
-            key={index}
-            className="w-full flex-shrink-0 px-2"
-            style={{ display: index === activeSlide ? 'block' : 'none' }}
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-500 text-sm font-medium">{slide.title}</p>
-                <p className="text-2xl font-bold mt-1">{slide.value}</p>
-                {slide.subtitle && <p className="text-xs text-gray-500 mt-1">{slide.subtitle}</p>}
-              </div>
-              <div className="p-2 rounded-lg bg-opacity-20 bg-gray-200">
-                {slide.icon}
-              </div>
-            </div>
-          </div>
-        ))}
       </div>
     </div>
   );

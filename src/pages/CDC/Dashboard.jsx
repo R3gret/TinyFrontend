@@ -436,17 +436,17 @@ export default function Dashboard() {
 
           {/* Domain Categories - Single Row */}
           <div className="bg-white rounded-xl p-6 shadow-sm">
-            <h3 className="text-xl font-semibold mb-4">Domain Categories</h3>
-            <div className="flex flex-nowrap overflow-x-auto gap-4 pb-2">
-              {dashboardData.stats.domainProgress.map((domain, i) => (
-                <DomainCard 
-                  key={i}
-                  name={domain.name}
-                  color={['#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#6366f1', '#ef4444'][i % 7]}
-                />
-              ))}
-            </div>
-          </div>
+  <h3 className="text-xl font-semibold mb-4">Domain Categories</h3>
+  <div className="grid grid-cols-7 gap-2">
+    {dashboardData.stats.domainProgress.map((domain, i) => (
+      <DomainCard 
+        key={i}
+        name={domain.name}
+        color={['#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#6366f1', '#ef4444'][i % 7]}
+      />
+    ))}
+  </div>
+</div>
 
           {/* Recent Evaluations */}
           {dashboardData.recentEvaluations.length > 0 && (
@@ -505,21 +505,21 @@ function StatCard({ icon, title, value, subtitle, trend, genderBreakdown }) {
 // Component: Domain Card (simplified without progress)
 function DomainCard({ name, color }) {
   return (
-    <div className="flex-shrink-0 w-24 text-center">
-      <div className="w-12 h-12 mx-auto mb-2 flex items-center justify-center">
+    <div className="flex flex-col items-center justify-center p-2">
+      <div className="w-10 h-10 flex items-center justify-center mb-1">
         <div 
           className="w-full h-full rounded-full flex items-center justify-center"
           style={{ backgroundColor: `${color}20`, border: `2px solid ${color}` }}
         >
           <span 
-            className="text-lg font-bold"
+            className="text-sm font-bold"
             style={{ color }}
           >
             {name.charAt(0)}
           </span>
         </div>
       </div>
-      <p className="text-xs font-medium truncate">{name}</p>
+      <p className="text-xs font-medium text-center line-clamp-2">{name}</p>
     </div>
   );
 }

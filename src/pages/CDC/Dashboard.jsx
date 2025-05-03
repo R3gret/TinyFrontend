@@ -102,8 +102,8 @@ const apiRequest = async (endpoint, method = 'GET', body = null) => {
               }
             ]
           });
-        } else if (endpoint === '/api/attendance/weekly') {
-          // Mock data for daily attendance (7 days)
+       } else if (endpoint === '/api/attendance/weekly') {
+          // Mock data for daily attendance (7 days centered around today)
           const dailyData = [];
           const today = new Date();
           
@@ -546,35 +546,20 @@ export default function Dashboard() {
       </div>
     ) : weeklyAttendance.data.length > 0 ? (
       <LineChart
-        data={(() => {
-          // Generate 7 days centered around today
-          const days = [];
-          const today = new Date();
-          const startDate = new Date(today);
-          startDate.setDate(today.getDate() - 3); // 3 days before today
-          
-          for (let i = 0; i < 7; i++) {
-            const currentDate = new Date(startDate);
-            currentDate.setDate(startDate.getDate() + i);
-            const dateString = currentDate.toISOString().split('T')[0];
-            
-            // Find matching data or use empty values
-            const matchingDay = weeklyAttendance.data.find(d => d.date === dateString);
-            
-            days.push({
-              name: currentDate.toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric'
-              }),
-              percentage: matchingDay?.percentage || 0,
-              present: matchingDay?.present || 0,
-              absent: matchingDay?.absent || 0,
-              total: matchingDay?.total || 0,
-              date: dateString
-            });
-          }
-          return days;
-        })()}
+        data={weeklyAttendance.data.map(day => {
+          const date = new Date(day.date);
+          return {
+            name: date.toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric'
+            }),
+            percentage: day.percentage,
+            present: day.present,
+            absent: day.absent,
+            total: day.total,
+            date: day.date
+          };
+        })}
         config={{
           keys: ['percentage'],
           colors: ['#10B981'],
@@ -587,7 +572,8 @@ export default function Dashboard() {
             new Date(props.payload.date).toLocaleDateString('en-US', {
               weekday: 'long',
               month: 'long',
-              day: 'numeric'
+              day: 'numeric',
+              year: 'numeric'
             })
           ],
           xAxisConfig: {
@@ -602,7 +588,7 @@ export default function Dashboard() {
       </div>
     )}
   </div>
-</div>
+</div>  
         </div>
       </div>
     </div>

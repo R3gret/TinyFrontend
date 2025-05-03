@@ -173,17 +173,7 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
         left: '50%',
         transform: 'translate(-50%, -50%)',
         maxHeight: '90vh',
-        overflowY: 'auto',
-        '& .MuiFormControl-root': {
-          minWidth: '100%'
-        },
-        '& .MuiInputBase-root': {
-          height: '56px'
-        },
-        '& .MuiSelect-select': {
-          display: 'flex',
-          alignItems: 'center'
-        }
+        overflowY: 'auto'
       }}>
         <Typography variant="h6" component="h2" sx={{ 
           mb: 3, 
@@ -201,8 +191,9 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
         )}
 
         <form onSubmit={handleSubmit}>
-          <Grid container spacing={3}>
-            <Grid item xs={12}>
+          <Grid container spacing={2}>
+            {/* Row 1 */}
+            <Grid item xs={4}>
               <TextField
                 label="CDC Name"
                 value={formData.name}
@@ -217,7 +208,7 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
               />
             </Grid>
 
-            <Grid item xs={12} sm={6}>
+            <Grid item xs={4}>
               <FormControl fullWidth>
                 <InputLabel>Region</InputLabel>
                 <Select
@@ -225,6 +216,11 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
                   label="Region"
                   onChange={(e) => handleRegionChange(e.target.value)}
                   required
+                  sx={{
+                    '& .MuiInputBase-root': {
+                      height: '56px'
+                    }
+                  }}
                   MenuProps={{
                     PaperProps: {
                       style: {
@@ -242,7 +238,7 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
               </FormControl>
             </Grid>
 
-            <Grid item xs={12} sm={6}>
+            <Grid item xs={4}>
               <FormControl fullWidth>
                 <InputLabel>Province</InputLabel>
                 <Select
@@ -251,6 +247,11 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
                   onChange={(e) => handleProvinceChange(e.target.value)}
                   disabled={!formData.region}
                   required
+                  sx={{
+                    '& .MuiInputBase-root': {
+                      height: '56px'
+                    }
+                  }}
                   MenuProps={{
                     PaperProps: {
                       style: {
@@ -268,7 +269,8 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
               </FormControl>
             </Grid>
 
-            <Grid item xs={12} sm={6}>
+            {/* Row 2 */}
+            <Grid item xs={4}>
               <FormControl fullWidth>
                 <InputLabel>Municipality</InputLabel>
                 <Select
@@ -277,6 +279,11 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
                   onChange={(e) => handleMunicipalityChange(e.target.value)}
                   disabled={!formData.province}
                   required
+                  sx={{
+                    '& .MuiInputBase-root': {
+                      height: '56px'
+                    }
+                  }}
                   MenuProps={{
                     PaperProps: {
                       style: {
@@ -294,7 +301,7 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
               </FormControl>
             </Grid>
 
-            <Grid item xs={12} sm={6}>
+            <Grid item xs={4}>
               <FormControl fullWidth>
                 <InputLabel>Barangay</InputLabel>
                 <Select
@@ -303,6 +310,11 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
                   onChange={(e) => setFormData({...formData, barangay: e.target.value})}
                   disabled={!formData.municipality}
                   required
+                  sx={{
+                    '& .MuiInputBase-root': {
+                      height: '56px'
+                    }
+                  }}
                   MenuProps={{
                     PaperProps: {
                       style: {
@@ -320,6 +332,11 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
               </FormControl>
             </Grid>
 
+            <Grid item xs={4}>
+              {/* Empty cell for alignment */}
+            </Grid>
+
+            {/* Full width row for location details */}
             <Grid item xs={12}>
               <TextField
                 label="Location Details (Street, Landmark, etc.)"
@@ -344,7 +361,8 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
               startIcon={<X />}
               disabled={loading}
               sx={{ 
-                minWidth: '120px',
+                width: '150px',
+                height: '48px',
                 color: "#2e7d32", 
                 borderColor: "#2e7d32",
                 '&:hover': {
@@ -360,7 +378,8 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
               startIcon={<Save />}
               disabled={loading}
               sx={{ 
-                minWidth: '120px',
+                width: '150px',
+                height: '48px',
                 backgroundColor: "#2e7d32",
                 "&:hover": { backgroundColor: "#1b5e20" }
               }}
@@ -410,7 +429,7 @@ const CDCPage = () => {
             sx={{ 
               backgroundColor: "#2e7d32",
               "&:hover": { backgroundColor: "#1b5e20" },
-              minWidth: '200px',
+              width: '250px',
               height: '48px'
             }}
           >

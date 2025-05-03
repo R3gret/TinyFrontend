@@ -4,8 +4,6 @@ import { PieChart, BarChart, LineChart } from "../../components/Charts";
 import Navbar from "../../components/all/Navbar";
 import Sidebar from "../../components/CDC/Sidebar";
 import bgImage from "../../assets/bg1.jpg";
-import Autocomplete from '@mui/material/Autocomplete';
-import TextField from '@mui/material/TextField';
 import { 
   FiUsers, 
   FiCalendar, 
@@ -112,6 +110,25 @@ const apiRequest = async (endpoint, method = 'GET', body = null) => {
               }
             ]
           });
+        } else if (endpoint === '/api/attendance/weekly') {
+          // Mock data for weekly attendance
+          const weeks = [];
+          const now = new Date();
+          for (let i = 8; i >= 0; i--) {
+            const date = new Date(now);
+            date.setDate(now.getDate() - (i * 7));
+            const weekNum = getWeekNumber(date);
+            weeks.push({
+              week: weekNum,
+              present: Math.floor(Math.random() * 15) + 5,
+              total: 20,
+              percentage: Math.floor(Math.random() * 30) + 70
+            });
+          }
+          resolve({
+            success: true,
+            data: weeks
+          });
         } else {
           resolve({ 
             students: Array(11).fill({}).map((_, i) => ({
@@ -119,7 +136,7 @@ const apiRequest = async (endpoint, method = 'GET', body = null) => {
               first_name: ['Sophia', 'Liam', 'Ethan', 'Isabella', 'Mia', 'Chloe', 'Ella', 'Lucas', 'Aria', 'Samantha', 'asdfg'][i],
               last_name: ['Reyes', 'Santos', 'Cruz', 'Lopez', 'Gonzales', 'Torres', 'Flores', 'Ramos', 'Delos Reyes', 'Navarro', 'zxcv'][i],
               gender: ['Female', 'Male', 'Male', 'Female', 'Female', 'Female', 'Female', 'Male', 'Female', 'Female', 'Male'][i],
-              birthdate: '2020-01-01' // Added birthdate for demo
+              birthdate: '2020-01-01'
             })),
             attendance: Array(11).fill({ status: 'Present' }),
             data: {
@@ -145,54 +162,16 @@ const apiRequest = async (endpoint, method = 'GET', body = null) => {
   return response.json();
 };
 
-// Helper functions moved outside the apiRequest function
-const getAgeRange = (years, months) => {
-  if (years === 'N/A' || months === 'N/A') return null;
-  const ageDecimal = years + (months / 12);
-  if (ageDecimal >= 3.1 && ageDecimal <= 4.0) return '3.1-4.0';
-  if (ageDecimal >= 4.1 && ageDecimal <= 5.0) return '4.1-5.0';
-  if (ageDecimal >= 5.1 && ageDecimal <= 5.11) return '5.1-5.11';
-  return null;
-};
-
-const calculateAgeAtEvaluation = (birthdate, evaluationDate) => {
-  if (!birthdate || !evaluationDate) return { years: 'N/A', months: 'N/A' };
-  try {
-    const birthDate = new Date(birthdate);
-    const evalDate = new Date(evaluationDate);
-    let years = evalDate.getFullYear() - birthDate.getFullYear();
-    let months = evalDate.getMonth() - birthDate.getMonth();
-    
-    if (months < 0 || (months === 0 && evalDate.getDate() < birthDate.getDate())) {
-      years--;
-      months += 12;
-    }
-    if (evalDate.getDate() < birthDate.getDate()) {
-      months--;
-      if (months < 0) months += 12;
-    }
-    return { years, months };
-  } catch (e) {
-    return { years: 'N/A', months: 'N/A' };
-  }
-};
-
-const getScaledScore = (domain, rawScore, ageRange) => {
-  if (!ageRange || !SCORE_TABLES[ageRange]) return '-';
-  const normalizedDomain = domain.split('/')[0].trim();
-  if (!SCORE_TABLES[ageRange][normalizedDomain]) return '-';
-  if (rawScore === '-' || rawScore === undefined || rawScore === null) return '-';
-  
-  const entry = SCORE_TABLES[ageRange][normalizedDomain].find(
-    item => rawScore >= item.min && rawScore <= item.max
-  );
-  return entry ? entry.score : '-';
-};
+// Helper function to get week number
+function getWeekNumber(d) {
+  d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+  return d.getUTCFullYear() * 100 + weekNo;
+}
 
 export default function Dashboard() {
-  const [students, setStudents] = useState([]);
-  const [selectedStudent, setSelectedStudent] = useState(null);
-  const [loadingStudents, setLoadingStudents] = useState(false);
   const [dashboardData, setDashboardData] = useState({
     loading: true,
     error: null,
@@ -205,25 +184,11 @@ export default function Dashboard() {
       genderDistribution: { Male: 0, Female: 0, Other: 0 },
       domainProgress: []
     },
-    recentEvaluations: [],
+    weeklyAttendance: [],
     announcements: []
   });
-  const [activeAnnouncementIndex, setActiveAnnouncementIndex] = useState(0);
 
-  useEffect(() => {
-    const fetchStudents = async () => {
-      try {
-        setLoadingStudents(true);
-        const data = await apiRequest('/api/students');
-        setStudents(data.students || []);
-      } catch (err) {
-        console.error("Error fetching students:", err);
-      } finally {
-        setLoadingStudents(false);
-      }
-    };
-    fetchStudents();
-  }, []);
+  const [activeAnnouncementIndex, setActiveAnnouncementIndex] = useState(0);
 
   // Fetch all dashboard data
   useEffect(() => {
@@ -232,13 +197,14 @@ export default function Dashboard() {
         setDashboardData(prev => ({ ...prev, loading: true, error: null }));
         
         // Fetch all data in parallel
-        const [genderRes, enrollmentRes, ageRes, domainProgressRes, attendanceRes, announcementsRes] = await Promise.all([
+        const [genderRes, enrollmentRes, ageRes, domainProgressRes, attendanceRes, announcementsRes, weeklyAttendanceRes] = await Promise.all([
           apiRequest('/api/students/gender-distribution'),
           apiRequest('/api/students/enrollment-stats'),
           apiRequest('/api/students/age-distribution'),
           apiRequest('/api/domains/progress-summary'),
           apiRequest('/api/attendance/stats'),
-          apiRequest('/api/announcements')
+          apiRequest('/api/announcements'),
+          apiRequest('/api/attendance/weekly')
         ]);
 
         const attendanceStats = attendanceRes.success ? attendanceRes.stats : {
@@ -257,6 +223,7 @@ export default function Dashboard() {
         const genderDistribution = genderRes.success ? genderRes.distribution : { Male: 0, Female: 0, Other: 0 };
         const ageGroups = ageRes.success ? ageRes.distribution : { '3-4': 0, '4-5': 0, '5-6': 0 };
         const announcements = announcementsRes.success ? announcementsRes.announcements : [];
+        const weeklyAttendance = weeklyAttendanceRes.success ? weeklyAttendanceRes.data : [];
 
         // Process domain progress
         const domainProgress = domainProgressRes.success 
@@ -282,11 +249,7 @@ export default function Dashboard() {
             genderDistribution,
             domainProgress
           },
-          recentEvaluations: [
-            { evaluation_period: "1st Quarter", average_score: 70 },
-            { evaluation_period: "2nd Quarter", average_score: 75 },
-            { evaluation_period: "3rd Quarter", average_score: 72 }
-          ],
+          weeklyAttendance,
           announcements
         });
 
@@ -525,83 +488,36 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Recent Evaluations */}
-          {/* Recent Evaluations */}
-{dashboardData.recentEvaluations.length > 0 && (
-  <div className="bg-white rounded-xl p-6 shadow-sm">
-    <div className="flex justify-between items-center mb-4">
-      <h3 className="text-xl font-semibold">Recent Evaluations</h3>
-      <div className="w-64">
-        <Autocomplete
-          options={students}
-          getOptionLabel={(student) => `${student.first_name} ${student.last_name}`}
-          loading={loadingStudents}
-          renderInput={(params) => (
-            <TextField 
-              {...params} 
-              label="Select Student" 
-              variant="outlined" 
-              size="small"
-            />
-          )}
-          onChange={(event, value) => setSelectedStudent(value)}
-          value={selectedStudent}
-        />
-      </div>
-    </div>
-    <div className="h-64">
-      <LineChart
-        data={dashboardData.recentEvaluations.map((evalItem) => {
-          // Calculate standard score if student is selected
-          let standardScore = '-';
-          if (selectedStudent) {
-            console.log('Selected Student:', selectedStudent);
-            
-            const ageAtEval = calculateAgeAtEvaluation(
-              selectedStudent.birthdate, 
-              new Date().toISOString() // Use current date for demo, replace with actual eval date
-            );
-            console.log('Age at Evaluation:', ageAtEval);
-            
-            const ageRange = getAgeRange(ageAtEval.years, ageAtEval.months);
-            console.log('Age Range:', ageRange);
-            
-            // Calculate total scaled score (simplified example)
-            let totalScaled = 0;
-            dashboardData.stats.domainProgress.forEach(domain => {
-              const rawScore = Math.floor(Math.random() * 20); // Replace with actual score
-              const scaled = getScaledScore(domain.name, rawScore, ageRange);
-              console.log(`Domain: ${domain.name}, Raw: ${rawScore}, Scaled: ${scaled}`);
-              
-              if (scaled !== '-') totalScaled += parseInt(scaled);
-            });
-            
-            console.log('Total Scaled Score:', totalScaled);
-            
-            // Find standard score
-            const entry = STANDARD_SCORE_TABLE.find(item => totalScaled <= item.sum);
-            standardScore = entry ? entry.score : '-';
-            console.log('Standard Score:', standardScore);
-          }
-          
-          const dataPoint = {
-            name: evalItem.evaluation_period,
-            progress: selectedStudent ? standardScore : evalItem.average_score,
-            type: selectedStudent ? 'Standard Score' : 'Average Score'
-          };
-          
-          console.log('Data Point:', dataPoint);
-          return dataPoint;
-        })}
-      />
-    </div>
-    {selectedStudent && (
-      <div className="mt-4 text-sm text-gray-600">
-        Showing standard scores for {selectedStudent.first_name} {selectedStudent.last_name}
-      </div>
-    )}
-  </div>
-)}
+          {/* Weekly Attendance Graph */}
+          <div className="bg-white rounded-xl p-6 shadow-sm">
+            <h3 className="text-xl font-semibold mb-4">Weekly Attendance</h3>
+            <div className="h-64">
+              {dashboardData.weeklyAttendance.length > 0 ? (
+                <LineChart
+                  data={dashboardData.weeklyAttendance.map(week => ({
+                    name: `Week ${week.week.toString().slice(4)}`,
+                    percentage: week.percentage,
+                    present: week.present,
+                    total: week.total
+                  }))}
+                  config={{
+                    keys: ['percentage'],
+                    colors: ['#10B981'],
+                    yAxisLabel: 'Attendance Percentage',
+                    tooltipFormat: (value, name, props) => [
+                      `${props.payload.percentage}%`,
+                      `${props.payload.present}/${props.payload.total} students`,
+                      `Week ${props.payload.name}`
+                    ]
+                  }}
+                />
+              ) : (
+                <div className="h-full flex items-center justify-center text-gray-500">
+                  No attendance data available
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>

@@ -77,6 +77,14 @@ const Login = () => {
               console.log("Redirecting to worker dashboard");
               navigate("/dashboard");
               break;
+            case 'parent':
+              console.log("Redirecting to worker dashboard");
+              navigate("/dashboard");
+              break;
+            case 'eccdc':
+                console.log("Redirecting to worker dashboard");
+                navigate("/eccdc-manageacc");
+                break;
             default:
               console.warn("Unknown user type, redirecting to home");
               navigate("/");

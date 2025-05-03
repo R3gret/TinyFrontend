@@ -19,6 +19,9 @@ import AccProfiles from "./pages/Admin/AccProfiles";
 import ManageAcc from "./pages/Admin/ManageAcc";
 import AdminProfile from "./pages/Admin/AdminProfile";
 
+import ECCDCCreate from "./pages/ECCDC/ECCDC_CreateCDC";
+import ECCDCMAcc from "./pages/ECCDC/ECCDC_MAcc";
+
 import ProtectedRoute from "./components/all/ProtectedRoute";
 
 export default function App() {
@@ -169,6 +172,22 @@ export default function App() {
           element={
             <ProtectedRoute allowedTypes={["admin"]}>
               <ManageAcc />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/eccdc-manageacc"
+          element={
+            <ProtectedRoute allowedTypes={["eccdc"]}>
+              <ECCDCMAcc />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/eccdc-createacc"
+          element={
+            <ProtectedRoute allowedTypes={["eccdc"]}>
+              <ECCDCCreate />
             </ProtectedRoute>
           }
         />

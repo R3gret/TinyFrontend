@@ -56,17 +56,17 @@ const apiRequest = async (endpoint, method = 'GET', body = null) => {
               '5-6': 2
             }
           });
-        } else if (endpoint === '/api/domains/categories') {
+        } else if (endpoint === '/api/domains/progress-summary') {
           resolve({
             success: true,
-            categories: [
-              'Cognitive',
-              'Expressive Language', 
-              'Fine Motor',
-              'Gross Motor',
-              'Receptive Language',
-              'Self-Help',
-              'Social-Emotional'
+            data: [
+              { category: 'Cognitive', progress: 72, completed: 36, total: 50 },
+              { category: 'Expressive Language', progress: 65, completed: 39, total: 60 },
+              { category: 'Fine Motor', progress: 80, completed: 32, total: 40 },
+              { category: 'Gross Motor', progress: 55, completed: 33, total: 60 },
+              { category: 'Receptive Language', progress: 68, completed: 34, total: 50 },
+              { category: 'Self-Help', progress: 75, completed: 45, total: 60 },
+              { category: 'Social-Emotional', progress: 60, completed: 30, total: 50 }
             ]
           });
         } else if (endpoint === '/api/announcements') {
@@ -160,11 +160,11 @@ export default function Dashboard() {
         setDashboardData(prev => ({ ...prev, loading: true, error: null }));
         
         // Fetch all data in parallel
-        const [genderRes, enrollmentRes, ageRes, domainRes, attendanceRes, announcementsRes] = await Promise.all([
+        const [genderRes, enrollmentRes, ageRes, domainProgressRes, attendanceRes, announcementsRes] = await Promise.all([
           apiRequest('/api/students/gender-distribution'),
           apiRequest('/api/students/enrollment-stats'),
           apiRequest('/api/students/age-distribution'),
-          apiRequest('/api/domains/categories'),
+          apiRequest('/api/domains/progress-summary'), // Updated endpoint
           apiRequest('/api/attendance/stats'),
           apiRequest('/api/announcements')
         ]);
@@ -186,11 +186,13 @@ export default function Dashboard() {
         const ageGroups = ageRes.success ? ageRes.distribution : { '3-4': 0, '4-5': 0, '5-6': 0 };
         const announcements = announcementsRes.success ? announcementsRes.announcements : [];
 
-        // Create domain progress cards
-        const domainProgress = domainRes.success 
-          ? domainRes.categories.map(category => ({ 
-              name: category.split('/')[0].trim(), // Only take text before slash
-              progress: '0' 
+        // Process domain progress
+        const domainProgress = domainProgressRes.success 
+          ? domainProgressRes.data.map(item => ({
+              name: item.category,
+              progress: item.progress.toString(),
+              completed: item.completed,
+              total: item.total
             }))
           : [];
 
@@ -434,19 +436,22 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Domain Categories - Single Row */}
+          {/* Domain Progress - Single Row with Progress Circles */}
           <div className="bg-white rounded-xl p-6 shadow-sm">
-  <h3 className="text-xl font-semibold mb-4">Domain Categories</h3>
-  <div className="grid grid-cols-7 gap-2">
-    {dashboardData.stats.domainProgress.map((domain, i) => (
-      <DomainCard 
-        key={i}
-        name={domain.name}
-        color={['#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#6366f1', '#ef4444'][i % 7]}
-      />
-    ))}
-  </div>
-</div>
+            <h3 className="text-xl font-semibold mb-4">Domain Progress</h3>
+            <div className="grid grid-cols-7 gap-2">
+              {dashboardData.stats.domainProgress.map((domain, i) => (
+                <DomainProgressCard 
+                  key={i}
+                  name={domain.name}
+                  progress={domain.progress}
+                  completed={domain.completed}
+                  total={domain.total}
+                  color={['#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#6366f1', '#ef4444'][i % 7]}
+                />
+              ))}
+            </div>
+          </div>
 
           {/* Recent Evaluations */}
           {dashboardData.recentEvaluations.length > 0 && (
@@ -502,24 +507,46 @@ function StatCard({ icon, title, value, subtitle, trend, genderBreakdown }) {
   );
 }
 
-// Component: Domain Card (simplified without progress)
-function DomainCard({ name, color }) {
+// Component: Domain Progress Card with circular progress
+function DomainProgressCard({ name, progress, completed, total, color }) {
+  const circumference = 2 * Math.PI * 15;
+  const strokeDashoffset = circumference - (progress / 100) * circumference;
+
   return (
-    <div className="flex flex-col items-center justify-center p-2">
-      <div className="w-10 h-10 flex items-center justify-center mb-1">
-        <div 
-          className="w-full h-full rounded-full flex items-center justify-center"
-          style={{ backgroundColor: `${color}20`, border: `2px solid ${color}` }}
-        >
-          <span 
-            className="text-sm font-bold"
-            style={{ color }}
-          >
-            {name.charAt(0)}
+    <div className="flex flex-col items-center p-2">
+      <div className="relative w-16 h-16 mb-2">
+        <svg className="w-full h-full" viewBox="0 0 36 36">
+          <circle
+            cx="18"
+            cy="18"
+            r="15"
+            fill="none"
+            stroke="#eee"
+            strokeWidth="2"
+          />
+          <circle
+            cx="18"
+            cy="18"
+            r="15"
+            fill="none"
+            stroke={color}
+            strokeWidth="2"
+            strokeDasharray={circumference}
+            strokeDashoffset={strokeDashoffset}
+            strokeLinecap="round"
+            transform="rotate(-90 18 18)"
+          />
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className="text-sm font-bold" style={{ color }}>
+            {progress}%
           </span>
         </div>
       </div>
       <p className="text-xs font-medium text-center line-clamp-2">{name}</p>
+      <p className="text-xs text-gray-500 mt-1">
+        {completed}/{total}
+      </p>
     </div>
   );
 }

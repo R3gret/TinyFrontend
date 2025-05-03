@@ -103,28 +103,28 @@ const apiRequest = async (endpoint, method = 'GET', body = null) => {
             ]
           });
         } else if (endpoint === '/api/attendance/weekly') {
-          // Mock data for weekly attendance with actual dates
-          const weeklyData = [];
-          const now = new Date();
+        // Mock data for weekly attendance with actual dates
+        const weeklyData = [];
+        const now = new Date();
+        
+        // Generate data for last 8 weeks (including current week)
+        for (let i = 8; i >= 0; i--) {
+          const date = new Date(now);
+          date.setDate(now.getDate() - (i * 7));
           
-          // Generate data for last 8 weeks (including current week)
-          for (let i = 8; i >= 0; i--) {
-            const date = new Date(now);
-            date.setDate(now.getDate() - (i * 7));
-            
-            weeklyData.push({
-              date: date.toISOString().split('T')[0],
-              present: Math.floor(Math.random() * 15) + 5,
-              total: 20,
-              percentage: Math.floor(Math.random() * 30) + 70
-            });
-          }
-          
-          resolve({
-            success: true,
-            data: weeklyData
+          weeklyData.push({
+            date: date.toISOString().split('T')[0],
+            present: Math.floor(Math.random() * 15) + 5,
+            total: 20,
+            percentage: Math.floor(Math.random() * 30) + 70
           });
-        } else {
+        }
+        
+        resolve({
+          success: true,
+          data: weeklyData
+        });
+      } else {
           resolve({ 
             students: Array(11).fill({}).map((_, i) => ({
               student_id: i+1,

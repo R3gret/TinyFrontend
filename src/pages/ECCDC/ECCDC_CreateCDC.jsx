@@ -19,7 +19,6 @@ import { Save, X } from "lucide-react";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-// API Service Helper
 const apiRequest = async (endpoint, method = 'GET', body = null) => {
   const token = localStorage.getItem('token');
   const headers = {
@@ -35,12 +34,10 @@ const apiRequest = async (endpoint, method = 'GET', body = null) => {
   };
 
   const response = await fetch(`${API_URL}${endpoint}`, config);
-
   if (!response.ok) {
     const errorData = await response.json();
     throw new Error(errorData.message || 'Request failed');
   }
-
   return response.json();
 };
 
@@ -60,32 +57,20 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
   const [municipalities, setMunicipalities] = useState([]);
   const [barangays, setBarangays] = useState([]);
 
-  // Load regions from imported JSON
   useEffect(() => {
-    const loadRegions = () => {
-      try {
-        const regionsArray = Object.entries(locationData).map(([code, region]) => ({
-          code,
-          name: region.region_name
-        }));
-        setRegions(regionsArray);
-      } catch (err) {
-        console.error("Failed to load regions:", err);
-      }
-    };
-    loadRegions();
+    const regionsArray = Object.entries(locationData).map(([code, region]) => ({
+      code,
+      name: region.region_name
+    }));
+    setRegions(regionsArray);
   }, []);
 
   const handleRegionChange = (value) => {
     const region = regions.find(r => r.name === value);
     if (region) {
       const regionData = locationData[region.code];
-      if (regionData && regionData.province_list) {
-        const provincesArray = Object.keys(regionData.province_list).map(name => ({
-          name
-        }));
-        setProvinces(provincesArray);
-      }
+      const provincesArray = Object.keys(regionData.province_list || {}).map(name => ({ name }));
+      setProvinces(provincesArray);
       
       setFormData(prev => ({
         ...prev,
@@ -104,7 +89,7 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
     
     if (regionCode && locationData[regionCode].province_list[value]) {
       const municipalitiesArray = Object.keys(
-        locationData[regionCode].province_list[value].municipality_list
+        locationData[regionCode].province_list[value].municipality_list || {}
       ).map(name => ({ name }));
       setMunicipalities(municipalitiesArray);
     }
@@ -122,12 +107,11 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
       formData.region === locationData[code].region_name
     );
     
-    if (regionCode && 
-        locationData[regionCode].province_list[formData.province]?.municipality_list[value]) {
-      const barangaysArray = locationData[regionCode]
+    if (regionCode && locationData[regionCode].province_list[formData.province]?.municipality_list[value]) {
+      const barangaysArray = (locationData[regionCode]
         .province_list[formData.province]
         .municipality_list[value]
-        .barangay_list.map(name => ({ name }));
+        .barangay_list || []).map(name => ({ name }));
       setBarangays(barangaysArray);
     }
     
@@ -163,7 +147,7 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
   return (
     <Modal open={open} onClose={onClose}>
       <Box sx={{
-        width: "800px",
+        width: "900px",
         backgroundColor: "white",
         borderRadius: 3,
         p: 4,
@@ -175,8 +159,8 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
         maxHeight: '90vh',
         overflowY: 'auto'
       }}>
-        <Typography variant="h6" component="h2" sx={{ 
-          mb: 3, 
+        <Typography variant="h5" component="h2" sx={{ 
+          mb: 4, 
           textAlign: "center",
           color: "#2e7d32",
           fontWeight: 'bold'
@@ -191,8 +175,7 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
         )}
 
         <form onSubmit={handleSubmit}>
-          <Grid container spacing={2}>
-            {/* CDC Name Field */}
+          <Grid container spacing={3}>
             <Grid item xs={12}>
               <TextField
                 label="CDC Name"
@@ -201,15 +184,20 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
                 required
                 fullWidth
                 sx={{
+                  width: '100%',  // Ensures full width within grid item
                   '& .MuiInputBase-root': {
-                    height: '56px'
+                    height: '56px',
+                    fontSize: '1.1rem',
+                    minWidth: '400px'  // Minimum width for each field
+                  },
+                  '& .MuiInputLabel-root': {
+                    fontSize: '1.1rem'
                   }
                 }}
               />
             </Grid>
 
-            {/* Region Field with Suggestions */}
-            <Grid item xs={12} sm={6}>
+            <Grid item xs={12}>
               <Autocomplete
                 freeSolo
                 options={regions.map(region => region.name)}
@@ -222,10 +210,16 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
                     label="Region"
                     variant="outlined"
                     required
-                    sx={{ 
-                      width: '100%',
+                    fullWidth
+                    sx={{
+                      width: '100%',  // Ensures full width within grid item
                       '& .MuiInputBase-root': {
-                        height: '56px'
+                        height: '56px',
+                        fontSize: '1.1rem',
+                        minWidth: '400px'  // Minimum width for each field
+                      },
+                      '& .MuiInputLabel-root': {
+                        fontSize: '1.1rem'
                       }
                     }}
                   />
@@ -233,8 +227,7 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
               />
             </Grid>
 
-            {/* Province Field with Suggestions */}
-            <Grid item xs={12} sm={6}>
+            <Grid item xs={12}>
               <Autocomplete
                 freeSolo
                 options={provinces.map(province => province.name)}
@@ -248,10 +241,16 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
                     label="Province"
                     variant="outlined"
                     required
-                    sx={{ 
-                      width: '100%',
+                    fullWidth
+                    sx={{
+                      width: '100%',  // Ensures full width within grid item
                       '& .MuiInputBase-root': {
-                        height: '56px'
+                        height: '56px',
+                        fontSize: '1.1rem',
+                        minWidth: '400px'  // Minimum width for each field
+                      },
+                      '& .MuiInputLabel-root': {
+                        fontSize: '1.1rem'
                       }
                     }}
                   />
@@ -259,8 +258,7 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
               />
             </Grid>
 
-            {/* Municipality Field with Suggestions */}
-            <Grid item xs={12} sm={6}>
+            <Grid item xs={12}>
               <Autocomplete
                 freeSolo
                 options={municipalities.map(municipality => municipality.name)}
@@ -274,10 +272,16 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
                     label="Municipality"
                     variant="outlined"
                     required
-                    sx={{ 
-                      width: '100%',
+                    fullWidth
+                    sx={{
+                      width: '100%',  // Ensures full width within grid item
                       '& .MuiInputBase-root': {
-                        height: '56px'
+                        height: '56px',
+                        fontSize: '1.1rem',
+                        minWidth: '400px'  // Minimum width for each field
+                      },
+                      '& .MuiInputLabel-root': {
+                        fontSize: '1.1rem'
                       }
                     }}
                   />
@@ -285,8 +289,7 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
               />
             </Grid>
 
-            {/* Barangay Field with Suggestions */}
-            <Grid item xs={12} sm={6}>
+            <Grid item xs={12}>
               <Autocomplete
                 freeSolo
                 options={barangays.map(barangay => barangay.name)}
@@ -300,10 +303,16 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
                     label="Barangay"
                     variant="outlined"
                     required
-                    sx={{ 
-                      width: '100%',
+                    fullWidth
+                    sx={{
+                      width: '100%',  // Ensures full width within grid item
                       '& .MuiInputBase-root': {
-                        height: '56px'
+                        height: '56px',
+                        fontSize: '1.1rem',
+                        minWidth: '400px'  // Minimum width for each field
+                      },
+                      '& .MuiInputLabel-root': {
+                        fontSize: '1.1rem'
                       }
                     }}
                   />
@@ -315,17 +324,18 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
           <Box sx={{ 
             display: "flex", 
             justifyContent: "flex-end", 
-            gap: 2, 
-            mt: 4 
+            gap: 3, 
+            mt: 5 
           }}>
             <Button 
               onClick={onClose} 
               variant="outlined" 
-              startIcon={<X />}
+              startIcon={<X size={24} />}
               disabled={loading}
               sx={{ 
-                width: '150px',
-                height: '48px',
+                width: '180px',
+                height: '56px',
+                fontSize: '1.1rem',
                 color: "#2e7d32", 
                 borderColor: "#2e7d32",
                 '&:hover': {
@@ -338,16 +348,17 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
             <Button
               type="submit"
               variant="contained"
-              startIcon={<Save />}
+              startIcon={<Save size={24} />}
               disabled={loading}
               sx={{ 
-                width: '150px',
-                height: '48px',
+                width: '180px',
+                height: '56px',
+                fontSize: '1.1rem',
                 backgroundColor: "#2e7d32",
                 "&:hover": { backgroundColor: "#1b5e20" }
               }}
             >
-              {loading ? <CircularProgress size={24} /> : "Create CDC"}
+              {loading ? <CircularProgress size={28} /> : "Create CDC"}
             </Button>
           </Box>
         </form>
@@ -374,7 +385,6 @@ const CDCPage = () => {
 
   return (
     <div className="w-screen h-screen flex overflow-hidden relative">
-      {/* Background Image */}
       <div
         className="absolute inset-0 bg-cover bg-center"
         style={{ backgroundImage: `url(${bgImage})`, zIndex: -1 }}
@@ -393,7 +403,8 @@ const CDCPage = () => {
               backgroundColor: "#2e7d32",
               "&:hover": { backgroundColor: "#1b5e20" },
               width: '250px',
-              height: '48px'
+              height: '56px',
+              fontSize: '1.1rem'
             }}
           >
             Create New CDC
@@ -414,7 +425,7 @@ const CDCPage = () => {
             <Alert 
               onClose={() => setSnackbar({...snackbar, open: false})}
               severity={snackbar.severity}
-              sx={{ width: '100%' }}
+              sx={{ width: '100%', fontSize: '1.1rem' }}
             >
               {snackbar.message}
             </Alert>

@@ -64,7 +64,7 @@ const Login = () => {
   
         // Navigate based on user type after delay
         setTimeout(() => {
-          switch(response.data.user.type) {
+          switch(response.data.user.type.toLowerCase()) {
             case 'admin':
               console.log("Redirecting to admin dashboard");
               navigate("/admin-dashboard");
@@ -82,7 +82,7 @@ const Login = () => {
               navigate("/dashboard");
               break;
             case 'eccdc':
-                console.log("Redirecting to worker dashboard");
+                console.log("Redirecting to eccdc dashboard");
                 navigate("/eccdc-manageacc");
                 break;
             default:

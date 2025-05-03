@@ -18,7 +18,7 @@ import {
   Alert,
   Grid
 } from "@mui/material";
-import { Save, Cancel } from "lucide-react";
+import { Save, X } from "lucide-react";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -298,7 +298,7 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
             <Button 
               onClick={onClose} 
               variant="outlined" 
-              startIcon={<Cancel />}
+              startIcon={<X />}
               disabled={loading}
               sx={{ color: "#2e7d32", borderColor: "#2e7d32" }}
             >

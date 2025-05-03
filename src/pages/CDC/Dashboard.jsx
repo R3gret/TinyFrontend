@@ -17,14 +17,6 @@ import {
 } from "react-icons/fi";
 import { CircularProgress, Alert, Button } from "@mui/material";
 
-const SCORE_TABLES = {
-  // ... (keep your existing SCORE_TABLES object)
-};
-
-const STANDARD_SCORE_TABLE = [
-  // ... (keep your existing STANDARD_SCORE_TABLE array)
-];
-
 // API Service Helper
 const apiRequest = async (endpoint, method = 'GET', body = null) => {
   const token = localStorage.getItem('token');
@@ -178,27 +170,81 @@ export default function Dashboard() {
       genderDistribution: { Male: 0, Female: 0, Other: 0 },
       domainProgress: []
     },
-    weeklyAttendance: [],
     announcements: []
+  });
+
+  const [weeklyAttendance, setWeeklyAttendance] = useState({
+    loading: true,
+    error: null,
+    data: []
   });
 
   const [activeAnnouncementIndex, setActiveAnnouncementIndex] = useState(0);
 
-  // Fetch all dashboard data
+  // Fetch weekly attendance data separately
+  useEffect(() => {
+    const fetchWeeklyAttendance = async () => {
+      try {
+        setWeeklyAttendance(prev => ({ ...prev, loading: true, error: null }));
+        
+        const response = await apiRequest('/api/attendance/weekly');
+        
+        if (!response.success) {
+          throw new Error(response.message || 'Failed to load attendance data');
+        }
+
+        setWeeklyAttendance({
+          loading: false,
+          error: null,
+          data: response.data || []
+        });
+      } catch (err) {
+        console.error("Error fetching weekly attendance:", err);
+        setWeeklyAttendance({
+          loading: false,
+          error: err.message,
+          data: generateMockAttendanceData() // Fallback to mock data
+        });
+      }
+    };
+
+    fetchWeeklyAttendance();
+  }, []);
+
+  // Generate mock attendance data for fallback
+  const generateMockAttendanceData = () => {
+    const weeklyData = [];
+    const now = new Date();
+    
+    for (let i = 8; i >= 0; i--) {
+      const date = new Date(now);
+      date.setDate(now.getDate() - (i * 7));
+      
+      weeklyData.push({
+        date: date.toISOString().split('T')[0],
+        present: Math.floor(Math.random() * 15) + 5,
+        total: 20,
+        percentage: Math.floor(Math.random() * 30) + 70
+      });
+    }
+    
+    return weeklyData;
+  };
+
+  // Fetch all other dashboard data
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
         setDashboardData(prev => ({ ...prev, loading: true, error: null }));
         
-        // Fetch all data in parallel
-        const [genderRes, enrollmentRes, ageRes, domainProgressRes, attendanceRes, announcementsRes, weeklyAttendanceRes] = await Promise.all([
+        // Fetch all data in parallel except weekly attendance
+        const [genderRes, enrollmentRes, ageRes, domainProgressRes, attendanceRes, announcementsRes] = await Promise.all([
           apiRequest('/api/students/gender-distribution'),
           apiRequest('/api/students/enrollment-stats'),
           apiRequest('/api/students/age-distribution'),
           apiRequest('/api/domains/progress-summary'),
           apiRequest('/api/attendance/stats'),
-          apiRequest('/api/announcements'),
-          apiRequest('/api/attendance/weekly')
+          apiRequest('/api/announcements')
         ]);
 
         const attendanceStats = attendanceRes.success ? attendanceRes.stats : {
@@ -217,7 +263,6 @@ export default function Dashboard() {
         const genderDistribution = genderRes.success ? genderRes.distribution : { Male: 0, Female: 0, Other: 0 };
         const ageGroups = ageRes.success ? ageRes.distribution : { '3-4': 0, '4-5': 0, '5-6': 0 };
         const announcements = announcementsRes.success ? announcementsRes.announcements : [];
-        const weeklyAttendance = weeklyAttendanceRes.success ? weeklyAttendanceRes.data : [];
 
         // Process domain progress
         const domainProgress = domainProgressRes.success 
@@ -243,7 +288,6 @@ export default function Dashboard() {
             genderDistribution,
             domainProgress
           },
-          weeklyAttendance,
           announcements
         });
 
@@ -486,9 +530,20 @@ export default function Dashboard() {
           <div className="bg-white rounded-xl p-6 shadow-sm">
             <h3 className="text-xl font-semibold mb-4">Weekly Attendance</h3>
             <div className="h-64">
-              {dashboardData.weeklyAttendance.length > 0 ? (
+              {weeklyAttendance.loading ? (
+                <div className="h-full flex items-center justify-center">
+                  <CircularProgress size={40} />
+                </div>
+              ) : weeklyAttendance.error ? (
+                <div className="h-full flex flex-col items-center justify-center text-red-500 p-4 text-center">
+                  <Alert severity="error" className="mb-2">
+                    Error loading attendance data: {weeklyAttendance.error}
+                  </Alert>
+                  <p className="text-sm text-gray-500">Showing sample data</p>
+                </div>
+              ) : weeklyAttendance.data.length > 0 ? (
                 <LineChart
-                  data={dashboardData.weeklyAttendance.map(week => {
+                  data={weeklyAttendance.data.map(week => {
                     const date = new Date(week.date);
                     const formattedDate = date.toLocaleDateString('en-US', {
                       month: 'short',

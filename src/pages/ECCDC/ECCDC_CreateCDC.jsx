@@ -334,7 +334,7 @@ const CDCPage = () => {
             </Table>
           </TableContainer>
 
-          {/* Create CDC Modal - Updated Layout */}
+          {/* Create CDC Modal */}
           <Modal open={openModal} onClose={() => setOpenModal(false)}>
             <Box sx={modalStyle}>
               <Typography variant="h6" component="h2" sx={{ mb: 3, textAlign: "center" }}>
@@ -475,19 +475,43 @@ const CDCPage = () => {
             </Box>
           </Modal>
 
+          {/* Centered Snackbar */}
           <Snackbar
             open={snackbar.open}
             autoHideDuration={6000}
             onClose={() => setSnackbar({...snackbar, open: false})}
-            anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+            anchorOrigin={{ 
+              vertical: 'bottom', 
+              horizontal: 'center' 
+            }}
+            sx={{
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+            }}
           >
-            <Alert 
-              onClose={() => setSnackbar({...snackbar, open: false})}
-              severity={snackbar.severity}
-              sx={{ width: '100%' }}
-            >
-              {snackbar.message}
-            </Alert>
+            <Box sx={{ 
+              display: 'flex',
+              justifyContent: 'center',
+              width: '100%'
+            }}>
+              <Alert 
+                onClose={() => setSnackbar({...snackbar, open: false})}
+                severity={snackbar.severity}
+                sx={{ 
+                  width: 'auto',
+                  minWidth: '300px',
+                  maxWidth: '600px',
+                  boxShadow: 3,
+                  '& .MuiAlert-message': {
+                    display: 'flex',
+                    alignItems: 'center'
+                  }
+                }}
+              >
+                {snackbar.message}
+              </Alert>
+            </Box>
           </Snackbar>
         </div>
       </div>

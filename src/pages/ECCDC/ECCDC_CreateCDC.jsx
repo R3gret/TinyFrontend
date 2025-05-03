@@ -198,7 +198,7 @@ const CDCPage = () => {
 
   // Styled components
   const modalStyle = {
-    width: "800px", // Increased width
+    width: "900px",
     backgroundColor: "white",
     borderRadius: 3,
     p: 4,
@@ -213,6 +213,7 @@ const CDCPage = () => {
 
   const textFieldStyle = {
     width: '100%',
+    minWidth: '350px',
     '& .MuiInputBase-root': {
       height: '50px',
       fontSize: '1rem'
@@ -333,7 +334,7 @@ const CDCPage = () => {
             </Table>
           </TableContainer>
 
-          {/* Create CDC Modal */}
+          {/* Create CDC Modal - Updated Layout */}
           <Modal open={openModal} onClose={() => setOpenModal(false)}>
             <Box sx={modalStyle}>
               <Typography variant="h6" component="h2" sx={{ mb: 3, textAlign: "center" }}>
@@ -347,37 +348,37 @@ const CDCPage = () => {
               )}
 
               <form onSubmit={handleSubmit}>
-                <Grid container spacing={3}> {/* Increased spacing */}
-                  <Grid item xs={12}>
-                    <TextField
-                      label="CDC Name"
-                      value={formData.name}
-                      onChange={(e) => setFormData({...formData, name: e.target.value})}
-                      required
-                      sx={textFieldStyle}
-                    />
-                  </Grid>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  {/* CDC Name */}
+                  <TextField
+                    label="CDC Name"
+                    value={formData.name}
+                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                    required
+                    sx={textFieldStyle}
+                  />
 
-                  <Grid item xs={6}>
+                  {/* Location Fields - Two Columns */}
+                  <Box sx={{ display: 'flex', gap: 3 }}>
+                    {/* Region */}
                     <Autocomplete
                       freeSolo
                       options={regions.map(region => region.name)}
                       value={formData.region}
                       onChange={(e, value) => handleRegionChange(value || '')}
                       onInputChange={(e, value) => handleRegionChange(value || '')}
+                      sx={{ flex: 1 }}
                       renderInput={(params) => (
                         <TextField
                           {...params}
                           label="Region"
                           variant="outlined"
                           required
-                          sx={textFieldStyle}
                         />
                       )}
                     />
-                  </Grid>
 
-                  <Grid item xs={6}>
+                    {/* Province */}
                     <Autocomplete
                       freeSolo
                       options={provinces.map(province => province.name)}
@@ -385,19 +386,20 @@ const CDCPage = () => {
                       onChange={(e, value) => handleProvinceChange(value || '')}
                       onInputChange={(e, value) => handleProvinceChange(value || '')}
                       disabled={!formData.region}
+                      sx={{ flex: 1 }}
                       renderInput={(params) => (
                         <TextField
                           {...params}
                           label="Province"
                           variant="outlined"
                           required
-                          sx={textFieldStyle}
                         />
                       )}
                     />
-                  </Grid>
+                  </Box>
 
-                  <Grid item xs={6}>
+                  <Box sx={{ display: 'flex', gap: 3 }}>
+                    {/* Municipality */}
                     <Autocomplete
                       freeSolo
                       options={municipalities.map(municipality => municipality.name)}
@@ -405,19 +407,18 @@ const CDCPage = () => {
                       onChange={(e, value) => handleMunicipalityChange(value || '')}
                       onInputChange={(e, value) => handleMunicipalityChange(value || '')}
                       disabled={!formData.province}
+                      sx={{ flex: 1 }}
                       renderInput={(params) => (
                         <TextField
                           {...params}
                           label="Municipality"
                           variant="outlined"
                           required
-                          sx={textFieldStyle}
                         />
                       )}
                     />
-                  </Grid>
 
-                  <Grid item xs={6}>
+                    {/* Barangay */}
                     <Autocomplete
                       freeSolo
                       options={barangays.map(barangay => barangay.name)}
@@ -425,49 +426,50 @@ const CDCPage = () => {
                       onChange={(e, value) => setFormData({...formData, barangay: value || ''})}
                       onInputChange={(e, value) => setFormData({...formData, barangay: value || ''})}
                       disabled={!formData.municipality}
+                      sx={{ flex: 1 }}
                       renderInput={(params) => (
                         <TextField
                           {...params}
                           label="Barangay"
                           variant="outlined"
                           required
-                          sx={textFieldStyle}
                         />
                       )}
                     />
-                  </Grid>
-                </Grid>
+                  </Box>
 
-                <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2, mt: 4 }}>
-                  <Button 
-                    onClick={() => setOpenModal(false)} 
-                    variant="outlined" 
-                    startIcon={<Close />}
-                    disabled={loading}
-                    sx={{ 
-                      ...buttonStyle,
-                      color: "#2e7d32", 
-                      borderColor: "#2e7d32",
-                      '&:hover': {
-                        borderColor: "#1b5e20"
-                      }
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    variant="contained"
-                    startIcon={<Save />}
-                    disabled={loading}
-                    sx={{ 
-                      ...buttonStyle,
-                      backgroundColor: "#2e7d32",
-                      "&:hover": { backgroundColor: "#1b5e20" }
-                    }}
-                  >
-                    {loading ? <CircularProgress size={24} /> : "Create CDC"}
-                  </Button>
+                  {/* Buttons */}
+                  <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 2 }}>
+                    <Button 
+                      onClick={() => setOpenModal(false)} 
+                      variant="outlined" 
+                      startIcon={<Close />}
+                      disabled={loading}
+                      sx={{ 
+                        ...buttonStyle,
+                        color: "#2e7d32", 
+                        borderColor: "#2e7d32",
+                        '&:hover': {
+                          borderColor: "#1b5e20"
+                        }
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="submit"
+                      variant="contained"
+                      startIcon={<Save />}
+                      disabled={loading}
+                      sx={{ 
+                        ...buttonStyle,
+                        backgroundColor: "#2e7d32",
+                        "&:hover": { backgroundColor: "#1b5e20" }
+                      }}
+                    >
+                      {loading ? <CircularProgress size={24} /> : "Create CDC"}
+                    </Button>
+                  </Box>
                 </Box>
               </form>
             </Box>

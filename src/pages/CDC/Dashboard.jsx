@@ -1,4 +1,4 @@
-import React from 'react';  // Add this import at the top
+import React from 'react';
 import { useState, useEffect } from "react";
 import { PieChart, BarChart, LineChart } from "../../components/Charts";
 import Navbar from "../../components/all/Navbar";
@@ -33,8 +33,8 @@ const apiRequest = async (endpoint, method = 'GET', body = null) => {
 
   const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
   
-  // Only mock other data, not enrollment stats
-  if (import.meta.env.MODE === 'development' && endpoint !== '/api/students/enrollment-stats') {
+  // Mock data for development
+  if (import.meta.env.MODE === 'development') {
     console.log(`Mocking API call to ${endpoint}`);
     return new Promise(resolve => {
       setTimeout(() => {
@@ -45,6 +45,15 @@ const apiRequest = async (endpoint, method = 'GET', body = null) => {
               Male: 4,
               Female: 7,
               Other: 0
+            }
+          });
+        } else if (endpoint === '/api/students/age-distribution') {
+          resolve({
+            success: true,
+            distribution: {
+              '3-4': 5,
+              '4-5': 4,
+              '5-6': 2
             }
           });
         } else if (endpoint === '/api/announcements') {
@@ -138,9 +147,10 @@ export default function Dashboard() {
         setDashboardData(prev => ({ ...prev, loading: true, error: null }));
         
         // Fetch all data in parallel
-        const [genderRes, enrollmentRes, studentsRes, attendanceRes, domainsRes, announcementsRes] = await Promise.all([
+        const [genderRes, enrollmentRes, ageRes, studentsRes, attendanceRes, domainsRes, announcementsRes] = await Promise.all([
           apiRequest('/api/students/gender-distribution'),
           apiRequest('/api/students/enrollment-stats'),
+          apiRequest('/api/students/age-distribution'), // New endpoint
           apiRequest('/api/students'),
           apiRequest('/api/attendance/stats'),
           apiRequest('/api/domains/evaluations/scores/sample'),
@@ -161,9 +171,9 @@ export default function Dashboard() {
         };
 
         const genderDistribution = genderRes.success ? genderRes.distribution : { Male: 0, Female: 0, Other: 0 };
+        const ageGroups = ageRes.success ? ageRes.distribution : { '3-4': 0, '4-5': 0, '5-6': 0 };
         const announcements = announcementsRes.success ? announcementsRes.announcements : [];
 
-        const ageGroups = { '3-4': 5, '4-5': 4, '5-6': 2 };
         const domainProgress = [
           { name: 'Self-Help', progress: '72.7' },
           { name: 'Cognitive', progress: '63.6' },

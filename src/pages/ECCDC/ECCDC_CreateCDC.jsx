@@ -50,11 +50,10 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
     region: "",
     province: "",
     municipality: "",
-    barangay: "",
-    location_details: ""
+    barangay: ""
   });
+
   const [loading, setLoading] = useState(false);
-  const [dropdownLoading, setDropdownLoading] = useState(false);
   const [error, setError] = useState("");
   const [regions, setRegions] = useState([]);
   const [provinces, setProvinces] = useState([]);
@@ -77,69 +76,66 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
     loadRegions();
   }, []);
 
-  const handleRegionChange = async (regionCode) => {
-    setDropdownLoading(true);
-    const regionData = locationData[regionCode];
-    if (regionData && regionData.province_list) {
-      const provincesArray = Object.keys(regionData.province_list).map(name => ({
-        name
+  const handleRegionChange = (value) => {
+    const region = regions.find(r => r.name === value);
+    if (region) {
+      const regionData = locationData[region.code];
+      if (regionData && regionData.province_list) {
+        const provincesArray = Object.keys(regionData.province_list).map(name => ({
+          name
+        }));
+        setProvinces(provincesArray);
+      }
+      
+      setFormData(prev => ({
+        ...prev,
+        region: value,
+        province: "",
+        municipality: "",
+        barangay: ""
       }));
-      setProvinces(provincesArray);
     }
-    
-    setFormData(prev => ({
-      ...prev,
-      region: regions.find(r => r.code === regionCode)?.name || "",
-      province: "",
-      municipality: "",
-      barangay: ""
-    }));
-    setDropdownLoading(false);
   };
 
-  const handleProvinceChange = async (provinceName) => {
-    setDropdownLoading(true);
+  const handleProvinceChange = (value) => {
     const regionCode = Object.keys(locationData).find(code => 
       formData.region === locationData[code].region_name
     );
     
-    if (regionCode && locationData[regionCode].province_list[provinceName]) {
+    if (regionCode && locationData[regionCode].province_list[value]) {
       const municipalitiesArray = Object.keys(
-        locationData[regionCode].province_list[provinceName].municipality_list
+        locationData[regionCode].province_list[value].municipality_list
       ).map(name => ({ name }));
       setMunicipalities(municipalitiesArray);
     }
     
     setFormData(prev => ({
       ...prev,
-      province: provinceName,
+      province: value,
       municipality: "",
       barangay: ""
     }));
-    setDropdownLoading(false);
   };
 
-  const handleMunicipalityChange = async (municipalityName) => {
-    setDropdownLoading(true);
+  const handleMunicipalityChange = (value) => {
     const regionCode = Object.keys(locationData).find(code => 
       formData.region === locationData[code].region_name
     );
     
     if (regionCode && 
-        locationData[regionCode].province_list[formData.province]?.municipality_list[municipalityName]) {
+        locationData[regionCode].province_list[formData.province]?.municipality_list[value]) {
       const barangaysArray = locationData[regionCode]
         .province_list[formData.province]
-        .municipality_list[municipalityName]
+        .municipality_list[value]
         .barangay_list.map(name => ({ name }));
       setBarangays(barangaysArray);
     }
     
     setFormData(prev => ({
       ...prev,
-      municipality: municipalityName,
+      municipality: value,
       barangay: ""
     }));
-    setDropdownLoading(false);
   };
 
   const handleSubmit = async (e) => {
@@ -177,10 +173,7 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
         left: '50%',
         transform: 'translate(-50%, -50%)',
         maxHeight: '90vh',
-        overflowY: 'auto',
-        '& .MuiAutocomplete-root': {
-          width: '100%'
-        }
+        overflowY: 'auto'
       }}>
         <Typography variant="h6" component="h2" sx={{ 
           mb: 3, 
@@ -200,7 +193,7 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
         <form onSubmit={handleSubmit}>
           <Grid container spacing={2}>
             {/* CDC Name Field */}
-            <Grid item xs={4}>
+            <Grid item xs={12}>
               <TextField
                 label="CDC Name"
                 value={formData.name}
@@ -215,14 +208,14 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
               />
             </Grid>
 
-            {/* Region Dropdown */}
-            <Grid item xs={4}>
+            {/* Region Field with Suggestions */}
+            <Grid item xs={12} sm={6}>
               <Autocomplete
-                options={regions}
-                getOptionLabel={(option) => option.name}
-                value={regions.find(r => r.name === formData.region) || null}
-                onChange={(e, newValue) => handleRegionChange(newValue?.code || '')}
-                loading={dropdownLoading}
+                freeSolo
+                options={regions.map(region => region.name)}
+                value={formData.region}
+                onChange={(e, value) => handleRegionChange(value || '')}
+                onInputChange={(e, value) => handleRegionChange(value || '')}
                 renderInput={(params) => (
                   <TextField
                     {...params}
@@ -235,30 +228,20 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
                         height: '56px'
                       }
                     }}
-                    InputProps={{
-                      ...params.InputProps,
-                      endAdornment: (
-                        <>
-                          {dropdownLoading ? <CircularProgress color="inherit" size={20} /> : null}
-                          {params.InputProps.endAdornment}
-                        </>
-                      )
-                    }}
                   />
                 )}
-                sx={{ width: '100%' }}
               />
             </Grid>
 
-            {/* Province Dropdown */}
-            <Grid item xs={4}>
+            {/* Province Field with Suggestions */}
+            <Grid item xs={12} sm={6}>
               <Autocomplete
-                options={provinces}
-                getOptionLabel={(option) => option.name}
-                value={provinces.find(p => p.name === formData.province) || null}
-                onChange={(e, newValue) => handleProvinceChange(newValue?.name || '')}
+                freeSolo
+                options={provinces.map(province => province.name)}
+                value={formData.province}
+                onChange={(e, value) => handleProvinceChange(value || '')}
+                onInputChange={(e, value) => handleProvinceChange(value || '')}
                 disabled={!formData.region}
-                loading={dropdownLoading}
                 renderInput={(params) => (
                   <TextField
                     {...params}
@@ -271,30 +254,20 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
                         height: '56px'
                       }
                     }}
-                    InputProps={{
-                      ...params.InputProps,
-                      endAdornment: (
-                        <>
-                          {dropdownLoading ? <CircularProgress color="inherit" size={20} /> : null}
-                          {params.InputProps.endAdornment}
-                        </>
-                      )
-                    }}
                   />
                 )}
-                sx={{ width: '100%' }}
               />
             </Grid>
 
-            {/* Municipality Dropdown */}
-            <Grid item xs={4}>
+            {/* Municipality Field with Suggestions */}
+            <Grid item xs={12} sm={6}>
               <Autocomplete
-                options={municipalities}
-                getOptionLabel={(option) => option.name}
-                value={municipalities.find(m => m.name === formData.municipality) || null}
-                onChange={(e, newValue) => handleMunicipalityChange(newValue?.name || '')}
+                freeSolo
+                options={municipalities.map(municipality => municipality.name)}
+                value={formData.municipality}
+                onChange={(e, value) => handleMunicipalityChange(value || '')}
+                onInputChange={(e, value) => handleMunicipalityChange(value || '')}
                 disabled={!formData.province}
-                loading={dropdownLoading}
                 renderInput={(params) => (
                   <TextField
                     {...params}
@@ -307,30 +280,20 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
                         height: '56px'
                       }
                     }}
-                    InputProps={{
-                      ...params.InputProps,
-                      endAdornment: (
-                        <>
-                          {dropdownLoading ? <CircularProgress color="inherit" size={20} /> : null}
-                          {params.InputProps.endAdornment}
-                        </>
-                      )
-                    }}
                   />
                 )}
-                sx={{ width: '100%' }}
               />
             </Grid>
 
-            {/* Barangay Dropdown */}
-            <Grid item xs={4}>
+            {/* Barangay Field with Suggestions */}
+            <Grid item xs={12} sm={6}>
               <Autocomplete
-                options={barangays}
-                getOptionLabel={(option) => option.name}
-                value={barangays.find(b => b.name === formData.barangay) || null}
-                onChange={(e, newValue) => setFormData({...formData, barangay: newValue?.name || ''})}
+                freeSolo
+                options={barangays.map(barangay => barangay.name)}
+                value={formData.barangay}
+                onChange={(e, value) => setFormData({...formData, barangay: value || ''})}
+                onInputChange={(e, value) => setFormData({...formData, barangay: value || ''})}
                 disabled={!formData.municipality}
-                loading={dropdownLoading}
                 renderInput={(params) => (
                   <TextField
                     {...params}
@@ -343,34 +306,8 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
                         height: '56px'
                       }
                     }}
-                    InputProps={{
-                      ...params.InputProps,
-                      endAdornment: (
-                        <>
-                          {dropdownLoading ? <CircularProgress color="inherit" size={20} /> : null}
-                          {params.InputProps.endAdornment}
-                        </>
-                      )
-                    }}
                   />
                 )}
-                sx={{ width: '100%' }}
-              />
-            </Grid>
-
-            <Grid item xs={4}>
-              {/* Empty cell for alignment */}
-            </Grid>
-
-            {/* Location Details */}
-            <Grid item xs={12}>
-              <TextField
-                label="Location Details (Street, Landmark, etc.)"
-                value={formData.location_details}
-                onChange={(e) => setFormData({...formData, location_details: e.target.value})}
-                fullWidth
-                multiline
-                rows={3}
               />
             </Grid>
           </Grid>

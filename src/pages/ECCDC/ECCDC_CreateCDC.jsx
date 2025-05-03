@@ -223,9 +223,10 @@ const CDCPage = () => {
   };
 
   const buttonStyle = {
-    width: '140px',
+    width: '150px', // Increased from 140px
     height: '48px',
-    fontSize: '0.95rem'
+    fontSize: '0.95rem',
+    whiteSpace: 'nowrap'
   };
 
   return (

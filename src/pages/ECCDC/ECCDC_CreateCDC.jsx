@@ -202,7 +202,9 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
                 fullWidth
                 sx={{
                   '& .MuiInputBase-root': {
-                    height: '56px'
+                    height: '56px',
+                    display: 'flex',
+                    alignItems: 'center'
                   }
                 }}
               />
@@ -217,21 +219,38 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
                   onChange={(e) => handleRegionChange(e.target.value)}
                   required
                   sx={{
-                    '& .MuiInputBase-root': {
+                    '& .MuiSelect-select': {
+                      height: '56px',
+                      display: 'flex',
+                      alignItems: 'center'
+                    },
+                    '& .MuiOutlinedInput-root': {
                       height: '56px'
                     }
                   }}
                   MenuProps={{
                     PaperProps: {
                       style: {
-                        maxHeight: 300
+                        maxHeight: 300,
+                        width: '250px' // Fixed width for dropdown menu
                       }
                     }
                   }}
+                  renderValue={(selected) => (
+                    <Box sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {regions.find(r => r.code === selected)?.name || 'Select Region'}
+                    </Box>
+                  )}
                 >
                   {regions.map((region) => (
-                    <MenuItem key={region.code} value={region.code}>
-                      {region.name}
+                    <MenuItem key={region.code} value={region.code} sx={{ minHeight: '36px' }}>
+                      <Box sx={{ 
+                        width: '100%',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
+                      }}>
+                        {region.name}
+                      </Box>
                     </MenuItem>
                   ))}
                 </Select>
@@ -248,21 +267,38 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
                   disabled={!formData.region}
                   required
                   sx={{
-                    '& .MuiInputBase-root': {
+                    '& .MuiSelect-select': {
+                      height: '56px',
+                      display: 'flex',
+                      alignItems: 'center'
+                    },
+                    '& .MuiOutlinedInput-root': {
                       height: '56px'
                     }
                   }}
                   MenuProps={{
                     PaperProps: {
                       style: {
-                        maxHeight: 300
+                        maxHeight: 300,
+                        width: '250px' // Fixed width for dropdown menu
                       }
                     }
                   }}
+                  renderValue={(selected) => (
+                    <Box sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {selected || 'Select Province'}
+                    </Box>
+                  )}
                 >
                   {provinces.map((province, index) => (
-                    <MenuItem key={index} value={province.name}>
-                      {province.name}
+                    <MenuItem key={index} value={province.name} sx={{ minHeight: '36px' }}>
+                      <Box sx={{ 
+                        width: '100%',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
+                      }}>
+                        {province.name}
+                      </Box>
                     </MenuItem>
                   ))}
                 </Select>
@@ -280,21 +316,38 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
                   disabled={!formData.province}
                   required
                   sx={{
-                    '& .MuiInputBase-root': {
+                    '& .MuiSelect-select': {
+                      height: '56px',
+                      display: 'flex',
+                      alignItems: 'center'
+                    },
+                    '& .MuiOutlinedInput-root': {
                       height: '56px'
                     }
                   }}
                   MenuProps={{
                     PaperProps: {
                       style: {
-                        maxHeight: 300
+                        maxHeight: 300,
+                        width: '250px' // Fixed width for dropdown menu
                       }
                     }
                   }}
+                  renderValue={(selected) => (
+                    <Box sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {selected || 'Select Municipality'}
+                    </Box>
+                  )}
                 >
                   {municipalities.map((municipality, index) => (
-                    <MenuItem key={index} value={municipality.name}>
-                      {municipality.name}
+                    <MenuItem key={index} value={municipality.name} sx={{ minHeight: '36px' }}>
+                      <Box sx={{ 
+                        width: '100%',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
+                      }}>
+                        {municipality.name}
+                      </Box>
                     </MenuItem>
                   ))}
                 </Select>
@@ -311,21 +364,38 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
                   disabled={!formData.municipality}
                   required
                   sx={{
-                    '& .MuiInputBase-root': {
+                    '& .MuiSelect-select': {
+                      height: '56px',
+                      display: 'flex',
+                      alignItems: 'center'
+                    },
+                    '& .MuiOutlinedInput-root': {
                       height: '56px'
                     }
                   }}
                   MenuProps={{
                     PaperProps: {
                       style: {
-                        maxHeight: 300
+                        maxHeight: 300,
+                        width: '250px' // Fixed width for dropdown menu
                       }
                     }
                   }}
+                  renderValue={(selected) => (
+                    <Box sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {selected || 'Select Barangay'}
+                    </Box>
+                  )}
                 >
                   {barangays.map((barangay, index) => (
-                    <MenuItem key={index} value={barangay.name}>
-                      {barangay.name}
+                    <MenuItem key={index} value={barangay.name} sx={{ minHeight: '36px' }}>
+                      <Box sx={{ 
+                        width: '100%',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
+                      }}>
+                        {barangay.name}
+                      </Box>
                     </MenuItem>
                   ))}
                 </Select>

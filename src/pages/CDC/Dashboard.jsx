@@ -112,11 +112,16 @@ const apiRequest = async (endpoint, method = 'GET', body = null) => {
             const date = new Date(today);
             date.setDate(today.getDate() + i);
             
+            const present = Math.floor(Math.random() * 15) + 5;
+            const total = 20;
+            const absent = total - present;
+            
             dailyData.push({
               date: date.toISOString().split('T')[0],
-              present: Math.floor(Math.random() * 15) + 5,
-              total: 20,
-              percentage: Math.floor(Math.random() * 30) + 70
+              present: present,
+              absent: absent,
+              total: total,
+              percentage: Math.round((present / total) * 100)
             });
           }
           
@@ -524,7 +529,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Weekly Attendance Graph */}
+          {/* Daily Attendance Graph */}
 <div className="bg-white rounded-xl p-6 shadow-sm">
   <h3 className="text-xl font-semibold mb-4">Daily Attendance (7 Days)</h3>
   <div className="h-64">
@@ -551,12 +556,10 @@ export default function Dashboard() {
           for (let i = 0; i < 7; i++) {
             const currentDate = new Date(startDate);
             currentDate.setDate(startDate.getDate() + i);
+            const dateString = currentDate.toISOString().split('T')[0];
             
             // Find matching data or use empty values
-            const matchingDay = weeklyAttendance.data.find(d => {
-              const dDate = new Date(d.date);
-              return dDate.toDateString() === currentDate.toDateString();
-            });
+            const matchingDay = weeklyAttendance.data.find(d => d.date === dateString);
             
             days.push({
               name: currentDate.toLocaleDateString('en-US', {
@@ -565,8 +568,9 @@ export default function Dashboard() {
               }),
               percentage: matchingDay?.percentage || 0,
               present: matchingDay?.present || 0,
+              absent: matchingDay?.absent || 0,
               total: matchingDay?.total || 0,
-              date: currentDate.toISOString().split('T')[0]
+              date: dateString
             });
           }
           return days;
@@ -576,11 +580,13 @@ export default function Dashboard() {
           colors: ['#10B981'],
           yAxisLabel: 'Attendance Percentage',
           tooltipFormat: (value, name, props) => [
-            `${props.payload.percentage}%`,
-            `${props.payload.present}/${props.payload.total} students`,
+            `${props.payload.percentage}% Attendance`,
+            `Present: ${props.payload.present} students`,
+            `Absent: ${props.payload.absent} students`,
+            `Total: ${props.payload.total} students`,
             new Date(props.payload.date).toLocaleDateString('en-US', {
-              weekday: 'short',
-              month: 'short',
+              weekday: 'long',
+              month: 'long',
               day: 'numeric'
             })
           ],

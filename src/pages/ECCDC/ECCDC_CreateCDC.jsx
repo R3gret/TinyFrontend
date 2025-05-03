@@ -27,6 +27,31 @@ import { Search, Add, Save, Close } from "@mui/icons-material";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
+// API Service Helper
+const apiRequest = async (endpoint, method = 'GET', body = null) => {
+  const token = localStorage.getItem('token');
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(token && { 'Authorization': `Bearer ${token}` })
+  };
+
+  const config = {
+    method,
+    headers,
+    credentials: 'include',
+    ...(body && { body: JSON.stringify(body) })
+  };
+
+  const response = await fetch(`${API_URL}${endpoint}`, config);
+  
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.message || 'Request failed');
+  }
+
+  return response.json();
+};
+
 const CDCPage = () => {
   const [cdcList, setCdcList] = useState([]);
   const [filter, setFilter] = useState({
@@ -62,7 +87,7 @@ const CDCPage = () => {
     setRegions(regionsArray);
   }, []);
 
-  // Fetch CDCs
+  // Fetch CDCs with API helper
   const fetchCDCs = async () => {
     setLoading(true);
     try {
@@ -71,11 +96,8 @@ const CDCPage = () => {
       if (filter.municipality) params.append('municipality', filter.municipality);
       if (filter.barangay) params.append('barangay', filter.barangay);
       
-      const response = await fetch(`${API_URL}/api/cdc?${params.toString()}`);
-      const data = await response.json();
-      if (data.success) {
-        setCdcList(data.data);
-      }
+      const data = await apiRequest(`/api/cdc?${params.toString()}`);
+      setCdcList(data.data);
     } catch (err) {
       console.error('Failed to fetch CDCs:', err);
       setSnackbar({
@@ -149,33 +171,20 @@ const CDCPage = () => {
     }));
   };
 
+  // Create CDC with API helper
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     
     try {
-      const response = await fetch(`${API_URL}/api/cdc`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(formData)
+      const data = await apiRequest('/api/cdc', 'POST', formData);
+      setSnackbar({
+        open: true,
+        message: "CDC created successfully!",
+        severity: "success"
       });
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        setSnackbar({
-          open: true,
-          message: "CDC created successfully!",
-          severity: "success"
-        });
-        setOpenModal(false);
-        fetchCDCs();
-      } else {
-        throw new Error(data.message || "Failed to create CDC");
-      }
+      setOpenModal(false);
+      fetchCDCs();
     } catch (err) {
       setSnackbar({
         open: true,

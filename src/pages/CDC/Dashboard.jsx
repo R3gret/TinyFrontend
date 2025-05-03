@@ -526,68 +526,82 @@ export default function Dashboard() {
           </div>
 
           {/* Recent Evaluations */}
-          {dashboardData.recentEvaluations.length > 0 && (
-            <div className="bg-white rounded-xl p-6 shadow-sm">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-semibold">Recent Evaluations</h3>
-                <div className="w-64">
-                  <Autocomplete
-                    options={students}
-                    getOptionLabel={(student) => `${student.first_name} ${student.last_name}`}
-                    loading={loadingStudents}
-                    renderInput={(params) => (
-                      <TextField 
-                        {...params} 
-                        label="Select Student" 
-                        variant="outlined" 
-                        size="small"
-                      />
-                    )}
-                    onChange={(event, value) => setSelectedStudent(value)}
-                    value={selectedStudent}
-                  />
-                </div>
-              </div>
-              <div className="h-64">
-                <LineChart
-                  data={dashboardData.recentEvaluations.map((evalItem) => {
-                    // Calculate standard score if student is selected
-                    let standardScore = '-';
-                    if (selectedStudent) {
-                      const ageAtEval = calculateAgeAtEvaluation(
-                        selectedStudent.birthdate, 
-                        new Date().toISOString() // Use current date for demo, replace with actual eval date
-                      );
-                      const ageRange = getAgeRange(ageAtEval.years, ageAtEval.months);
-                      
-                      // Calculate total scaled score (simplified example)
-                      let totalScaled = 0;
-                      dashboardData.stats.domainProgress.forEach(domain => {
-                        const rawScore = Math.floor(Math.random() * 20); // Replace with actual score
-                        const scaled = getScaledScore(domain.name, rawScore, ageRange);
-                        if (scaled !== '-') totalScaled += parseInt(scaled);
-                      });
-                      
-                      // Find standard score
-                      const entry = STANDARD_SCORE_TABLE.find(item => totalScaled <= item.sum);
-                      standardScore = entry ? entry.score : '-';
-                    }
-                    
-                    return {
-                      name: evalItem.evaluation_period,
-                      progress: selectedStudent ? standardScore : evalItem.average_score,
-                      type: selectedStudent ? 'Standard Score' : 'Average Score'
-                    };
-                  })}
-                />
-              </div>
-              {selectedStudent && (
-                <div className="mt-4 text-sm text-gray-600">
-                  Showing standard scores for {selectedStudent.first_name} {selectedStudent.last_name}
-                </div>
-              )}
-            </div>
+          {/* Recent Evaluations */}
+{dashboardData.recentEvaluations.length > 0 && (
+  <div className="bg-white rounded-xl p-6 shadow-sm">
+    <div className="flex justify-between items-center mb-4">
+      <h3 className="text-xl font-semibold">Recent Evaluations</h3>
+      <div className="w-64">
+        <Autocomplete
+          options={students}
+          getOptionLabel={(student) => `${student.first_name} ${student.last_name}`}
+          loading={loadingStudents}
+          renderInput={(params) => (
+            <TextField 
+              {...params} 
+              label="Select Student" 
+              variant="outlined" 
+              size="small"
+            />
           )}
+          onChange={(event, value) => setSelectedStudent(value)}
+          value={selectedStudent}
+        />
+      </div>
+    </div>
+    <div className="h-64">
+      <LineChart
+        data={dashboardData.recentEvaluations.map((evalItem) => {
+          // Calculate standard score if student is selected
+          let standardScore = '-';
+          if (selectedStudent) {
+            console.log('Selected Student:', selectedStudent);
+            
+            const ageAtEval = calculateAgeAtEvaluation(
+              selectedStudent.birthdate, 
+              new Date().toISOString() // Use current date for demo, replace with actual eval date
+            );
+            console.log('Age at Evaluation:', ageAtEval);
+            
+            const ageRange = getAgeRange(ageAtEval.years, ageAtEval.months);
+            console.log('Age Range:', ageRange);
+            
+            // Calculate total scaled score (simplified example)
+            let totalScaled = 0;
+            dashboardData.stats.domainProgress.forEach(domain => {
+              const rawScore = Math.floor(Math.random() * 20); // Replace with actual score
+              const scaled = getScaledScore(domain.name, rawScore, ageRange);
+              console.log(`Domain: ${domain.name}, Raw: ${rawScore}, Scaled: ${scaled}`);
+              
+              if (scaled !== '-') totalScaled += parseInt(scaled);
+            });
+            
+            console.log('Total Scaled Score:', totalScaled);
+            
+            // Find standard score
+            const entry = STANDARD_SCORE_TABLE.find(item => totalScaled <= item.sum);
+            standardScore = entry ? entry.score : '-';
+            console.log('Standard Score:', standardScore);
+          }
+          
+          const dataPoint = {
+            name: evalItem.evaluation_period,
+            progress: selectedStudent ? standardScore : evalItem.average_score,
+            type: selectedStudent ? 'Standard Score' : 'Average Score'
+          };
+          
+          console.log('Data Point:', dataPoint);
+          return dataPoint;
+        })}
+      />
+    </div>
+    {selectedStudent && (
+      <div className="mt-4 text-sm text-gray-600">
+        Showing standard scores for {selectedStudent.first_name} {selectedStudent.last_name}
+      </div>
+    )}
+  </div>
+)}
         </div>
       </div>
     </div>

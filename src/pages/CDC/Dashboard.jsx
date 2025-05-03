@@ -210,19 +210,22 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchWeeklyAttendance = async () => {
       try {
+        console.log('Starting to fetch weekly attendance data');
         setWeeklyAttendance(prev => ({ ...prev, loading: true, error: null }));
         
         const response = await apiRequest('/api/attendance/weekly');
+        console.log('API response:', response);
         
         if (!response.success) {
           throw new Error(response.message || 'Failed to load attendance data');
         }
-
+  
         setWeeklyAttendance({
           loading: false,
           error: null,
           data: response.data || []
         });
+        console.log('Successfully set attendance data');
       } catch (err) {
         console.error("Error fetching weekly attendance:", err);
         setWeeklyAttendance({
@@ -230,9 +233,10 @@ export default function Dashboard() {
           error: err.message,
           data: generateMockAttendanceData()
         });
+        console.log('Fell back to mock data');
       }
     };
-
+  
     fetchWeeklyAttendance();
   }, []);
 
@@ -533,20 +537,47 @@ export default function Dashboard() {
 <div className="bg-white rounded-xl p-6 shadow-sm">
   <h3 className="text-xl font-semibold mb-4">Daily Attendance (7 Days)</h3>
   <div className="h-64">
-    {weeklyAttendance.loading ? (
-      <div className="h-full flex items-center justify-center">
-        <CircularProgress size={40} />
-      </div>
-    ) : weeklyAttendance.error ? (
-      <div className="h-full flex flex-col items-center justify-center text-red-500 p-4 text-center">
-        <Alert severity="error" className="mb-2">
-          Error loading attendance data: {weeklyAttendance.error}
-        </Alert>
-        <p className="text-sm text-gray-500">Showing sample data</p>
-      </div>
-    ) : weeklyAttendance.data.length > 0 ? (
-      <LineChart
-        data={weeklyAttendance.data.map(day => {
+    {(() => {
+      console.log('Rendering attendance graph with state:', {
+        loading: weeklyAttendance.loading,
+        error: weeklyAttendance.error,
+        dataLength: weeklyAttendance.data?.length,
+        sampleData: weeklyAttendance.data?.slice(0, 3) // Show first 3 items
+      });
+
+      if (weeklyAttendance.loading) {
+        console.log('Showing loading state');
+        return (
+          <div className="h-full flex items-center justify-center">
+            <CircularProgress size={40} />
+          </div>
+        );
+      }
+
+      if (weeklyAttendance.error) {
+        console.error('Error state:', weeklyAttendance.error);
+        return (
+          <div className="h-full flex flex-col items-center justify-center text-red-500 p-4 text-center">
+            <Alert severity="error" className="mb-2">
+              Error loading attendance data: {weeklyAttendance.error}
+            </Alert>
+            <p className="text-sm text-gray-500">Showing sample data</p>
+          </div>
+        );
+      }
+
+      if (!weeklyAttendance.data || weeklyAttendance.data.length === 0) {
+        console.warn('No data available');
+        return (
+          <div className="h-full flex items-center justify-center text-gray-500">
+            No attendance data available
+          </div>
+        );
+      }
+
+      console.log('Processing attendance data:', {
+        rawData: weeklyAttendance.data,
+        transformedData: weeklyAttendance.data.map(day => {
           const date = new Date(day.date);
           return {
             name: date.toLocaleDateString('en-US', {
@@ -559,36 +590,54 @@ export default function Dashboard() {
             total: day.total,
             date: day.date
           };
-        })}
-        config={{
-          keys: ['percentage'],
-          colors: ['#10B981'],
-          yAxisLabel: 'Attendance Percentage',
-          tooltipFormat: (value, name, props) => [
-            `${props.payload.percentage}% Attendance`,
-            `Present: ${props.payload.present} students`,
-            `Absent: ${props.payload.absent} students`,
-            `Total: ${props.payload.total} students`,
-            new Date(props.payload.date).toLocaleDateString('en-US', {
-              weekday: 'long',
-              month: 'long',
-              day: 'numeric',
-              year: 'numeric'
-            })
-          ],
-          xAxisConfig: {
-            tickMargin: 10,
-            interval: 0 // Show all ticks
-          }
-        }}
-      />
-    ) : (
-      <div className="h-full flex items-center justify-center text-gray-500">
-        No attendance data available
-      </div>
-    )}
+        })
+      });
+
+      return (
+        <LineChart
+          data={weeklyAttendance.data.map(day => {
+            const date = new Date(day.date);
+            return {
+              name: date.toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric'
+              }),
+              percentage: day.percentage,
+              present: day.present,
+              absent: day.absent,
+              total: day.total,
+              date: day.date
+            };
+          })}
+          config={{
+            keys: ['percentage'],
+            colors: ['#10B981'],
+            yAxisLabel: 'Attendance Percentage',
+            tooltipFormat: (value, name, props) => {
+              console.log('Tooltip hover data:', props.payload);
+              return [
+                `${props.payload.percentage}% Attendance`,
+                `Present: ${props.payload.present} students`,
+                `Absent: ${props.payload.absent} students`,
+                `Total: ${props.payload.total} students`,
+                new Date(props.payload.date).toLocaleDateString('en-US', {
+                  weekday: 'long',
+                  month: 'long',
+                  day: 'numeric',
+                  year: 'numeric'
+                })
+              ];
+            },
+            xAxisConfig: {
+              tickMargin: 10,
+              interval: 0 // Show all ticks
+            }
+          }}
+        />
+      );
+    })()}
   </div>
-</div>  
+</div>
         </div>
       </div>
     </div>

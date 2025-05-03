@@ -4,6 +4,8 @@ import { PieChart, BarChart, LineChart } from "../../components/Charts";
 import Navbar from "../../components/all/Navbar";
 import Sidebar from "../../components/CDC/Sidebar";
 import bgImage from "../../assets/bg1.jpg";
+import Autocomplete from '@mui/material/Autocomplete';
+import TextField from '@mui/material/TextField';
 import { 
   FiUsers, 
   FiCalendar, 
@@ -16,6 +18,189 @@ import {
   FiBell
 } from "react-icons/fi";
 import { CircularProgress, Alert, Button } from "@mui/material";
+
+const SCORE_TABLES = {
+  '3.1-4.0': {
+    'Gross Motor': [
+      { min: 0, max: 3, score: 1 }, { min: 4, max: 4, score: 2 },
+      { min: 5, max: 5, score: 3 }, { min: 6, max: 6, score: 5 },
+      { min: 7, max: 7, score: 6 }, { min: 8, max: 8, score: 7 },
+      { min: 9, max: 9, score: 8 }, { min: 10, max: 10, score: 10 },
+      { min: 11, max: 11, score: 11 }, { min: 12, max: 12, score: 12 },
+      { min: 13, max: 13, score: 14 }
+    ],
+    'Fine Motor': [
+      { min: 0, max: 3, score: 2 },
+      { min: 4, max: 4, score: 4 }, { min: 5, max: 5, score: 5 },
+      { min: 6, max: 6, score: 7 }, { min: 7, max: 7, score: 9 },
+      { min: 8, max: 8, score: 10 }, { min: 9, max: 9, score: 12 },
+      { min: 10, max: 10, score: 14 }, { min: 11, max: 11, score: 15 }
+    ],
+    'Self-Help': [
+      { min: 0, max: 9, score: 1 }, { min: 10, max: 10, score: 2 },
+      { min: 11, max: 11, score: 3 }, { min: 12, max: 12, score: 4 },
+      { min: 13, max: 14, score: 5 }, { min: 15, max: 15, score: 6 },
+      { min: 16, max: 16, score: 7 }, { min: 17, max: 17, score: 8 },
+      { min: 18, max: 19, score: 9 }, { min: 20, max: 20, score: 10 },
+      { min: 21, max: 21, score: 11 }, { min: 22, max: 22, score: 12 },
+      { min: 23, max: 24, score: 13 }, { min: 25, max: 25, score: 14 },
+      { min: 26, max: 26, score: 15 }, { min: 27, max: 27, score: 16 }
+    ],
+    'Receptive Language': [
+      { min: 0, max: 1, score: 3 }, { min: 2, max: 2, score: 5 },
+      { min: 3, max: 3, score: 7 }, { min: 4, max: 4, score: 10 },
+      { min: 5, max: 5, score: 12 }
+    ],
+    'Expressive Language': [
+      { min: 0, max: 2, score: 1 }, { min: 3, max: 3, score: 3 },
+      { min: 4, max: 4, score: 4 }, { min: 5, max: 5, score: 6 },
+      { min: 6, max: 6, score: 8 }, { min: 7, max: 7, score: 10 },
+      { min: 8, max: 8, score: 12 }
+    ],
+    'Cognitive': [
+      { min: 0, max: 0, score: 3 }, { min: 1, max: 1, score: 4 },
+      { min: 2, max: 3, score: 5 }, { min: 4, max: 4, score: 6 },
+      { min: 5, max: 5, score: 7 }, { min: 6, max: 6, score: 8 },
+      { min: 7, max: 7, score: 9 }, { min: 8, max: 9, score: 10 },
+      { min: 10, max: 10, score: 11 }, { min: 11, max: 11, score: 12 },
+      { min: 12, max: 12, score: 13 }, { min: 13, max: 14, score: 14 },
+      { min: 15, max: 15, score: 15 }, { min: 16, max: 16, score: 16 },
+      { min: 17, max: 17, score: 17 }, { min: 18, max: 18, score: 18 },
+      { min: 19, max: 21, score: 19 }
+    ],
+    'Social Emotional': [
+      { min: 0, max: 9, score: 1 }, { min: 10, max: 11, score: 2 },
+      { min: 12, max: 12, score: 3 }, { min: 13, max: 13, score: 4 },
+      { min: 14, max: 14, score: 5 }, { min: 15, max: 15, score: 6 },
+      { min: 16, max: 16, score: 7 }, { min: 17, max: 18, score: 8 },
+      { min: 19, max: 19, score: 9 }, { min: 20, max: 20, score: 10 },
+      { min: 21, max: 21, score: 11 }, { min: 22, max: 22, score: 12 },
+      { min: 23, max: 23, score: 13 }, { min: 24, max: 24, score: 14 }
+    ]
+  },
+  '4.1-5.0': {
+    'Gross Motor': [
+      { min: 0, max: 5, score: 1 }, { min: 6, max: 6, score: 2 },
+      { min: 7, max: 7, score: 4 }, { min: 8, max: 8, score: 5 },
+      { min: 9, max: 9, score: 7 }, { min: 10, max: 10, score: 8 }, 
+      { min: 11, max: 11, score: 10 },{ min: 12, max: 12, score: 11 },
+      { min: 13, max: 13, score: 13 }
+    ],
+    'Fine Motor': [
+      { min: 0, max: 3, score: 1 }, { min: 4, max: 4, score: 2 },
+      { min: 5, max: 5, score: 4 }, { min: 6, max: 6, score: 5 },
+      { min: 7, max: 7, score: 7 }, { min: 8, max: 8, score: 9 },
+      { min: 9, max: 9, score: 10 }, { min: 10, max: 10, score: 12 },
+      { min: 11, max: 11, score: 14 }
+    ],
+    'Self-Help': [
+      { min: 0, max: 15, score: 1 }, { min: 16, max: 16, score: 2 },
+      { min: 17, max: 17, score: 3 }, { min: 18, max: 18, score: 4 },
+      { min: 19, max: 19, score: 5 }, { min: 20, max: 20, score: 6 },
+      { min: 21, max: 21, score: 8 },
+      { min: 22, max: 22, score: 9 }, { min: 23, max: 23, score: 10 },
+      { min: 24, max: 24, score: 11 }, { min: 25, max: 25, score: 12 },
+      { min: 26, max: 26, score: 13 }, { min: 27, max: 27, score: 14 }
+    ],
+    'Receptive Language': [
+      { min: 0, max: 1, score: 1 }, { min: 2, max: 2, score: 3 },
+      { min: 3, max: 3, score: 6 }, { min: 4, max: 4, score: 9 },
+      { min: 5, max: 5, score: 11 }
+    ],
+    'Expressive Language': [
+      { min: 0, max: 5, score: 2 }, { min: 6, max: 6, score: 5 },
+      { min: 7, max: 7, score: 8 }, { min: 8, max: 8, score: 11 }
+    ],
+    'Cognitive': [
+      { min: 0, max: 0, score: 1 }, { min: 1, max: 1, score: 2 },
+      { min: 2, max: 3, score: 3 }, { min: 4, max: 4, score: 4 },
+      { min: 5, max: 5, score: 5 }, { min: 6, max: 7, score: 6 },
+      { min: 8, max: 8, score: 7 }, { min: 9, max: 10, score: 8 },
+      { min: 11, max: 11, score: 9 }, { min: 12, max: 12, score: 10 },
+      { min: 13, max: 14, score: 11 }, { min: 15, max: 15, score: 12 },
+      { min: 16, max: 17, score: 13 }, { min: 18, max: 18, score: 14 },
+      { min: 19, max: 20, score: 15 }, { min: 21, max: 21, score: 16 }
+    ],
+    'Social Emotional': [
+      { min: 0, max: 13, score: 1 }, { min: 14, max: 14, score: 2 },
+      { min: 15, max: 15, score: 3 }, { min: 16, max: 16, score: 4 },
+      { min: 17, max: 17, score: 5 }, { min: 18, max: 18, score: 7 },
+      { min: 19, max: 19, score: 8 }, { min: 20, max: 20, score: 9 },
+      { min: 21, max: 21, score: 10 }, { min: 22, max: 22, score: 11 },
+      { min: 23, max: 23, score: 12 }, { min: 24, max: 24, score: 13 }
+    ]
+  },
+  '5.1-5.11': {
+    'Gross Motor': [
+      { min: 0, max: 10, score: 1 }, { min: 11, max: 11, score: 4 }, 
+      { min: 12, max: 12, score: 7 }, { min: 13, max: 13, score: 11 }
+    ],
+    'Fine Motor': [
+      { min: 0, max: 5, score: 1 }, { min: 6, max: 6, score: 3 },
+      { min: 7, max: 7, score: 5 }, { min: 8, max: 8, score: 7 },
+      { min: 8, max: 8, score: 9 }, { min: 10, max: 10, score: 10 },
+      { min: 11, max: 11, score: 12 }
+    ],
+    'Self-Help': [
+      { min: 0, max: 19, score: 2 },
+      { min: 20, max: 20, score: 3 }, { min: 21, max: 21, score: 4 },
+      { min: 22, max: 22, score: 6 }, { min: 23, max: 23, score: 7 },
+      { min: 24, max: 24, score: 9 }, { min: 25, max: 25, score: 10 },
+      { min: 26, max: 26, score: 12 }, { min: 27, max: 27, score: 13 }
+    ],
+    'Receptive Language': [
+      { min: 0, max: 2, score: 1 }, { min: 3, max: 3, score: 4 },
+      { min: 4, max: 4, score: 8 }, { min: 5, max: 5, score: 11 }
+    ],
+    'Expressive Language': [
+      { min: 0, max: 7, score: 5 }, { min: 8, max: 8, score: 11 }
+    ],
+    'Cognitive': [
+      { min: 0, max: 0, score: 1 }, { min: 10, max: 10, score: 2 },
+      { min: 11, max: 11, score: 3 }, { min: 12, max: 12, score: 4 },
+      { min: 13, max: 13, score: 5 }, { min: 14, max: 14, score: 6 },
+      { min: 15, max: 15, score: 7 }, { min: 16, max: 16, score: 8 },
+      { min: 17, max: 17, score: 9 }, { min: 18, max: 18, score: 10 },
+      { min: 19, max: 19, score: 11 }, { min: 20, max: 20, score: 12 },
+      { min: 21, max: 21, score: 13 }
+    ],
+    'Social Emotional': [
+      { min: 0, max: 15, score: 1 }, { min: 16, max: 16, score: 2 },
+      { min: 17, max: 17, score: 3 }, 
+      { min: 18, max: 18, score: 5 }, { min: 19, max: 19, score: 6 },
+      { min: 20, max: 20, score: 7 }, { min: 21, max: 21, score: 9 },
+      { min: 22, max: 22, score: 10 }, { min: 23, max: 23, score: 11 },
+      { min: 24, max: 24, score: 13 }
+    ]
+  }
+};
+
+const STANDARD_SCORE_TABLE = [
+  { sum: 29, score: 37 }, { sum: 30, score: 38 }, { sum: 31, score: 40 },
+  { sum: 32, score: 41 }, { sum: 33, score: 43 }, { sum: 34, score: 44 },
+  { sum: 35, score: 45 }, { sum: 36, score: 47 }, { sum: 37, score: 48 },
+  { sum: 38, score: 50 }, { sum: 39, score: 51 }, { sum: 40, score: 53 },
+  { sum: 41, score: 54 }, { sum: 42, score: 56 }, { sum: 43, score: 57 },
+  { sum: 44, score: 59 }, { sum: 45, score: 60 }, { sum: 46, score: 62 },
+  { sum: 47, score: 63 }, { sum: 48, score: 65 }, { sum: 49, score: 66 },
+  { sum: 50, score: 67 }, { sum: 51, score: 69 }, { sum: 52, score: 70 },
+  { sum: 53, score: 72 }, { sum: 54, score: 73 }, { sum: 55, score: 75 },
+  { sum: 56, score: 76 }, { sum: 57, score: 78 }, { sum: 58, score: 79 },
+  { sum: 59, score: 81 }, { sum: 60, score: 82 }, { sum: 61, score: 84 },
+  { sum: 62, score: 85 }, { sum: 63, score: 86 }, { sum: 64, score: 88 },
+  { sum: 65, score: 89 }, { sum: 66, score: 91 }, { sum: 67, score: 92 },
+  { sum: 68, score: 94 }, { sum: 69, score: 95 }, { sum: 70, score: 97 },
+  { sum: 71, score: 98 }, { sum: 72, score: 100 }, { sum: 73, score: 101 },
+  { sum: 74, score: 103 }, { sum: 75, score: 104 }, { sum: 76, score: 105 },
+  { sum: 77, score: 107 }, { sum: 78, score: 108 }, { sum: 79, score: 110 },
+  { sum: 80, score: 111 }, { sum: 81, score: 113 }, { sum: 82, score: 114 },
+  { sum: 83, score: 116 }, { sum: 84, score: 117 }, { sum: 85, score: 119 },
+  { sum: 86, score: 120 }, { sum: 87, score: 122 }, { sum: 88, score: 123 },
+  { sum: 89, score: 124 }, { sum: 90, score: 126 }, { sum: 91, score: 127 },
+  { sum: 92, score: 129 }, { sum: 93, score: 130 }, { sum: 94, score: 132 },
+  { sum: 95, score: 133 }, { sum: 96, score: 135 }, { sum: 97, score: 136 },
+  { sum: 98, score: 138 }
+];
 
 // API Service Helper
 const apiRequest = async (endpoint, method = 'GET', body = null) => {
@@ -30,6 +215,55 @@ const apiRequest = async (endpoint, method = 'GET', body = null) => {
     headers,
     ...(body && { body: JSON.stringify(body) })
   };
+
+  const getAgeRange = (years, months) => {
+    if (years === 'N/A' || months === 'N/A') return null;
+    const ageDecimal = years + (months / 12);
+    if (ageDecimal >= 3.1 && ageDecimal <= 4.0) return '3.1-4.0';
+    if (ageDecimal >= 4.1 && ageDecimal <= 5.0) return '4.1-5.0';
+    if (ageDecimal >= 5.1 && ageDecimal <= 5.11) return '5.1-5.11';
+    return null;
+  };
+
+  const calculateAgeAtEvaluation = (birthdate, evaluationDate) => {
+    if (!birthdate || !evaluationDate) return { years: 'N/A', months: 'N/A' };
+    try {
+      const birthDate = new Date(birthdate);
+      const evalDate = new Date(evaluationDate);
+      let years = evalDate.getFullYear() - birthDate.getFullYear();
+      let months = evalDate.getMonth() - birthDate.getMonth();
+      
+      if (months < 0 || (months === 0 && evalDate.getDate() < birthDate.getDate())) {
+        years--;
+        months += 12;
+      }
+      if (evalDate.getDate() < birthDate.getDate()) {
+        months--;
+        if (months < 0) months += 12;
+      }
+      return { years, months };
+    } catch (e) {
+      return { years: 'N/A', months: 'N/A' };
+    }
+  };
+  
+  // Add this function to get scaled score
+  const getScaledScore = (domain, rawScore, ageRange) => {
+    if (!ageRange || !SCORE_TABLES[ageRange]) return '-';
+    const normalizedDomain = domain.split('/')[0].trim();
+    if (!SCORE_TABLES[ageRange][normalizedDomain]) return '-';
+    if (rawScore === '-' || rawScore === undefined || rawScore === null) return '-';
+    
+    const entry = SCORE_TABLES[ageRange][normalizedDomain].find(
+      item => rawScore >= item.min && rawScore <= item.max
+    );
+    return entry ? entry.score : '-';
+  };
+
+  const [students, setStudents] = useState([]);
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [loadingStudents, setLoadingStudents] = useState(false);
+    
 
   const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
   
@@ -152,6 +386,21 @@ export default function Dashboard() {
   });
 
   const [activeAnnouncementIndex, setActiveAnnouncementIndex] = useState(0);
+
+  useEffect(() => {
+    const fetchStudents = async () => {
+      try {
+        setLoadingStudents(true);
+        const data = await apiRequest('/api/students');
+        setStudents(data.students || []);
+      } catch (err) {
+        console.error("Error fetching students:", err);
+      } finally {
+        setLoadingStudents(false);
+      }
+    };
+    fetchStudents();
+  }, []);
 
   // Fetch all dashboard data
   useEffect(() => {
@@ -455,18 +704,67 @@ export default function Dashboard() {
 
           {/* Recent Evaluations */}
           {dashboardData.recentEvaluations.length > 0 && (
-            <div className="bg-white rounded-xl p-6 shadow-sm">
-              <h3 className="text-xl font-semibold mb-4">Recent Evaluations</h3>
-              <div className="h-64">
-                <LineChart
-                  data={dashboardData.recentEvaluations.map((evalItem) => ({
-                    name: evalItem.evaluation_period,
-                    progress: evalItem.average_score
-                  }))}
-                />
-              </div>
-            </div>
+  <div className="bg-white rounded-xl p-6 shadow-sm">
+    <div className="flex justify-between items-center mb-4">
+      <h3 className="text-xl font-semibold">Recent Evaluations</h3>
+      <div className="w-64">
+        <Autocomplete
+          options={students}
+          getOptionLabel={(student) => `${student.first_name} ${student.last_name}`}
+          loading={loadingStudents}
+          renderInput={(params) => (
+            <TextField 
+              {...params} 
+              label="Select Student" 
+              variant="outlined" 
+              size="small"
+            />
           )}
+          onChange={(event, value) => setSelectedStudent(value)}
+          value={selectedStudent}
+        />
+      </div>
+    </div>
+    <div className="h-64">
+      <LineChart
+        data={dashboardData.recentEvaluations.map((evalItem) => {
+          // Calculate standard score if student is selected
+          let standardScore = '-';
+          if (selectedStudent) {
+            const ageAtEval = calculateAgeAtEvaluation(
+              selectedStudent.birthdate, 
+              new Date().toISOString() // Use current date for demo, replace with actual eval date
+            );
+            const ageRange = getAgeRange(ageAtEval.years, ageAtEval.months);
+            
+            // Calculate total scaled score (simplified example)
+            let totalScaled = 0;
+            dashboardData.stats.domainProgress.forEach(domain => {
+              const rawScore = Math.floor(Math.random() * 20); // Replace with actual score
+              const scaled = getScaledScore(domain.name, rawScore, ageRange);
+              if (scaled !== '-') totalScaled += parseInt(scaled);
+            });
+            
+            // Find standard score
+            const entry = STANDARD_SCORE_TABLE.find(item => totalScaled <= item.sum);
+            standardScore = entry ? entry.score : '-';
+          }
+          
+          return {
+            name: evalItem.evaluation_period,
+            progress: selectedStudent ? standardScore : evalItem.average_score,
+            type: selectedStudent ? 'Standard Score' : 'Average Score'
+          };
+        })}
+      />
+    </div>
+    {selectedStudent && (
+      <div className="mt-4 text-sm text-gray-600">
+        Showing standard scores for {selectedStudent.first_name} {selectedStudent.last_name}
+      </div>
+    )}
+  </div>
+)}
         </div>
       </div>
     </div>

@@ -59,7 +59,15 @@ const apiRequest = async (endpoint, method = 'GET', body = null) => {
         } else if (endpoint === '/api/domains/categories') {
           resolve({
             success: true,
-            categories: ['Cognitive', 'Language', 'Physical', 'Self-Help', 'Social']
+            categories: [
+              'Cognitive',
+              'Expressive Language', 
+              'Fine Motor',
+              'Gross Motor',
+              'Receptive Language',
+              'Self-Help',
+              'Social-Emotional'
+            ]
           });
         } else if (endpoint === '/api/announcements') {
           resolve({
@@ -156,7 +164,7 @@ export default function Dashboard() {
           apiRequest('/api/students/gender-distribution'),
           apiRequest('/api/students/enrollment-stats'),
           apiRequest('/api/students/age-distribution'),
-          apiRequest('/api/domains/categories'), // New endpoint
+          apiRequest('/api/domains/categories'),
           apiRequest('/api/attendance/stats'),
           apiRequest('/api/announcements')
         ]);
@@ -178,9 +186,12 @@ export default function Dashboard() {
         const ageGroups = ageRes.success ? ageRes.distribution : { '3-4': 0, '4-5': 0, '5-6': 0 };
         const announcements = announcementsRes.success ? announcementsRes.announcements : [];
 
-        // Create domain progress cards with 0% progress initially
+        // Create domain progress cards
         const domainProgress = domainRes.success 
-          ? domainRes.categories.map(category => ({ name: category, progress: '0' }))
+          ? domainRes.categories.map(category => ({ 
+              name: category.split('/')[0].trim(), // Only take text before slash
+              progress: '0' 
+            }))
           : [];
 
         setDashboardData({
@@ -423,15 +434,15 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Domain Progress */}
+          {/* Domain Categories - Single Row */}
           <div className="bg-white rounded-xl p-6 shadow-sm">
             <h3 className="text-xl font-semibold mb-4">Domain Categories</h3>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="flex flex-nowrap overflow-x-auto gap-4 pb-2">
               {dashboardData.stats.domainProgress.map((domain, i) => (
                 <DomainCard 
                   key={i}
                   name={domain.name}
-                  color={['#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6'][i % 5]}
+                  color={['#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#6366f1', '#ef4444'][i % 7]}
                 />
               ))}
             </div>
@@ -494,21 +505,21 @@ function StatCard({ icon, title, value, subtitle, trend, genderBreakdown }) {
 // Component: Domain Card (simplified without progress)
 function DomainCard({ name, color }) {
   return (
-    <div className="border rounded-lg p-4 text-center hover:shadow-md transition-shadow">
-      <div className="w-14 h-14 mx-auto mb-2 flex items-center justify-center">
+    <div className="flex-shrink-0 w-24 text-center">
+      <div className="w-12 h-12 mx-auto mb-2 flex items-center justify-center">
         <div 
           className="w-full h-full rounded-full flex items-center justify-center"
           style={{ backgroundColor: `${color}20`, border: `2px solid ${color}` }}
         >
           <span 
-            className="text-xl font-bold"
+            className="text-lg font-bold"
             style={{ color }}
           >
             {name.charAt(0)}
           </span>
         </div>
       </div>
-      <p className="text-sm font-medium truncate">{name}</p>
+      <p className="text-xs font-medium truncate">{name}</p>
     </div>
   );
 }

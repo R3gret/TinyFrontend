@@ -103,21 +103,17 @@ const apiRequest = async (endpoint, method = 'GET', body = null) => {
             ]
           });
         } else if (endpoint === '/api/attendance/weekly') {
-          // Mock data for weekly attendance centered around current date
-          const weeklyData = [];
-          const now = new Date();
+          // Mock data for daily attendance (7 days)
+          const dailyData = [];
+          const today = new Date();
           
-          // Generate data for 4 weeks before and 4 weeks after current week
-          for (let i = -4; i <= 4; i++) {
-            const startDate = new Date(now);
-            startDate.setDate(now.getDate() + (i * 7) - (now.getDay() - 1)); // Start of week (Monday)
+          // Generate data for 3 days before and after today
+          for (let i = -3; i <= 3; i++) {
+            const date = new Date(today);
+            date.setDate(today.getDate() + i);
             
-            const endDate = new Date(startDate);
-            endDate.setDate(startDate.getDate() + 6); // End of week (Sunday)
-            
-            weeklyData.push({
-              date: startDate.toISOString().split('T')[0],
-              end_date: endDate.toISOString().split('T')[0],
+            dailyData.push({
+              date: date.toISOString().split('T')[0],
               present: Math.floor(Math.random() * 15) + 5,
               total: 20,
               percentage: Math.floor(Math.random() * 30) + 70
@@ -126,7 +122,7 @@ const apiRequest = async (endpoint, method = 'GET', body = null) => {
           
           resolve({
             success: true,
-            data: weeklyData
+            data: dailyData
           });
         } else {
           resolve({ 
@@ -530,7 +526,7 @@ export default function Dashboard() {
 
           {/* Weekly Attendance Graph */}
 <div className="bg-white rounded-xl p-6 shadow-sm">
-  <h3 className="text-xl font-semibold mb-4">Weekly Attendance</h3>
+  <h3 className="text-xl font-semibold mb-4">Daily Attendance (7 Days)</h3>
   <div className="h-64">
     {weeklyAttendance.loading ? (
       <div className="h-full flex items-center justify-center">
@@ -545,25 +541,36 @@ export default function Dashboard() {
       </div>
     ) : weeklyAttendance.data.length > 0 ? (
       <LineChart
-        data={weeklyAttendance.data.map(week => {
-          const startDate = new Date(week.date);
-          const endDate = week.end_date ? new Date(week.end_date) : new Date(week.date);
+        data={(() => {
+          // Generate 7 days centered around today
+          const days = [];
+          const today = new Date();
+          const startDate = new Date(today);
+          startDate.setDate(today.getDate() - 3); // 3 days before today
           
-          // Format as "MMM D" if same month, "MMM D - MMM D" if cross-month
-          const isSameMonth = startDate.getMonth() === endDate.getMonth();
-          const formattedLabel = isSameMonth
-            ? startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-            : `${startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
-          
-          return {
-            name: formattedLabel,
-            percentage: week.percentage,
-            present: week.present,
-            total: week.total,
-            date: week.date,
-            end_date: week.end_date || week.date
-          };
-        })}
+          for (let i = 0; i < 7; i++) {
+            const currentDate = new Date(startDate);
+            currentDate.setDate(startDate.getDate() + i);
+            
+            // Find matching data or use empty values
+            const matchingDay = weeklyAttendance.data.find(d => {
+              const dDate = new Date(d.date);
+              return dDate.toDateString() === currentDate.toDateString();
+            });
+            
+            days.push({
+              name: currentDate.toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric'
+              }),
+              percentage: matchingDay?.percentage || 0,
+              present: matchingDay?.present || 0,
+              total: matchingDay?.total || 0,
+              date: currentDate.toISOString().split('T')[0]
+            });
+          }
+          return days;
+        })()}
         config={{
           keys: ['percentage'],
           colors: ['#10B981'],
@@ -571,15 +578,12 @@ export default function Dashboard() {
           tooltipFormat: (value, name, props) => [
             `${props.payload.percentage}%`,
             `${props.payload.present}/${props.payload.total} students`,
-            `${new Date(props.payload.date).toLocaleDateString('en-US', { 
-              month: 'short', 
-              day: 'numeric' 
-            })} - ${new Date(props.payload.end_date).toLocaleDateString('en-US', { 
-              month: 'short', 
-              day: 'numeric' 
-            })}`
+            new Date(props.payload.date).toLocaleDateString('en-US', {
+              weekday: 'short',
+              month: 'short',
+              day: 'numeric'
+            })
           ],
-          // Add this if your LineChart component supports it
           xAxisConfig: {
             tickMargin: 10,
             interval: 0 // Show all ticks

@@ -111,23 +111,26 @@ const apiRequest = async (endpoint, method = 'GET', body = null) => {
             ]
           });
         } else if (endpoint === '/api/attendance/weekly') {
-          // Mock data for weekly attendance
-          const weeks = [];
+          // Mock data for weekly attendance with actual dates
+          const weeklyData = [];
           const now = new Date();
+          
+          // Generate data for last 8 weeks (including current week)
           for (let i = 8; i >= 0; i--) {
             const date = new Date(now);
             date.setDate(now.getDate() - (i * 7));
-            const weekNum = getWeekNumber(date);
-            weeks.push({
-              week: weekNum,
+            
+            weeklyData.push({
+              date: date.toISOString().split('T')[0], // Format as YYYY-MM-DD
               present: Math.floor(Math.random() * 15) + 5,
               total: 20,
               percentage: Math.floor(Math.random() * 30) + 70
             });
           }
+          
           resolve({
             success: true,
-            data: weeks
+            data: weeklyData
           });
         } else {
           resolve({ 
@@ -161,15 +164,6 @@ const apiRequest = async (endpoint, method = 'GET', body = null) => {
 
   return response.json();
 };
-
-// Helper function to get week number
-function getWeekNumber(d) {
-  d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
-  return d.getUTCFullYear() * 100 + weekNo;
-}
 
 export default function Dashboard() {
   const [dashboardData, setDashboardData] = useState({
@@ -494,12 +488,21 @@ export default function Dashboard() {
             <div className="h-64">
               {dashboardData.weeklyAttendance.length > 0 ? (
                 <LineChart
-                  data={dashboardData.weeklyAttendance.map(week => ({
-                    name: `Week ${week.week.toString().slice(4)}`,
-                    percentage: week.percentage,
-                    present: week.present,
-                    total: week.total
-                  }))}
+                  data={dashboardData.weeklyAttendance.map(week => {
+                    const date = new Date(week.date);
+                    const formattedDate = date.toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric'
+                    });
+                    
+                    return {
+                      name: formattedDate,
+                      percentage: week.percentage,
+                      present: week.present,
+                      total: week.total,
+                      date: week.date
+                    };
+                  })}
                   config={{
                     keys: ['percentage'],
                     colors: ['#10B981'],
@@ -507,7 +510,11 @@ export default function Dashboard() {
                     tooltipFormat: (value, name, props) => [
                       `${props.payload.percentage}%`,
                       `${props.payload.present}/${props.payload.total} students`,
-                      `Week ${props.payload.name}`
+                      new Date(props.payload.date).toLocaleDateString('en-US', {
+                        weekday: 'short',
+                        month: 'short',
+                        day: 'numeric'
+                      })
                     ]
                   }}
                 />

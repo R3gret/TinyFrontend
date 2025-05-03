@@ -103,28 +103,32 @@ const apiRequest = async (endpoint, method = 'GET', body = null) => {
             ]
           });
         } else if (endpoint === '/api/attendance/weekly') {
-        // Mock data for weekly attendance with actual dates
-        const weeklyData = [];
-        const now = new Date();
-        
-        // Generate data for last 8 weeks (including current week)
-        for (let i = 8; i >= 0; i--) {
-          const date = new Date(now);
-          date.setDate(now.getDate() - (i * 7));
+          // Mock data for weekly attendance centered around current date
+          const weeklyData = [];
+          const now = new Date();
           
-          weeklyData.push({
-            date: date.toISOString().split('T')[0],
-            present: Math.floor(Math.random() * 15) + 5,
-            total: 20,
-            percentage: Math.floor(Math.random() * 30) + 70
+          // Generate data for 4 weeks before and 4 weeks after current week
+          for (let i = -4; i <= 4; i++) {
+            const startDate = new Date(now);
+            startDate.setDate(now.getDate() + (i * 7) - (now.getDay() - 1)); // Start of week (Monday)
+            
+            const endDate = new Date(startDate);
+            endDate.setDate(startDate.getDate() + 6); // End of week (Sunday)
+            
+            weeklyData.push({
+              date: startDate.toISOString().split('T')[0],
+              end_date: endDate.toISOString().split('T')[0],
+              present: Math.floor(Math.random() * 15) + 5,
+              total: 20,
+              percentage: Math.floor(Math.random() * 30) + 70
+            });
+          }
+          
+          resolve({
+            success: true,
+            data: weeklyData
           });
-        }
-        
-        resolve({
-          success: true,
-          data: weeklyData
-        });
-      } else {
+        } else {
           resolve({ 
             students: Array(11).fill({}).map((_, i) => ({
               student_id: i+1,
@@ -525,59 +529,70 @@ export default function Dashboard() {
           </div>
 
           {/* Weekly Attendance Graph */}
-          <div className="bg-white rounded-xl p-6 shadow-sm">
-            <h3 className="text-xl font-semibold mb-4">Weekly Attendance</h3>
-            <div className="h-64">
-              {weeklyAttendance.loading ? (
-                <div className="h-full flex items-center justify-center">
-                  <CircularProgress size={40} />
-                </div>
-              ) : weeklyAttendance.error ? (
-                <div className="h-full flex flex-col items-center justify-center text-red-500 p-4 text-center">
-                  <Alert severity="error" className="mb-2">
-                    Error loading attendance data: {weeklyAttendance.error}
-                  </Alert>
-                  <p className="text-sm text-gray-500">Showing sample data</p>
-                </div>
-              ) : weeklyAttendance.data.length > 0 ? (
-                <LineChart
-                  data={weeklyAttendance.data.map(week => {
-                    const date = new Date(week.date);
-                    const formattedDate = date.toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric'
-                    });
-                    
-                    return {
-                      name: formattedDate,
-                      percentage: week.percentage,
-                      present: week.present,
-                      total: week.total,
-                      date: week.date
-                    };
-                  })}
-                  config={{
-                    keys: ['percentage'],
-                    colors: ['#10B981'],
-                    yAxisLabel: 'Attendance Percentage',
-                    tooltipFormat: (value, name, props) => [
-                      `${props.payload.percentage}%`,
-                      `${props.payload.present}/${props.payload.total} students`,
-                      new Date(props.payload.date).toLocaleDateString('en-US', {
-                        weekday: 'short',
-                        month: 'short',
-                        day: 'numeric'
-                      })
-                    ]
-                  }}
-                />
-              ) : (
-                <div className="h-full flex items-center justify-center text-gray-500">
-                  No attendance data available
-                </div>
-              )}
-            </div>
-          </div>
+<div className="bg-white rounded-xl p-6 shadow-sm">
+  <h3 className="text-xl font-semibold mb-4">Weekly Attendance</h3>
+  <div className="h-64">
+    {weeklyAttendance.loading ? (
+      <div className="h-full flex items-center justify-center">
+        <CircularProgress size={40} />
+      </div>
+    ) : weeklyAttendance.error ? (
+      <div className="h-full flex flex-col items-center justify-center text-red-500 p-4 text-center">
+        <Alert severity="error" className="mb-2">
+          Error loading attendance data: {weeklyAttendance.error}
+        </Alert>
+        <p className="text-sm text-gray-500">Showing sample data</p>
+      </div>
+    ) : weeklyAttendance.data.length > 0 ? (
+      <LineChart
+        data={weeklyAttendance.data.map(week => {
+          const startDate = new Date(week.date);
+          const endDate = week.end_date ? new Date(week.end_date) : new Date(week.date);
+          
+          // Format as "MMM D" if same month, "MMM D - MMM D" if cross-month
+          const isSameMonth = startDate.getMonth() === endDate.getMonth();
+          const formattedLabel = isSameMonth
+            ? startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+            : `${startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+          
+          return {
+            name: formattedLabel,
+            percentage: week.percentage,
+            present: week.present,
+            total: week.total,
+            date: week.date,
+            end_date: week.end_date || week.date
+          };
+        })}
+        config={{
+          keys: ['percentage'],
+          colors: ['#10B981'],
+          yAxisLabel: 'Attendance Percentage',
+          tooltipFormat: (value, name, props) => [
+            `${props.payload.percentage}%`,
+            `${props.payload.present}/${props.payload.total} students`,
+            `${new Date(props.payload.date).toLocaleDateString('en-US', { 
+              month: 'short', 
+              day: 'numeric' 
+            })} - ${new Date(props.payload.end_date).toLocaleDateString('en-US', { 
+              month: 'short', 
+              day: 'numeric' 
+            })}`
+          ],
+          // Add this if your LineChart component supports it
+          xAxisConfig: {
+            tickMargin: 10,
+            interval: 0 // Show all ticks
+          }
+        }}
+      />
+    ) : (
+      <div className="h-full flex items-center justify-center text-gray-500">
+        No attendance data available
+      </div>
+    )}
+  </div>
+</div>
         </div>
       </div>
     </div>

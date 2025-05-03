@@ -211,19 +211,8 @@ const CDCPage = () => {
     overflowY: 'auto'
   };
 
-  const textFieldStyle = {
-    width: '350px',
-    '& .MuiInputBase-root': {
-      height: '50px',
-      fontSize: '1rem'
-    },
-    '& .MuiInputLabel-root': {
-      fontSize: '1rem'
-    }
-  };
-
   const buttonStyle = {
-    width: '150px', // Increased from 140px
+    width: '150px',
     height: '48px',
     fontSize: '0.95rem',
     whiteSpace: 'nowrap'
@@ -303,13 +292,12 @@ const CDCPage = () => {
                   <TableCell>Province</TableCell>
                   <TableCell>Municipality</TableCell>
                   <TableCell>Barangay</TableCell>
-                  <TableCell>Date Created</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={6} align="center">
+                    <TableCell colSpan={5} align="center">
                       <CircularProgress />
                     </TableCell>
                   </TableRow>
@@ -321,14 +309,11 @@ const CDCPage = () => {
                       <TableCell>{cdc.province}</TableCell>
                       <TableCell>{cdc.municipality}</TableCell>
                       <TableCell>{cdc.barangay}</TableCell>
-                      <TableCell>
-                        {new Date(cdc.createdAt).toLocaleDateString()}
-                      </TableCell>
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={6} align="center">
+                    <TableCell colSpan={5} align="center">
                       No CDC records found
                     </TableCell>
                   </TableRow>
@@ -358,11 +343,11 @@ const CDCPage = () => {
                       value={formData.name}
                       onChange={(e) => setFormData({...formData, name: e.target.value})}
                       required
-                      sx={textFieldStyle}
+                      fullWidth
                     />
                   </Grid>
 
-                  <Grid item xs={12}>
+                  <Grid item xs={6}>
                     <Autocomplete
                       freeSolo
                       options={regions.map(region => region.name)}
@@ -375,13 +360,13 @@ const CDCPage = () => {
                           label="Region"
                           variant="outlined"
                           required
-                          sx={textFieldStyle}
+                          fullWidth
                         />
                       )}
                     />
                   </Grid>
 
-                  <Grid item xs={12}>
+                  <Grid item xs={6}>
                     <Autocomplete
                       freeSolo
                       options={provinces.map(province => province.name)}
@@ -395,13 +380,13 @@ const CDCPage = () => {
                           label="Province"
                           variant="outlined"
                           required
-                          sx={textFieldStyle}
+                          fullWidth
                         />
                       )}
                     />
                   </Grid>
 
-                  <Grid item xs={12}>
+                  <Grid item xs={6}>
                     <Autocomplete
                       freeSolo
                       options={municipalities.map(municipality => municipality.name)}
@@ -415,13 +400,13 @@ const CDCPage = () => {
                           label="Municipality"
                           variant="outlined"
                           required
-                          sx={textFieldStyle}
+                          fullWidth
                         />
                       )}
                     />
                   </Grid>
 
-                  <Grid item xs={12}>
+                  <Grid item xs={6}>
                     <Autocomplete
                       freeSolo
                       options={barangays.map(barangay => barangay.name)}
@@ -435,7 +420,7 @@ const CDCPage = () => {
                           label="Barangay"
                           variant="outlined"
                           required
-                          sx={textFieldStyle}
+                          fullWidth
                         />
                       )}
                     />

@@ -113,7 +113,7 @@ const apiRequest = async (endpoint, method = 'GET', body = null) => {
             date.setDate(now.getDate() - (i * 7));
             
             weeklyData.push({
-              date: date.toISOString().split('T')[0], // Format as YYYY-MM-DD
+              date: date.toISOString().split('T')[0],
               present: Math.floor(Math.random() * 15) + 5,
               total: 20,
               percentage: Math.floor(Math.random() * 30) + 70
@@ -181,6 +181,26 @@ export default function Dashboard() {
 
   const [activeAnnouncementIndex, setActiveAnnouncementIndex] = useState(0);
 
+  // Generate mock attendance data for fallback
+  const generateMockAttendanceData = () => {
+    const weeklyData = [];
+    const now = new Date();
+    
+    for (let i = 8; i >= 0; i--) {
+      const date = new Date(now);
+      date.setDate(now.getDate() - (i * 7));
+      
+      weeklyData.push({
+        date: date.toISOString().split('T')[0],
+        present: Math.floor(Math.random() * 15) + 5,
+        total: 20,
+        percentage: Math.floor(Math.random() * 30) + 70
+      });
+    }
+    
+    return weeklyData;
+  };
+
   // Fetch weekly attendance data separately
   useEffect(() => {
     const fetchWeeklyAttendance = async () => {
@@ -203,7 +223,7 @@ export default function Dashboard() {
         setWeeklyAttendance({
           loading: false,
           error: err.message,
-          data: generateMockAttendanceData() // Fallback to mock data
+          data: generateMockAttendanceData()
         });
       }
     };
@@ -211,33 +231,12 @@ export default function Dashboard() {
     fetchWeeklyAttendance();
   }, []);
 
-  // Generate mock attendance data for fallback
-  const generateMockAttendanceData = () => {
-    const weeklyData = [];
-    const now = new Date();
-    
-    for (let i = 8; i >= 0; i--) {
-      const date = new Date(now);
-      date.setDate(now.getDate() - (i * 7));
-      
-      weeklyData.push({
-        date: date.toISOString().split('T')[0],
-        present: Math.floor(Math.random() * 15) + 5,
-        total: 20,
-        percentage: Math.floor(Math.random() * 30) + 70
-      });
-    }
-    
-    return weeklyData;
-  };
-
   // Fetch all other dashboard data
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
         setDashboardData(prev => ({ ...prev, loading: true, error: null }));
         
-        // Fetch all data in parallel except weekly attendance
         const [genderRes, enrollmentRes, ageRes, domainProgressRes, attendanceRes, announcementsRes] = await Promise.all([
           apiRequest('/api/students/gender-distribution'),
           apiRequest('/api/students/enrollment-stats'),
@@ -264,7 +263,6 @@ export default function Dashboard() {
         const ageGroups = ageRes.success ? ageRes.distribution : { '3-4': 0, '4-5': 0, '5-6': 0 };
         const announcements = announcementsRes.success ? announcementsRes.announcements : [];
 
-        // Process domain progress
         const domainProgress = domainProgressRes.success 
           ? domainProgressRes.data.map(item => ({
               name: item.category,

@@ -112,16 +112,21 @@ const apiRequest = async (endpoint, method = 'GET', body = null) => {
             const date = new Date(today);
             date.setDate(today.getDate() + i);
             
-            const present = Math.floor(Math.random() * 15) + 5;
-            const total = 20;
-            const absent = total - present;
+            const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+            
+            const present = isWeekend ? 0 : Math.floor(Math.random() * 15) + 5;
+            const total = isWeekend ? 0 : 20;
+            const absent = isWeekend ? 0 : total - present - Math.floor(Math.random() * 3);
+            const excused = isWeekend ? 0 : Math.floor(Math.random() * 3);
             
             dailyData.push({
               date: date.toISOString().split('T')[0],
               present: present,
               absent: absent,
+              excused: excused,
               total: total,
-              percentage: Math.round((present / total) * 100)
+              percentage: total > 0 ? Math.round((present / total) * 100) : null,
+              isWeekend: isWeekend
             });
           }
           
@@ -560,29 +565,67 @@ export default function Dashboard() {
             percentage: day.percentage,
             present: day.present,
             absent: day.absent,
+            excused: day.excused,
             total: day.total,
-            date: day.date
+            date: day.date,
+            isWeekend: day.isWeekend,
+            // Visual distinction for weekends vs missing data
+            color: day.isWeekend ? '#94A3B8' : '#10B981', // Gray for weekends, green for weekdays
+            opacity: day.isWeekend ? 0.6 : 1
           };
         })}
         config={{
           keys: ['percentage'],
-          colors: ['#10B981'],
+          colors: (d) => d.isWeekend ? '#94A3B8' : '#10B981',
           yAxisLabel: 'Attendance Percentage',
-          tooltipFormat: (value, name, props) => [
-            `${props.payload.percentage}% Attendance`,
-            `Present: ${props.payload.present} students`,
-            `Absent: ${props.payload.absent} students`,
-            `Total: ${props.payload.total} students`,
-            new Date(props.payload.date).toLocaleDateString('en-US', {
-              weekday: 'long',
-              month: 'long',
-              day: 'numeric',
-              year: 'numeric'
-            })
-          ],
+          tooltipFormat: (value, name, props) => {
+            if (props.payload.isWeekend) {
+              return [
+                'Weekend - No classes',
+                new Date(props.payload.date).toLocaleDateString('en-US', {
+                  weekday: 'long',
+                  month: 'long',
+                  day: 'numeric',
+                  year: 'numeric'
+                })
+              ];
+            }
+            if (props.payload.total === 0) {
+              return [
+                'No attendance data',
+                new Date(props.payload.date).toLocaleDateString('en-US', {
+                  weekday: 'long',
+                  month: 'long',
+                  day: 'numeric',
+                  year: 'numeric'
+                })
+              ];
+            }
+            return [
+              `${props.payload.percentage}% Attendance`,
+              `Present: ${props.payload.present} students`,
+              `Absent: ${props.payload.absent} students`,
+              `Excused: ${props.payload.excused} students`,
+              `Total: ${props.payload.total} students`,
+              new Date(props.payload.date).toLocaleDateString('en-US', {
+                weekday: 'long',
+                month: 'long',
+                day: 'numeric',
+                year: 'numeric'
+              })
+            ];
+          },
           xAxisConfig: {
             tickMargin: 10,
             interval: 0 // Show all ticks
+          },
+          // Additional styling for weekends
+          areaProps: {
+            fillOpacity: (d) => d.isWeekend ? 0.3 : 0.6
+          },
+          lineProps: {
+            strokeWidth: (d) => d.isWeekend ? 1 : 2,
+            strokeDasharray: (d) => d.isWeekend ? '4,4' : undefined
           }
         }}
       />

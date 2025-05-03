@@ -198,7 +198,7 @@ const CDCPage = () => {
 
   // Styled components
   const modalStyle = {
-    width: "750px",
+    width: "800px", // Increased width
     backgroundColor: "white",
     borderRadius: 3,
     p: 4,
@@ -209,6 +209,17 @@ const CDCPage = () => {
     transform: 'translate(-50%, -50%)',
     maxHeight: '90vh',
     overflowY: 'auto'
+  };
+
+  const textFieldStyle = {
+    width: '100%',
+    '& .MuiInputBase-root': {
+      height: '50px',
+      fontSize: '1rem'
+    },
+    '& .MuiInputLabel-root': {
+      fontSize: '1rem'
+    }
   };
 
   const buttonStyle = {
@@ -336,14 +347,14 @@ const CDCPage = () => {
               )}
 
               <form onSubmit={handleSubmit}>
-                <Grid container spacing={2}>
+                <Grid container spacing={3}> {/* Increased spacing */}
                   <Grid item xs={12}>
                     <TextField
                       label="CDC Name"
                       value={formData.name}
                       onChange={(e) => setFormData({...formData, name: e.target.value})}
                       required
-                      fullWidth
+                      sx={textFieldStyle}
                     />
                   </Grid>
 
@@ -360,7 +371,7 @@ const CDCPage = () => {
                           label="Region"
                           variant="outlined"
                           required
-                          fullWidth
+                          sx={textFieldStyle}
                         />
                       )}
                     />
@@ -380,7 +391,7 @@ const CDCPage = () => {
                           label="Province"
                           variant="outlined"
                           required
-                          fullWidth
+                          sx={textFieldStyle}
                         />
                       )}
                     />
@@ -400,7 +411,7 @@ const CDCPage = () => {
                           label="Municipality"
                           variant="outlined"
                           required
-                          fullWidth
+                          sx={textFieldStyle}
                         />
                       )}
                     />
@@ -420,7 +431,7 @@ const CDCPage = () => {
                           label="Barangay"
                           variant="outlined"
                           required
-                          fullWidth
+                          sx={textFieldStyle}
                         />
                       )}
                     />

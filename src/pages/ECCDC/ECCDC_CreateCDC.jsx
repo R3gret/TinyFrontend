@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Navbar from "../../components/all/Navbar";
 import Sidebar from "../../components/ECCDC/ECCDCSidebar";
-import locationData from "../../components/ECCDC/loc.json";  // Fixed import name
+import locationData from "../../components/ECCDC/loc.json";
 import bgImage from "../../assets/bg1.jpg";
 import {
   TextField,
@@ -163,8 +163,7 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
   return (
     <Modal open={open} onClose={onClose}>
       <Box sx={{
-        width: { xs: "90%", md: "800px" },
-        maxWidth: "800px",
+        width: "800px",
         backgroundColor: "white",
         borderRadius: 3,
         p: 4,
@@ -174,12 +173,23 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
         left: '50%',
         transform: 'translate(-50%, -50%)',
         maxHeight: '90vh',
-        overflowY: 'auto'
+        overflowY: 'auto',
+        '& .MuiFormControl-root': {
+          minWidth: '100%'
+        },
+        '& .MuiInputBase-root': {
+          height: '56px'
+        },
+        '& .MuiSelect-select': {
+          display: 'flex',
+          alignItems: 'center'
+        }
       }}>
         <Typography variant="h6" component="h2" sx={{ 
           mb: 3, 
           textAlign: "center",
-          color: "#2e7d32"
+          color: "#2e7d32",
+          fontWeight: 'bold'
         }}>
           Create New Child Development Center
         </Typography>
@@ -191,7 +201,7 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
         )}
 
         <form onSubmit={handleSubmit}>
-          <Grid container spacing={2}>
+          <Grid container spacing={3}>
             <Grid item xs={12}>
               <TextField
                 label="CDC Name"
@@ -199,6 +209,11 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
                 onChange={(e) => setFormData({...formData, name: e.target.value})}
                 required
                 fullWidth
+                sx={{
+                  '& .MuiInputBase-root': {
+                    height: '56px'
+                  }
+                }}
               />
             </Grid>
 
@@ -210,6 +225,13 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
                   label="Region"
                   onChange={(e) => handleRegionChange(e.target.value)}
                   required
+                  MenuProps={{
+                    PaperProps: {
+                      style: {
+                        maxHeight: 300
+                      }
+                    }
+                  }}
                 >
                   {regions.map((region) => (
                     <MenuItem key={region.code} value={region.code}>
@@ -229,6 +251,13 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
                   onChange={(e) => handleProvinceChange(e.target.value)}
                   disabled={!formData.region}
                   required
+                  MenuProps={{
+                    PaperProps: {
+                      style: {
+                        maxHeight: 300
+                      }
+                    }
+                  }}
                 >
                   {provinces.map((province, index) => (
                     <MenuItem key={index} value={province.name}>
@@ -248,6 +277,13 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
                   onChange={(e) => handleMunicipalityChange(e.target.value)}
                   disabled={!formData.province}
                   required
+                  MenuProps={{
+                    PaperProps: {
+                      style: {
+                        maxHeight: 300
+                      }
+                    }
+                  }}
                 >
                   {municipalities.map((municipality, index) => (
                     <MenuItem key={index} value={municipality.name}>
@@ -267,6 +303,13 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
                   onChange={(e) => setFormData({...formData, barangay: e.target.value})}
                   disabled={!formData.municipality}
                   required
+                  MenuProps={{
+                    PaperProps: {
+                      style: {
+                        maxHeight: 300
+                      }
+                    }
+                  }}
                 >
                   {barangays.map((barangay, index) => (
                     <MenuItem key={index} value={barangay.name}>
@@ -293,14 +336,21 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
             display: "flex", 
             justifyContent: "flex-end", 
             gap: 2, 
-            mt: 3 
+            mt: 4 
           }}>
             <Button 
               onClick={onClose} 
               variant="outlined" 
               startIcon={<X />}
               disabled={loading}
-              sx={{ color: "#2e7d32", borderColor: "#2e7d32" }}
+              sx={{ 
+                minWidth: '120px',
+                color: "#2e7d32", 
+                borderColor: "#2e7d32",
+                '&:hover': {
+                  borderColor: "#1b5e20"
+                }
+              }}
             >
               Cancel
             </Button>
@@ -310,6 +360,7 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
               startIcon={<Save />}
               disabled={loading}
               sx={{ 
+                minWidth: '120px',
                 backgroundColor: "#2e7d32",
                 "&:hover": { backgroundColor: "#1b5e20" }
               }}
@@ -358,7 +409,9 @@ const CDCPage = () => {
             onClick={() => setOpenModal(true)}
             sx={{ 
               backgroundColor: "#2e7d32",
-              "&:hover": { backgroundColor: "#1b5e20" }
+              "&:hover": { backgroundColor: "#1b5e20" },
+              minWidth: '200px',
+              height: '48px'
             }}
           >
             Create New CDC
@@ -374,6 +427,7 @@ const CDCPage = () => {
             open={snackbar.open}
             autoHideDuration={6000}
             onClose={() => setSnackbar({...snackbar, open: false})}
+            anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
           >
             <Alert 
               onClose={() => setSnackbar({...snackbar, open: false})}

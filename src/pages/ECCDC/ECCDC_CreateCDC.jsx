@@ -13,35 +13,34 @@ import {
   Snackbar,
   Alert,
   Grid,
-  Autocomplete
+  Autocomplete,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  InputAdornment
 } from "@mui/material";
-import { Save, X } from "lucide-react";
+import { Search, Add, Save, Close } from "@mui/icons-material";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-const apiRequest = async (endpoint, method = 'GET', body = null) => {
-  const token = localStorage.getItem('token');
-  const headers = {
-    'Content-Type': 'application/json',
-    ...(token && { 'Authorization': `Bearer ${token}` })
-  };
-
-  const config = {
-    method,
-    headers,
-    credentials: 'include',
-    ...(body && { body: JSON.stringify(body) })
-  };
-
-  const response = await fetch(`${API_URL}${endpoint}`, config);
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.message || 'Request failed');
-  }
-  return response.json();
-};
-
-const CreateCDCModal = ({ open, onClose, onSuccess }) => {
+const CDCPage = () => {
+  const [cdcList, setCdcList] = useState([]);
+  const [filter, setFilter] = useState({
+    province: '',
+    municipality: '',
+    barangay: ''
+  });
+  const [loading, setLoading] = useState(false);
+  const [openModal, setOpenModal] = useState(false);
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success"
+  });
   const [formData, setFormData] = useState({
     name: "",
     region: "",
@@ -49,14 +48,12 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
     municipality: "",
     barangay: ""
   });
-
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
   const [regions, setRegions] = useState([]);
   const [provinces, setProvinces] = useState([]);
   const [municipalities, setMunicipalities] = useState([]);
   const [barangays, setBarangays] = useState([]);
 
+  // Load regions from imported JSON
   useEffect(() => {
     const regionsArray = Object.entries(locationData).map(([code, region]) => ({
       code,
@@ -64,6 +61,36 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
     }));
     setRegions(regionsArray);
   }, []);
+
+  // Fetch CDCs
+  const fetchCDCs = async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (filter.province) params.append('province', filter.province);
+      if (filter.municipality) params.append('municipality', filter.municipality);
+      if (filter.barangay) params.append('barangay', filter.barangay);
+      
+      const response = await fetch(`${API_URL}/api/cdc?${params.toString()}`);
+      const data = await response.json();
+      if (data.success) {
+        setCdcList(data.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch CDCs:', err);
+      setSnackbar({
+        open: true,
+        message: "Failed to load CDC data",
+        severity: "error"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCDCs();
+  }, [filter]);
 
   const handleRegionChange = (value) => {
     const region = regions.find(r => r.name === value);
@@ -124,267 +151,77 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
-    
-    if (!formData.name || !formData.region || !formData.province || 
-        !formData.municipality || !formData.barangay) {
-      setError("Please fill all required fields");
-      return;
-    }
-
     setLoading(true);
+    
     try {
-      await apiRequest('/api/cdc', 'POST', formData);
-      onSuccess();
-      onClose();
+      const response = await fetch(`${API_URL}/api/cdc`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(formData)
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setSnackbar({
+          open: true,
+          message: "CDC created successfully!",
+          severity: "success"
+        });
+        setOpenModal(false);
+        fetchCDCs();
+      } else {
+        throw new Error(data.message || "Failed to create CDC");
+      }
     } catch (err) {
-      setError(err.message);
+      setSnackbar({
+        open: true,
+        message: err.message,
+        severity: "error"
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  return (
-    <Modal open={open} onClose={onClose}>
-      <Box sx={{
-        width: "900px",
-        backgroundColor: "white",
-        borderRadius: 3,
-        p: 4,
-        boxShadow: 24,
-        position: 'absolute',
-        top: '50%',
-        left: '50%',
-        transform: 'translate(-50%, -50%)',
-        maxHeight: '90vh',
-        overflowY: 'auto'
-      }}>
-        <Typography variant="h5" component="h2" sx={{ 
-          mb: 4, 
-          textAlign: "center",
-          color: "#2e7d32",
-          fontWeight: 'bold'
-        }}>
-          Create New Child Development Center
-        </Typography>
+  // Styled components
+  const modalStyle = {
+    width: "750px",
+    backgroundColor: "white",
+    borderRadius: 3,
+    p: 4,
+    boxShadow: 24,
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: 'translate(-50%, -50%)',
+    maxHeight: '90vh',
+    overflowY: 'auto'
+  };
 
-        {error && (
-          <Alert severity="error" sx={{ mb: 3 }}>
-            {error}
-          </Alert>
-        )}
+  const textFieldStyle = {
+    width: '350px',
+    '& .MuiInputBase-root': {
+      height: '50px',
+      fontSize: '1rem'
+    },
+    '& .MuiInputLabel-root': {
+      fontSize: '1rem'
+    }
+  };
 
-        <form onSubmit={handleSubmit}>
-          <Grid container spacing={3}>
-            <Grid item xs={12}>
-              <TextField
-                label="CDC Name"
-                value={formData.name}
-                onChange={(e) => setFormData({...formData, name: e.target.value})}
-                required
-                fullWidth
-                sx={{
-                  width: '100%',  // Ensures full width within grid item
-                  '& .MuiInputBase-root': {
-                    height: '56px',
-                    fontSize: '1.1rem',
-                    minWidth: '400px'  // Minimum width for each field
-                  },
-                  '& .MuiInputLabel-root': {
-                    fontSize: '1.1rem'
-                  }
-                }}
-              />
-            </Grid>
-
-            <Grid item xs={12}>
-              <Autocomplete
-                freeSolo
-                options={regions.map(region => region.name)}
-                value={formData.region}
-                onChange={(e, value) => handleRegionChange(value || '')}
-                onInputChange={(e, value) => handleRegionChange(value || '')}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Region"
-                    variant="outlined"
-                    required
-                    fullWidth
-                    sx={{
-                      width: '100%',  // Ensures full width within grid item
-                      '& .MuiInputBase-root': {
-                        height: '56px',
-                        fontSize: '1.1rem',
-                        minWidth: '400px'  // Minimum width for each field
-                      },
-                      '& .MuiInputLabel-root': {
-                        fontSize: '1.1rem'
-                      }
-                    }}
-                  />
-                )}
-              />
-            </Grid>
-
-            <Grid item xs={12}>
-              <Autocomplete
-                freeSolo
-                options={provinces.map(province => province.name)}
-                value={formData.province}
-                onChange={(e, value) => handleProvinceChange(value || '')}
-                onInputChange={(e, value) => handleProvinceChange(value || '')}
-                disabled={!formData.region}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Province"
-                    variant="outlined"
-                    required
-                    fullWidth
-                    sx={{
-                      width: '100%',  // Ensures full width within grid item
-                      '& .MuiInputBase-root': {
-                        height: '56px',
-                        fontSize: '1.1rem',
-                        minWidth: '400px'  // Minimum width for each field
-                      },
-                      '& .MuiInputLabel-root': {
-                        fontSize: '1.1rem'
-                      }
-                    }}
-                  />
-                )}
-              />
-            </Grid>
-
-            <Grid item xs={12}>
-              <Autocomplete
-                freeSolo
-                options={municipalities.map(municipality => municipality.name)}
-                value={formData.municipality}
-                onChange={(e, value) => handleMunicipalityChange(value || '')}
-                onInputChange={(e, value) => handleMunicipalityChange(value || '')}
-                disabled={!formData.province}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Municipality"
-                    variant="outlined"
-                    required
-                    fullWidth
-                    sx={{
-                      width: '100%',  // Ensures full width within grid item
-                      '& .MuiInputBase-root': {
-                        height: '56px',
-                        fontSize: '1.1rem',
-                        minWidth: '400px'  // Minimum width for each field
-                      },
-                      '& .MuiInputLabel-root': {
-                        fontSize: '1.1rem'
-                      }
-                    }}
-                  />
-                )}
-              />
-            </Grid>
-
-            <Grid item xs={12}>
-              <Autocomplete
-                freeSolo
-                options={barangays.map(barangay => barangay.name)}
-                value={formData.barangay}
-                onChange={(e, value) => setFormData({...formData, barangay: value || ''})}
-                onInputChange={(e, value) => setFormData({...formData, barangay: value || ''})}
-                disabled={!formData.municipality}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Barangay"
-                    variant="outlined"
-                    required
-                    fullWidth
-                    sx={{
-                      width: '100%',  // Ensures full width within grid item
-                      '& .MuiInputBase-root': {
-                        height: '56px',
-                        fontSize: '1.1rem',
-                        minWidth: '400px'  // Minimum width for each field
-                      },
-                      '& .MuiInputLabel-root': {
-                        fontSize: '1.1rem'
-                      }
-                    }}
-                  />
-                )}
-              />
-            </Grid>
-          </Grid>
-
-          <Box sx={{ 
-            display: "flex", 
-            justifyContent: "flex-end", 
-            gap: 3, 
-            mt: 5 
-          }}>
-            <Button 
-              onClick={onClose} 
-              variant="outlined" 
-              startIcon={<X size={24} />}
-              disabled={loading}
-              sx={{ 
-                width: '180px',
-                height: '56px',
-                fontSize: '1.1rem',
-                color: "#2e7d32", 
-                borderColor: "#2e7d32",
-                '&:hover': {
-                  borderColor: "#1b5e20"
-                }
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              variant="contained"
-              startIcon={<Save size={24} />}
-              disabled={loading}
-              sx={{ 
-                width: '180px',
-                height: '56px',
-                fontSize: '1.1rem',
-                backgroundColor: "#2e7d32",
-                "&:hover": { backgroundColor: "#1b5e20" }
-              }}
-            >
-              {loading ? <CircularProgress size={28} /> : "Create CDC"}
-            </Button>
-          </Box>
-        </form>
-      </Box>
-    </Modal>
-  );
-};
-
-const CDCPage = () => {
-  const [openModal, setOpenModal] = useState(false);
-  const [snackbar, setSnackbar] = useState({
-    open: false,
-    message: "",
-    severity: "success"
-  });
-
-  const handleSuccess = () => {
-    setSnackbar({
-      open: true,
-      message: "CDC created successfully!",
-      severity: "success"
-    });
+  const buttonStyle = {
+    width: '140px',
+    height: '48px',
+    fontSize: '0.95rem'
   };
 
   return (
     <div className="w-screen h-screen flex overflow-hidden relative">
+      {/* Background Image */}
       <div
         className="absolute inset-0 bg-cover bg-center"
         style={{ backgroundImage: `url(${bgImage})`, zIndex: -1 }}
@@ -396,25 +233,239 @@ const CDCPage = () => {
         <Navbar />
 
         <div className="p-6">
-          <Button 
-            variant="contained" 
-            onClick={() => setOpenModal(true)}
-            sx={{ 
-              backgroundColor: "#2e7d32",
-              "&:hover": { backgroundColor: "#1b5e20" },
-              width: '250px',
-              height: '56px',
-              fontSize: '1.1rem'
-            }}
-          >
-            Create New CDC
-          </Button>
+          <Box sx={{ 
+            display: 'flex', 
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            mb: 3
+          }}>
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <TextField
+                label="Filter by Province"
+                value={filter.province}
+                onChange={(e) => setFilter({...filter, province: e.target.value})}
+                size="small"
+                sx={{ width: 200 }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Search />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+              <TextField
+                label="Filter by Municipality"
+                value={filter.municipality}
+                onChange={(e) => setFilter({...filter, municipality: e.target.value})}
+                size="small"
+                sx={{ width: 200 }}
+              />
+              <TextField
+                label="Filter by Barangay"
+                value={filter.barangay}
+                onChange={(e) => setFilter({...filter, barangay: e.target.value})}
+                size="small"
+                sx={{ width: 200 }}
+              />
+            </Box>
+            
+            <Button 
+              variant="contained" 
+              startIcon={<Add />}
+              onClick={() => setOpenModal(true)}
+              sx={{ 
+                ...buttonStyle,
+                backgroundColor: "#2e7d32",
+                "&:hover": { backgroundColor: "#1b5e20" }
+              }}
+            >
+              Create CDC
+            </Button>
+          </Box>
 
-          <CreateCDCModal 
-            open={openModal} 
-            onClose={() => setOpenModal(false)} 
-            onSuccess={handleSuccess}
-          />
+          <TableContainer component={Paper} sx={{ maxHeight: 'calc(100vh - 250px)' }}>
+            <Table stickyHeader>
+              <TableHead>
+                <TableRow>
+                  <TableCell>CDC ID</TableCell>
+                  <TableCell>Region</TableCell>
+                  <TableCell>Province</TableCell>
+                  <TableCell>Municipality</TableCell>
+                  <TableCell>Barangay</TableCell>
+                  <TableCell>Date Created</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={6} align="center">
+                      <CircularProgress />
+                    </TableCell>
+                  </TableRow>
+                ) : cdcList.length > 0 ? (
+                  cdcList.map((cdc) => (
+                    <TableRow key={cdc.cdcId}>
+                      <TableCell>{cdc.cdcId}</TableCell>
+                      <TableCell>{cdc.region}</TableCell>
+                      <TableCell>{cdc.province}</TableCell>
+                      <TableCell>{cdc.municipality}</TableCell>
+                      <TableCell>{cdc.barangay}</TableCell>
+                      <TableCell>
+                        {new Date(cdc.createdAt).toLocaleDateString()}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={6} align="center">
+                      No CDC records found
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+
+          {/* Create CDC Modal */}
+          <Modal open={openModal} onClose={() => setOpenModal(false)}>
+            <Box sx={modalStyle}>
+              <Typography variant="h6" component="h2" sx={{ mb: 3, textAlign: "center" }}>
+                Create New CDC
+              </Typography>
+              
+              {snackbar.open && (
+                <Alert severity={snackbar.severity} sx={{ mb: 3 }}>
+                  {snackbar.message}
+                </Alert>
+              )}
+
+              <form onSubmit={handleSubmit}>
+                <Grid container spacing={2}>
+                  <Grid item xs={12}>
+                    <TextField
+                      label="CDC Name"
+                      value={formData.name}
+                      onChange={(e) => setFormData({...formData, name: e.target.value})}
+                      required
+                      sx={textFieldStyle}
+                    />
+                  </Grid>
+
+                  <Grid item xs={12}>
+                    <Autocomplete
+                      freeSolo
+                      options={regions.map(region => region.name)}
+                      value={formData.region}
+                      onChange={(e, value) => handleRegionChange(value || '')}
+                      onInputChange={(e, value) => handleRegionChange(value || '')}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label="Region"
+                          variant="outlined"
+                          required
+                          sx={textFieldStyle}
+                        />
+                      )}
+                    />
+                  </Grid>
+
+                  <Grid item xs={12}>
+                    <Autocomplete
+                      freeSolo
+                      options={provinces.map(province => province.name)}
+                      value={formData.province}
+                      onChange={(e, value) => handleProvinceChange(value || '')}
+                      onInputChange={(e, value) => handleProvinceChange(value || '')}
+                      disabled={!formData.region}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label="Province"
+                          variant="outlined"
+                          required
+                          sx={textFieldStyle}
+                        />
+                      )}
+                    />
+                  </Grid>
+
+                  <Grid item xs={12}>
+                    <Autocomplete
+                      freeSolo
+                      options={municipalities.map(municipality => municipality.name)}
+                      value={formData.municipality}
+                      onChange={(e, value) => handleMunicipalityChange(value || '')}
+                      onInputChange={(e, value) => handleMunicipalityChange(value || '')}
+                      disabled={!formData.province}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label="Municipality"
+                          variant="outlined"
+                          required
+                          sx={textFieldStyle}
+                        />
+                      )}
+                    />
+                  </Grid>
+
+                  <Grid item xs={12}>
+                    <Autocomplete
+                      freeSolo
+                      options={barangays.map(barangay => barangay.name)}
+                      value={formData.barangay}
+                      onChange={(e, value) => setFormData({...formData, barangay: value || ''})}
+                      onInputChange={(e, value) => setFormData({...formData, barangay: value || ''})}
+                      disabled={!formData.municipality}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label="Barangay"
+                          variant="outlined"
+                          required
+                          sx={textFieldStyle}
+                        />
+                      )}
+                    />
+                  </Grid>
+                </Grid>
+
+                <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2, mt: 4 }}>
+                  <Button 
+                    onClick={() => setOpenModal(false)} 
+                    variant="outlined" 
+                    startIcon={<Close />}
+                    disabled={loading}
+                    sx={{ 
+                      ...buttonStyle,
+                      color: "#2e7d32", 
+                      borderColor: "#2e7d32",
+                      '&:hover': {
+                        borderColor: "#1b5e20"
+                      }
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    variant="contained"
+                    startIcon={<Save />}
+                    disabled={loading}
+                    sx={{ 
+                      ...buttonStyle,
+                      backgroundColor: "#2e7d32",
+                      "&:hover": { backgroundColor: "#1b5e20" }
+                    }}
+                  >
+                    {loading ? <CircularProgress size={24} /> : "Create CDC"}
+                  </Button>
+                </Box>
+              </form>
+            </Box>
+          </Modal>
 
           <Snackbar
             open={snackbar.open}
@@ -425,7 +476,7 @@ const CDCPage = () => {
             <Alert 
               onClose={() => setSnackbar({...snackbar, open: false})}
               severity={snackbar.severity}
-              sx={{ width: '100%', fontSize: '1.1rem' }}
+              sx={{ width: '100%' }}
             >
               {snackbar.message}
             </Alert>

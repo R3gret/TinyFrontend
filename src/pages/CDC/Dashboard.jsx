@@ -557,27 +557,35 @@ export default function Dashboard() {
       <LineChart
         data={weeklyAttendance.data.map(day => {
           const date = new Date(day.date);
+          const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+          
+          // Calculate percentage if there's data, otherwise null for weekends, 0 for weekdays
+          const percentage = day.total > 0 
+            ? Math.round((day.present / day.total) * 100)
+            : isWeekend ? null : 0;
+
           return {
             name: date.toLocaleDateString('en-US', {
+              weekday: 'short',
               month: 'short',
               day: 'numeric'
             }),
-            percentage: day.percentage,
+            percentage: percentage,
             present: day.present,
             absent: day.absent,
             excused: day.excused,
             total: day.total,
             date: day.date,
-            isWeekend: day.isWeekend,
-            // Visual distinction for weekends vs missing data
-            color: day.isWeekend ? '#94A3B8' : '#10B981', // Gray for weekends, green for weekdays
-            opacity: day.isWeekend ? 0.6 : 1
+            isWeekend: isWeekend,
+            color: isWeekend ? '#94A3B8' : '#10B981',
+            opacity: isWeekend ? 0.6 : 1
           };
         })}
         config={{
           keys: ['percentage'],
           colors: (d) => d.isWeekend ? '#94A3B8' : '#10B981',
           yAxisLabel: 'Attendance Percentage',
+          yDomain: [0, 100], // Set fixed domain for percentage
           tooltipFormat: (value, name, props) => {
             if (props.payload.isWeekend) {
               return [
@@ -619,14 +627,15 @@ export default function Dashboard() {
             tickMargin: 10,
             interval: 0 // Show all ticks
           },
-          // Additional styling for weekends
           areaProps: {
             fillOpacity: (d) => d.isWeekend ? 0.3 : 0.6
           },
           lineProps: {
             strokeWidth: (d) => d.isWeekend ? 1 : 2,
             strokeDasharray: (d) => d.isWeekend ? '4,4' : undefined
-          }
+          },
+          // Handle null values (weekends) by showing gaps in the line
+          connectNulls: false
         }}
       />
     ) : (

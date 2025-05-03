@@ -9,14 +9,11 @@ import {
   Box,
   Typography,
   Modal,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
   CircularProgress,
   Snackbar,
   Alert,
-  Grid
+  Grid,
+  Autocomplete
 } from "@mui/material";
 import { Save, X } from "lucide-react";
 
@@ -57,6 +54,7 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
     location_details: ""
   });
   const [loading, setLoading] = useState(false);
+  const [dropdownLoading, setDropdownLoading] = useState(false);
   const [error, setError] = useState("");
   const [regions, setRegions] = useState([]);
   const [provinces, setProvinces] = useState([]);
@@ -79,7 +77,8 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
     loadRegions();
   }, []);
 
-  const handleRegionChange = (regionCode) => {
+  const handleRegionChange = async (regionCode) => {
+    setDropdownLoading(true);
     const regionData = locationData[regionCode];
     if (regionData && regionData.province_list) {
       const provincesArray = Object.keys(regionData.province_list).map(name => ({
@@ -95,9 +94,11 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
       municipality: "",
       barangay: ""
     }));
+    setDropdownLoading(false);
   };
 
-  const handleProvinceChange = (provinceName) => {
+  const handleProvinceChange = async (provinceName) => {
+    setDropdownLoading(true);
     const regionCode = Object.keys(locationData).find(code => 
       formData.region === locationData[code].region_name
     );
@@ -115,9 +116,11 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
       municipality: "",
       barangay: ""
     }));
+    setDropdownLoading(false);
   };
 
-  const handleMunicipalityChange = (municipalityName) => {
+  const handleMunicipalityChange = async (municipalityName) => {
+    setDropdownLoading(true);
     const regionCode = Object.keys(locationData).find(code => 
       formData.region === locationData[code].region_name
     );
@@ -136,6 +139,7 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
       municipality: municipalityName,
       barangay: ""
     }));
+    setDropdownLoading(false);
   };
 
   const handleSubmit = async (e) => {
@@ -173,7 +177,10 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
         left: '50%',
         transform: 'translate(-50%, -50%)',
         maxHeight: '90vh',
-        overflowY: 'auto'
+        overflowY: 'auto',
+        '& .MuiAutocomplete-root': {
+          width: '100%'
+        }
       }}>
         <Typography variant="h6" component="h2" sx={{ 
           mb: 3, 
@@ -192,7 +199,7 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
 
         <form onSubmit={handleSubmit}>
           <Grid container spacing={2}>
-            {/* Row 1 */}
+            {/* CDC Name Field */}
             <Grid item xs={4}>
               <TextField
                 label="CDC Name"
@@ -202,211 +209,160 @@ const CreateCDCModal = ({ open, onClose, onSuccess }) => {
                 fullWidth
                 sx={{
                   '& .MuiInputBase-root': {
-                    height: '56px',
-                    display: 'flex',
-                    alignItems: 'center'
+                    height: '56px'
                   }
                 }}
               />
             </Grid>
 
+            {/* Region Dropdown */}
             <Grid item xs={4}>
-              <FormControl fullWidth>
-                <InputLabel>Region</InputLabel>
-                <Select
-                  value={formData.region}
-                  label="Region"
-                  onChange={(e) => handleRegionChange(e.target.value)}
-                  required
-                  sx={{
-                    '& .MuiSelect-select': {
-                      height: '56px',
-                      display: 'flex',
-                      alignItems: 'center'
-                    },
-                    '& .MuiOutlinedInput-root': {
-                      height: '56px'
-                    }
-                  }}
-                  MenuProps={{
-                    PaperProps: {
-                      style: {
-                        maxHeight: 300,
-                        width: '250px' // Fixed width for dropdown menu
+              <Autocomplete
+                options={regions}
+                getOptionLabel={(option) => option.name}
+                value={regions.find(r => r.name === formData.region) || null}
+                onChange={(e, newValue) => handleRegionChange(newValue?.code || '')}
+                loading={dropdownLoading}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Region"
+                    variant="outlined"
+                    required
+                    sx={{ 
+                      width: '100%',
+                      '& .MuiInputBase-root': {
+                        height: '56px'
                       }
-                    }
-                  }}
-                  renderValue={(selected) => (
-                    <Box sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {regions.find(r => r.code === selected)?.name || 'Select Region'}
-                    </Box>
-                  )}
-                >
-                  {regions.map((region) => (
-                    <MenuItem key={region.code} value={region.code} sx={{ minHeight: '36px' }}>
-                      <Box sx={{ 
-                        width: '100%',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis'
-                      }}>
-                        {region.name}
-                      </Box>
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+                    }}
+                    InputProps={{
+                      ...params.InputProps,
+                      endAdornment: (
+                        <>
+                          {dropdownLoading ? <CircularProgress color="inherit" size={20} /> : null}
+                          {params.InputProps.endAdornment}
+                        </>
+                      )
+                    }}
+                  />
+                )}
+                sx={{ width: '100%' }}
+              />
             </Grid>
 
+            {/* Province Dropdown */}
             <Grid item xs={4}>
-              <FormControl fullWidth>
-                <InputLabel>Province</InputLabel>
-                <Select
-                  value={formData.province}
-                  label="Province"
-                  onChange={(e) => handleProvinceChange(e.target.value)}
-                  disabled={!formData.region}
-                  required
-                  sx={{
-                    '& .MuiSelect-select': {
-                      height: '56px',
-                      display: 'flex',
-                      alignItems: 'center'
-                    },
-                    '& .MuiOutlinedInput-root': {
-                      height: '56px'
-                    }
-                  }}
-                  MenuProps={{
-                    PaperProps: {
-                      style: {
-                        maxHeight: 300,
-                        width: '250px' // Fixed width for dropdown menu
+              <Autocomplete
+                options={provinces}
+                getOptionLabel={(option) => option.name}
+                value={provinces.find(p => p.name === formData.province) || null}
+                onChange={(e, newValue) => handleProvinceChange(newValue?.name || '')}
+                disabled={!formData.region}
+                loading={dropdownLoading}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Province"
+                    variant="outlined"
+                    required
+                    sx={{ 
+                      width: '100%',
+                      '& .MuiInputBase-root': {
+                        height: '56px'
                       }
-                    }
-                  }}
-                  renderValue={(selected) => (
-                    <Box sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {selected || 'Select Province'}
-                    </Box>
-                  )}
-                >
-                  {provinces.map((province, index) => (
-                    <MenuItem key={index} value={province.name} sx={{ minHeight: '36px' }}>
-                      <Box sx={{ 
-                        width: '100%',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis'
-                      }}>
-                        {province.name}
-                      </Box>
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+                    }}
+                    InputProps={{
+                      ...params.InputProps,
+                      endAdornment: (
+                        <>
+                          {dropdownLoading ? <CircularProgress color="inherit" size={20} /> : null}
+                          {params.InputProps.endAdornment}
+                        </>
+                      )
+                    }}
+                  />
+                )}
+                sx={{ width: '100%' }}
+              />
             </Grid>
 
-            {/* Row 2 */}
+            {/* Municipality Dropdown */}
             <Grid item xs={4}>
-              <FormControl fullWidth>
-                <InputLabel>Municipality</InputLabel>
-                <Select
-                  value={formData.municipality}
-                  label="Municipality"
-                  onChange={(e) => handleMunicipalityChange(e.target.value)}
-                  disabled={!formData.province}
-                  required
-                  sx={{
-                    '& .MuiSelect-select': {
-                      height: '56px',
-                      display: 'flex',
-                      alignItems: 'center'
-                    },
-                    '& .MuiOutlinedInput-root': {
-                      height: '56px'
-                    }
-                  }}
-                  MenuProps={{
-                    PaperProps: {
-                      style: {
-                        maxHeight: 300,
-                        width: '250px' // Fixed width for dropdown menu
+              <Autocomplete
+                options={municipalities}
+                getOptionLabel={(option) => option.name}
+                value={municipalities.find(m => m.name === formData.municipality) || null}
+                onChange={(e, newValue) => handleMunicipalityChange(newValue?.name || '')}
+                disabled={!formData.province}
+                loading={dropdownLoading}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Municipality"
+                    variant="outlined"
+                    required
+                    sx={{ 
+                      width: '100%',
+                      '& .MuiInputBase-root': {
+                        height: '56px'
                       }
-                    }
-                  }}
-                  renderValue={(selected) => (
-                    <Box sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {selected || 'Select Municipality'}
-                    </Box>
-                  )}
-                >
-                  {municipalities.map((municipality, index) => (
-                    <MenuItem key={index} value={municipality.name} sx={{ minHeight: '36px' }}>
-                      <Box sx={{ 
-                        width: '100%',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis'
-                      }}>
-                        {municipality.name}
-                      </Box>
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+                    }}
+                    InputProps={{
+                      ...params.InputProps,
+                      endAdornment: (
+                        <>
+                          {dropdownLoading ? <CircularProgress color="inherit" size={20} /> : null}
+                          {params.InputProps.endAdornment}
+                        </>
+                      )
+                    }}
+                  />
+                )}
+                sx={{ width: '100%' }}
+              />
             </Grid>
 
+            {/* Barangay Dropdown */}
             <Grid item xs={4}>
-              <FormControl fullWidth>
-                <InputLabel>Barangay</InputLabel>
-                <Select
-                  value={formData.barangay}
-                  label="Barangay"
-                  onChange={(e) => setFormData({...formData, barangay: e.target.value})}
-                  disabled={!formData.municipality}
-                  required
-                  sx={{
-                    '& .MuiSelect-select': {
-                      height: '56px',
-                      display: 'flex',
-                      alignItems: 'center'
-                    },
-                    '& .MuiOutlinedInput-root': {
-                      height: '56px'
-                    }
-                  }}
-                  MenuProps={{
-                    PaperProps: {
-                      style: {
-                        maxHeight: 300,
-                        width: '250px' // Fixed width for dropdown menu
+              <Autocomplete
+                options={barangays}
+                getOptionLabel={(option) => option.name}
+                value={barangays.find(b => b.name === formData.barangay) || null}
+                onChange={(e, newValue) => setFormData({...formData, barangay: newValue?.name || ''})}
+                disabled={!formData.municipality}
+                loading={dropdownLoading}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Barangay"
+                    variant="outlined"
+                    required
+                    sx={{ 
+                      width: '100%',
+                      '& .MuiInputBase-root': {
+                        height: '56px'
                       }
-                    }
-                  }}
-                  renderValue={(selected) => (
-                    <Box sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {selected || 'Select Barangay'}
-                    </Box>
-                  )}
-                >
-                  {barangays.map((barangay, index) => (
-                    <MenuItem key={index} value={barangay.name} sx={{ minHeight: '36px' }}>
-                      <Box sx={{ 
-                        width: '100%',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis'
-                      }}>
-                        {barangay.name}
-                      </Box>
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+                    }}
+                    InputProps={{
+                      ...params.InputProps,
+                      endAdornment: (
+                        <>
+                          {dropdownLoading ? <CircularProgress color="inherit" size={20} /> : null}
+                          {params.InputProps.endAdornment}
+                        </>
+                      )
+                    }}
+                  />
+                )}
+                sx={{ width: '100%' }}
+              />
             </Grid>
 
             <Grid item xs={4}>
               {/* Empty cell for alignment */}
             </Grid>
 
-            {/* Full width row for location details */}
+            {/* Location Details */}
             <Grid item xs={12}>
               <TextField
                 label="Location Details (Street, Landmark, etc.)"

@@ -56,6 +56,11 @@ const apiRequest = async (endpoint, method = 'GET', body = null) => {
               '5-6': 2
             }
           });
+        } else if (endpoint === '/api/domains/categories') {
+          resolve({
+            success: true,
+            categories: ['Cognitive', 'Language', 'Physical', 'Self-Help', 'Social']
+          });
         } else if (endpoint === '/api/announcements') {
           resolve({
             success: true,
@@ -147,13 +152,12 @@ export default function Dashboard() {
         setDashboardData(prev => ({ ...prev, loading: true, error: null }));
         
         // Fetch all data in parallel
-        const [genderRes, enrollmentRes, ageRes, studentsRes, attendanceRes, domainsRes, announcementsRes] = await Promise.all([
+        const [genderRes, enrollmentRes, ageRes, domainRes, attendanceRes, announcementsRes] = await Promise.all([
           apiRequest('/api/students/gender-distribution'),
           apiRequest('/api/students/enrollment-stats'),
-          apiRequest('/api/students/age-distribution'), // New endpoint
-          apiRequest('/api/students'),
+          apiRequest('/api/students/age-distribution'),
+          apiRequest('/api/domains/categories'), // New endpoint
           apiRequest('/api/attendance/stats'),
-          apiRequest('/api/domains/evaluations/scores/sample'),
           apiRequest('/api/announcements')
         ]);
 
@@ -174,13 +178,10 @@ export default function Dashboard() {
         const ageGroups = ageRes.success ? ageRes.distribution : { '3-4': 0, '4-5': 0, '5-6': 0 };
         const announcements = announcementsRes.success ? announcementsRes.announcements : [];
 
-        const domainProgress = [
-          { name: 'Self-Help', progress: '72.7' },
-          { name: 'Cognitive', progress: '63.6' },
-          { name: 'Language', progress: '63.6' },
-          { name: 'Social', progress: '54.5' },
-          { name: 'Physical', progress: '54.5' }
-        ];
+        // Create domain progress cards with 0% progress initially
+        const domainProgress = domainRes.success 
+          ? domainRes.categories.map(category => ({ name: category, progress: '0' }))
+          : [];
 
         setDashboardData({
           loading: false,
@@ -424,13 +425,12 @@ export default function Dashboard() {
 
           {/* Domain Progress */}
           <div className="bg-white rounded-xl p-6 shadow-sm">
-            <h3 className="text-xl font-semibold mb-4">Domain Progress</h3>
+            <h3 className="text-xl font-semibold mb-4">Domain Categories</h3>
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
               {dashboardData.stats.domainProgress.map((domain, i) => (
-                <DomainProgressCard 
+                <DomainCard 
                   key={i}
                   name={domain.name}
-                  progress={domain.progress}
                   color={['#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6'][i % 5]}
                 />
               ))}
@@ -491,42 +491,22 @@ function StatCard({ icon, title, value, subtitle, trend, genderBreakdown }) {
   );
 }
 
-// Component: Domain Progress Card
-function DomainProgressCard({ name, progress, color }) {
-  const circumference = 2 * Math.PI * 15.9155;
-  const strokeDashoffset = circumference - (progress / 100) * circumference;
-
+// Component: Domain Card (simplified without progress)
+function DomainCard({ name, color }) {
   return (
     <div className="border rounded-lg p-4 text-center hover:shadow-md transition-shadow">
-      <div className="relative w-14 h-14 mx-auto mb-2">
-        <svg className="w-full h-full" viewBox="0 0 36 36">
-          <circle
-            cx="18"
-            cy="18"
-            r="15.9155"
-            fill="none"
-            stroke="#eee"
-            strokeWidth="3"
-          />
-          <circle
-            cx="18"
-            cy="18"
-            r="15.9155"
-            fill="none"
-            stroke={color}
-            strokeWidth="3"
-            strokeDasharray={circumference}
-            strokeDashoffset={strokeDashoffset}
-            strokeLinecap="round"
-            transform="rotate(-90 18 18)"
-          />
-        </svg>
-        <span 
-          className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-sm font-bold"
-          style={{ color }}
+      <div className="w-14 h-14 mx-auto mb-2 flex items-center justify-center">
+        <div 
+          className="w-full h-full rounded-full flex items-center justify-center"
+          style={{ backgroundColor: `${color}20`, border: `2px solid ${color}` }}
         >
-          {progress}%
-        </span>
+          <span 
+            className="text-xl font-bold"
+            style={{ color }}
+          >
+            {name.charAt(0)}
+          </span>
+        </div>
       </div>
       <p className="text-sm font-medium truncate">{name}</p>
     </div>

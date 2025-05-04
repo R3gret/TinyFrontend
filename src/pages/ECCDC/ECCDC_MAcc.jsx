@@ -317,40 +317,29 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
     e.preventDefault();
     setError("");
   
+    // Validate required fields
     if (!formData.username) {
       setError("Username is required");
       return;
     }
   
+    // Special validation for president type
+    if (formData.type === 'president') {
+      if (!selectedCdc && !formData.cdc_id) {
+        setError("Please select a CDC for the president");
+        return;
+      }
+    }
+  
+    // Password validation if changing
     if (formData.password && formData.password.length < 8) {
       setError("Password must be at least 8 characters");
       return;
     }
   
-    // For president type, we need to ensure CDC is selected
-    if (formData.type === 'president') {
-      if (!selectedCdc) {
-        setError("Please select a CDC for the president");
-        return;
-      }
-      
-      // Update formData with the selected CDC
-      setFormData(prev => ({
-        ...prev,
-        cdc_id: selectedCdc.cdc_id
-      }));
-    } else {
-      // Clear CDC if not president
-      setFormData(prev => ({
-        ...prev,
-        cdc_id: null
-      }));
-    }
-  
     setShowConfirmation(true);
   };
-
-
+  
   const executeUpdate = async () => {
     setShowConfirmation(false);
     setLoading(true);
@@ -360,12 +349,13 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
         username: formData.username,
         type: formData.type,
         ...(formData.password && { password: formData.password }),
+        // Include CDC ID for president (either from selection or existing)
         ...(formData.type === 'president' && { 
           cdc_id: selectedCdc?.cdc_id || formData.cdc_id 
         })
       };
   
-      await apiRequest(`/api/cdc/users/cdc/${user.id}`, 'PUT', updatePayload);
+      await apiRequest(`/api/cdc/users/${user.id}`, 'PUT', updatePayload);
       onUserUpdated();
       onClose();
     } catch (err) {
@@ -374,6 +364,7 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
       setLoading(false);
     }
   };
+  
   return (
     <>
       <Modal open={open} onClose={onClose}>

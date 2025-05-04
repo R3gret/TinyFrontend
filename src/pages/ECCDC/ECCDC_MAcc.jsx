@@ -528,12 +528,10 @@ const ECCDCManageAcc = () => {
 
   const handleSearch = async (query) => {
     try {
-      let endpoint;
-      if (viewMode === 'admins') {
-        endpoint = query ? `/api/cdc/admins/search?query=${query}` : '/api/cdc/admins';
-      } else {
-        endpoint = query ? `/api/users/search?query=${query}` : '/api/users';
-      }
+      const endpoint = query 
+        ? `/api/cdc/admins/search?query=${query}` 
+        : '/api/cdc/admins';
+      
       const data = await apiRequest(endpoint);
       setUsers(data);
     } catch (error) {

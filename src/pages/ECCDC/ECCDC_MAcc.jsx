@@ -23,6 +23,7 @@ import { Eye, EyeOff, Edit, Trash2 } from "lucide-react";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
+
 // API Service Helper
 const apiRequest = async (endpoint, method = 'GET', body = null) => {
   const token = localStorage.getItem('token');
@@ -504,6 +505,8 @@ const ECCDCManageAcc = () => {
     message: "",
     severity: "success",
   });
+
+  const [viewMode, setViewMode] = useState('presidents'); // or 'admins' depending on your default
 
   const fetchUsers = async () => {
     setLoading(true);

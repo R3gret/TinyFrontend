@@ -170,7 +170,7 @@ export default function App() {
         <Route
           path="/account-profile/:id"
           element={
-            <ProtectedRoute allowedTypes={["admin", "eccdc"]}>
+            <ProtectedRoute allowedTypes={["admin", "eccdc", "president"]}>
               <AccProfiles />
             </ProtectedRoute>
           }

@@ -16,10 +16,10 @@ import {
   CircularProgress,
   Alert,
   AlertTitle,
-  Button
+  Button,
+  Box
 } from "@mui/material";
 
-// API Service Helper
 const apiRequest = async (endpoint, method = 'GET', body = null) => {
   const token = localStorage.getItem('token');
   const headers = {
@@ -34,30 +34,14 @@ const apiRequest = async (endpoint, method = 'GET', body = null) => {
     ...(body && { body: JSON.stringify(body) })
   };
 
-  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+  const response = await fetch(`${import.meta.env.VITE_API_URL}${endpoint}`, config);
   
   if (!response.ok) {
     const errorData = await response.json();
-    throw new Error(errorData.message || 'Request failed');
+    throw new Error(errorData.message || errorData.error || 'Request failed');
   }
 
   return response.json();
-};
-
-const SearchBar = ({ searchTerm, setSearchTerm }) => {
-  return (
-    <div className="flex-1 max-w-md">
-      <TextField
-        fullWidth
-        label="Search parents by username..."
-        variant="outlined"
-        size="small"
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-      />
-    </div>
-  );
 };
 
 export default function AdminParentList() {
@@ -73,10 +57,7 @@ export default function AdminParentList() {
         setLoading(true);
         setError(null);
         
-        const data = await apiRequest(`/api/admin?${new URLSearchParams({
-          search: searchTerm
-        }).toString()}`);
-        
+        const data = await apiRequest(`/api/admin/parents?search=${encodeURIComponent(searchTerm)}`);
         setParents(data.parents || []);
       } catch (err) {
         console.error('Fetch error:', err);
@@ -86,140 +67,132 @@ export default function AdminParentList() {
       }
     };
 
-    // Add debounce to prevent too many API calls
-    const debounceTimer = setTimeout(() => {
-      fetchParents();
-    }, 300);
-
+    const debounceTimer = setTimeout(fetchParents, 300);
     return () => clearTimeout(debounceTimer);
   }, [searchTerm]);
 
   const handleViewProfile = (parentId) => {
-    navigate(`/parent-profile/${parentId}`);
-  };
-
-  const renderParentTable = () => {
-    if (loading) {
-      return (
-        <div className="flex justify-center items-center py-8">
-          <CircularProgress />
-        </div>
-      );
-    }
-
-    if (error) {
-      return (
-        <Alert severity="error" className="my-4">
-          <AlertTitle>Error loading parent accounts</AlertTitle>
-          {error}
-          <Button 
-            onClick={() => window.location.reload()} 
-            color="inherit" 
-            size="small"
-            className="mt-2"
-          >
-            Retry
-          </Button>
-        </Alert>
-      );
-    }
-
-    if (parents.length === 0) {
-      return (
-        <Alert severity="info" className="my-4">
-          No parent accounts found matching your criteria
-        </Alert>
-      );
-    }
-
-    return (
-      <div className="mb-10">
-        <h3 className="text-xl font-semibold text-gray-800 mb-4">
-          Parent Accounts
-        </h3>
-        <Paper className="max-h-96 overflow-hidden">
-          <TableContainer style={{ maxHeight: "400px", overflowY: "auto" }}>
-            <Table sx={{ minWidth: 650 }} aria-label="parent table" stickyHeader>
-              <TableHead>
-                <TableRow>
-                  <TableCell align="center">ID</TableCell>
-                  <TableCell>Profile</TableCell>
-                  <TableCell align="center">Username</TableCell>
-                  <TableCell align="center">CDC ID</TableCell>
-                  <TableCell align="center">Action</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {parents.map((parent) => (
-                  <TableRow
-                    key={parent.id}
-                    hover
-                    sx={{
-                      "&:nth-of-type(odd)": { backgroundColor: "#f5f5f5" },
-                      cursor: "pointer",
-                    }}
-                    onClick={() => handleViewProfile(parent.id)}
-                  >
-                    <TableCell align="center">{parent.id}</TableCell>
-                    <TableCell>
-                      <img
-                        src={parent.profile_pic || defaultProfile}
-                        alt="Profile"
-                        className="w-10 h-10 rounded-full shadow-md object-cover"
-                      />
-                    </TableCell>
-                    <TableCell align="center">{parent.username}</TableCell>
-                    <TableCell align="center">{parent.cdc_id}</TableCell>
-                    <TableCell align="center">
-                      <button
-                        className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleViewProfile(parent.id);
-                        }}
-                      >
-                        View Profile
-                      </button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Paper>
-      </div>
-    );
+    navigate(`/admin/parents/${parentId}`);
   };
 
   return (
-    <div className="w-screen h-screen flex overflow-hidden relative">
-      <div 
-        className="absolute inset-0 bg-cover bg-center" 
-        style={{ backgroundImage: `url(${bgImage})`, zIndex: -1 }}
-      ></div>
-      
+    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
       <Sidebar />
       
-      <div className="flex flex-col flex-grow pl-16 pt-16 bg-white/50 overflow-auto">
+      <Box component="main" sx={{ 
+        flexGrow: 1, 
+        p: 3,
+        backgroundImage: `url(${bgImage})`,
+        backgroundSize: 'cover',
+        backgroundAttachment: 'fixed',
+        position: 'relative',
+        '&::before': {
+          content: '""',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(255, 255, 255, 0.7)',
+          zIndex: -1
+        }
+      }}>
         <Navbar />
         
-        <div className="p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-gray-800">Manage Parent Accounts</h2>
-          </div>
-          
-          <div className="flex flex-col space-y-4 mb-6">
-            <div className="flex flex-col md:flex-row gap-4">
-              <SearchBar 
-                searchTerm={searchTerm}
-                setSearchTerm={setSearchTerm}
-              />
-            </div>
-          </div>
-          
-          {renderParentTable()}
-        </div>
-      </div>
-    </div>
+        <Box sx={{ 
+          backgroundColor: 'background.paper', 
+          borderRadius: 2, 
+          p: 3,
+          boxShadow: 3
+        }}>
+          <Box sx={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            mb: 3 
+          }}>
+            <h2>Manage Parent Accounts</h2>
+            <TextField
+              label="Search parents"
+              variant="outlined"
+              size="small"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              sx={{ width: 300 }}
+            />
+          </Box>
+
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : error ? (
+            <Alert severity="error" sx={{ mb: 3 }}>
+              <AlertTitle>Error</AlertTitle>
+              {error}
+              <Button 
+                onClick={() => window.location.reload()} 
+                sx={{ mt: 1 }}
+              >
+                Retry
+              </Button>
+            </Alert>
+          ) : parents.length === 0 ? (
+            <Alert severity="info">
+              No parent accounts found matching your criteria
+            </Alert>
+          ) : (
+            <TableContainer component={Paper} sx={{ maxHeight: '70vh' }}>
+              <Table stickyHeader>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>ID</TableCell>
+                    <TableCell>Profile</TableCell>
+                    <TableCell>Username</TableCell>
+                    <TableCell>CDC ID</TableCell>
+                    <TableCell>Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {parents.map((parent) => (
+                    <TableRow 
+                      key={parent.id} 
+                      hover 
+                      sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
+                    >
+                      <TableCell>{parent.id}</TableCell>
+                      <TableCell>
+                        <Box
+                          component="img"
+                          src={parent.profile_pic || defaultProfile}
+                          alt="Profile"
+                          sx={{ 
+                            width: 40, 
+                            height: 40, 
+                            borderRadius: '50%',
+                            objectFit: 'cover'
+                          }}
+                        />
+                      </TableCell>
+                      <TableCell>{parent.username}</TableCell>
+                      <TableCell>{parent.cdc_id}</TableCell>
+                      <TableCell>
+                        <Button
+                          variant="contained"
+                          size="small"
+                          onClick={() => handleViewProfile(parent.id)}
+                        >
+                          View
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </Box>
+      </Box>
+    </Box>
   );
 }

@@ -129,7 +129,7 @@ export default function StudentList() {
   };
 
   const handleViewProfile = (studentId) => {
-    navigate(`/student-profile/${studentId}`);
+    navigate(`/account-profile/${studentId}`);
   };
 
   const renderStudentTable = () => {

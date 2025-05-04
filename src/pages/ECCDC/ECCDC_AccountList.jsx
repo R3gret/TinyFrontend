@@ -122,7 +122,7 @@ export default function AdminAccountList() {
     return (
       <div className="mb-10">
         <h3 className="text-xl font-semibold text-gray-800 mb-4">
-          Administrator Accounts
+          President Accounts
         </h3>
         <Paper className="max-h-96 overflow-hidden">
           <TableContainer style={{ maxHeight: "400px", overflowY: "auto" }}>
@@ -184,7 +184,7 @@ export default function AdminAccountList() {
         <Navbar />
         <div className="p-6">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-gray-800">Admin Management</h2>
+            <h2 className="text-2xl font-bold text-gray-800">Account List</h2>
           </div>
           <div className="flex flex-col space-y-4 mb-6">
             <div className="flex flex-col md:flex-row gap-4">

@@ -4,9 +4,7 @@ import {
   LayoutDashboard,
   Users,
   BookOpen,
-  UserCircle,
-  ListOrdered,
-  Settings,
+  UserCircle,Video,
   School
 } from "lucide-react";
 

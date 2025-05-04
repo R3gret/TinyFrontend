@@ -7,7 +7,7 @@ import defaultProfile from "../../assets/default-profile.png";
 import { useNavigate } from 'react-router-dom';
 import { 
   Table, TableBody, TableCell, TableHead, TableRow, 
-  Paper, TextField, TableContainer, Box, Autocomplete 
+  Paper, TextField, TableContainer, Box, Autocomplete, InputAdornment
 } from "@mui/material";
 import { Search } from "@mui/icons-material";
 

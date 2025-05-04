@@ -62,18 +62,27 @@ const CreateUserModal = ({ open, onClose, onUserCreated }) => {
   const [selectedCdc, setSelectedCdc] = useState(null);
 
   // Fetch CDC options for autocomplete
-  const fetchCdcOptions = async (query = "") => {
-    setCdcLoading(true);
-    try {
-      const data = await apiRequest(`/api/cdc/search?query=${query}`);
-      setCdcOptions(data.data || []);
-    } catch (err) {
-      console.error("Error fetching CDC options:", err);
-      setError("Failed to load CDC options");
-    } finally {
-      setCdcLoading(false);
-    }
-  };
+  // In your CreateUserModal component, update the fetchCdcOptions function:
+const fetchCdcOptions = async (query = "") => {
+  setCdcLoading(true);
+  try {
+    // Use the new name-only search endpoint
+    const response = await apiRequest(`/api/cdc/search/name?name=${encodeURIComponent(query)}`);
+    
+    // Handle the response format (data might be directly the array or in a data property)
+    const cdcs = response.data || response;
+    
+    // Ensure we always have an array
+    setCdcOptions(Array.isArray(cdcs) ? cdcs : []);
+    
+  } catch (err) {
+    console.error("Error fetching CDC options:", err);
+    setError("Failed to load CDC options. Please try again.");
+    setCdcOptions([]); // Reset to empty array on error
+  } finally {
+    setCdcLoading(false);
+  }
+};
 
   useEffect(() => {
     if (open) {
@@ -185,35 +194,34 @@ const CreateUserModal = ({ open, onClose, onUserCreated }) => {
             helperText="All new users are created as Presidents"
           />
 
-          <Autocomplete
-            options={cdcOptions}
-            getOptionLabel={(option) => 
-              `${option.name} - ${option.barangay}, ${option.municipality}, ${option.province}`
-            }
-            value={selectedCdc}
-            onChange={(_, newValue) => setSelectedCdc(newValue)}
-            onInputChange={(_, newInputValue) => {
-              fetchCdcOptions(newInputValue);
-            }}
-            loading={cdcLoading}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                label="Select CDC"
-                required
-                helperText="Search and select the CDC this president will manage"
-                InputProps={{
-                  ...params.InputProps,
-                  endAdornment: (
-                    <>
-                      {cdcLoading ? <CircularProgress color="inherit" size={20} /> : null}
-                      {params.InputProps.endAdornment}
-                    </>
-                  ),
-                }}
-              />
-            )}
-          />
+<Autocomplete
+  options={cdcOptions}
+  getOptionLabel={(option) => option.name} // Now we only need to show the name
+  value={selectedCdc}
+  onChange={(_, newValue) => setSelectedCdc(newValue)}
+  onInputChange={(_, newInputValue) => {
+    fetchCdcOptions(newInputValue);
+  }}
+  loading={cdcLoading}
+  filterOptions={(options) => options} // We're filtering on the server side
+  renderInput={(params) => (
+    <TextField
+      {...params}
+      label="Search CDC by Name"
+      required
+      helperText="Type to search CDC names"
+      InputProps={{
+        ...params.InputProps,
+        endAdornment: (
+          <>
+            {cdcLoading ? <CircularProgress color="inherit" size={20} /> : null}
+            {params.InputProps.endAdornment}
+          </>
+        ),
+      }}
+    />
+  )}
+/>
 
           <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2, mt: 3 }}>
             <Button onClick={onClose} disabled={loading} variant="outlined">

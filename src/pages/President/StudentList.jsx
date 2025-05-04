@@ -65,13 +65,26 @@ export default function StudentList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Fetch student data from the API
+  // Fetch student data from the API with CDC filtering
   useEffect(() => {
     const fetchStudents = async () => {
       try {
         setLoading(true);
         setError(null);
-        const data = await apiRequest('/api/students');
+        
+        // First get the president's CDC ID
+        const presidentData = await apiRequest('/api/user_session/current-user');
+        if (!presidentData.user || presidentData.user.type !== 'president') {
+          throw new Error('Only presidents can access this page');
+        }
+        
+        const cdcId = presidentData.user.cdc_id;
+        if (!cdcId) {
+          throw new Error('CDC information not found');
+        }
+
+        // Then fetch students for this CDC
+        const data = await apiRequest(`/api/students?cdc_id=${cdcId}`);
         if (data.success) {
           setStudents(data.students);
         } else {
@@ -80,13 +93,16 @@ export default function StudentList() {
       } catch (err) {
         console.error("Error fetching students:", err);
         setError(err.message);
+        if (err.message.includes('Unauthorized') || err.message.includes('president')) {
+          navigate('/login');
+        }
       } finally {
         setLoading(false);
       }
     };
 
     fetchStudents();
-  }, []);
+  }, [navigate]);
 
   // Filter students based on search term
   useEffect(() => {
@@ -145,7 +161,7 @@ export default function StudentList() {
     if (filteredStudents.length === 0) {
       return (
         <div className="text-center py-8 text-gray-500">
-          {searchTerm ? 'No students found matching your search' : 'No students available'}
+          {searchTerm ? 'No students found matching your search' : 'No students available in your CDC'}
         </div>
       );
     }
@@ -216,7 +232,7 @@ export default function StudentList() {
         <Navbar />
         <div className="p-6">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-gray-800">Student List</h2>
+            <h2 className="text-2xl font-bold text-gray-800">CDC Student List</h2>
             <SearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
           </div>
           {renderStudentTable()}

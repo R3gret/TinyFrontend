@@ -29,6 +29,7 @@ export default function PresidentSidebar() {
           icon={School} 
           label="Students" 
         />
+        <SidebarItem to="/pres-virtualc" icon={Video} label="Virtual Classroom" />
         <SidebarItem 
           to="/president-profile" 
           icon={UserCircle} 

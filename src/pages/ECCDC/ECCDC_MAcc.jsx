@@ -684,7 +684,9 @@ const ECCDCManageAcc = () => {
   };
 
   const handleUserUpdated = () => {
-    fetchUsers();
+    fetchUsers(); // Refresh the user list
+    setSearchQuery(""); // Reset the search query
+    setSelectedUser(null); // Clear the selected user (optional)
     setSnackbar({
       open: true,
       message: "User updated successfully",

@@ -221,12 +221,79 @@ const Login = () => {
     handleInputChange, 
     handleLogin, 
     setShowPassword, 
-    setShowModal 
+    setShowModal,
+    isMobile
   }) => {
     console.log("[Render] LoginForm rendering");
     return (
       <div className={`w-full ${isMobile ? 'bg-white/80 backdrop-blur-lg p-6 rounded-xl shadow-lg' : 'bg-white/80 backdrop-blur-lg p-8 rounded-xl shadow-2xl'}`}>
-        {/* ... rest of the LoginForm JSX ... */}
+        <div className="flex justify-center mb-4">
+          <img src={logo} alt="Logo" className={`${isMobile ? 'w-24' : 'w-28'} h-auto`} />
+        </div>
+        <h2 className="text-2xl font-semibold text-center mb-4 text-green-700">Login</h2>
+        <form onSubmit={handleLogin}>
+          <input
+            ref={usernameRef}
+            type="text"
+            name="username"
+            placeholder="Enter your username"
+            value={loginData.username}
+            onChange={handleInputChange}
+            className="w-full px-4 py-2 border rounded-lg mb-4 text-gray-800"
+            required
+            autoComplete="username"
+          />
+          <div className="relative mb-6">
+            <input
+              ref={passwordRef}
+              type={showPassword ? "text" : "password"}
+              name="password"
+              placeholder="Enter your password"
+              value={loginData.password}
+              onChange={handleInputChange}
+              className="w-full px-4 py-2 border rounded-lg text-gray-800"
+              required
+              autoComplete="current-password"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                console.log(`[UI] Password visibility toggled: ${!showPassword}`);
+                setShowPassword(!showPassword);
+              }}
+              className="absolute right-3 top-3 text-gray-600"
+            >
+              {showPassword ? <FiEyeOff size={20} /> : <FiEye size={20} />}
+            </button>
+          </div>
+          <button
+            type="submit"
+            className="w-full bg-green-700 text-white py-2 rounded-lg hover:bg-green-800 transition"
+          >
+            Login
+          </button>
+        </form>
+
+        <div className="text-center mt-4 text-sm text-gray-600">
+          <p>
+            Forgot password?{" "}
+            <span
+              className="text-blue-500 cursor-pointer hover:underline"
+              onClick={() => {
+                console.log("[UI] Password reset modal triggered");
+                setShowModal(true);
+              }}
+            >
+              Request password reset here
+            </span>
+          </p>
+        </div>
+
+        {error && (
+          <p className="text-red-500 text-center mt-2 bg-red-100 border border-red-500 p-2 rounded-lg">
+            {error}
+          </p>
+        )}
       </div>
     );
   });
@@ -236,7 +303,8 @@ const Login = () => {
     resetEmail, 
     handleResetEmailChange, 
     handlePasswordReset, 
-    setShowModal 
+    setShowModal,
+    isMobile
   }) => {
     console.log("[Render] ResetModal rendering");
     return (
@@ -244,7 +312,39 @@ const Login = () => {
         backdropFilter: "blur(10px)",
         backgroundColor: "rgba(0, 0, 0, 0.4)",
       }}>
-        {/* ... rest of the ResetModal JSX ... */}
+        <div className={`bg-white p-6 rounded-lg shadow-lg ${isMobile ? 'w-full max-w-sm' : 'w-80'}`}>
+          <div className="flex justify-center mb-4">
+            <img src={logo} alt="Logo" className={`${isMobile ? 'w-20' : 'w-24'} h-auto`} />
+          </div>
+          <h2 className="text-xl font-semibold text-center mb-4">Reset Password</h2>
+          <input
+            ref={resetEmailRef}
+            type="email"
+            placeholder="Enter your email"
+            value={resetEmail}
+            onChange={handleResetEmailChange}
+            className="w-full px-4 py-2 border rounded-lg mb-4"
+            required
+            autoComplete="email"
+          />
+          <div className="flex justify-between gap-2">
+            <button
+              onClick={() => {
+                console.log("[UI] Password reset modal cancelled");
+                setShowModal(false);
+              }}
+              className="bg-gray-300 text-gray-800 py-2 px-4 rounded-lg flex-1"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handlePasswordReset}
+              className="bg-blue-600 text-white py-2 px-4 rounded-lg flex-1"
+            >
+              {isMobile ? 'Reset' : 'Reset Password'}
+            </button>
+          </div>
+        </div>
       </div>
     );
   });
@@ -265,6 +365,7 @@ const Login = () => {
                   handleLogin={handleLogin}
                   setShowPassword={setShowPassword}
                   setShowModal={setShowModal}
+                  isMobile={isMobile}
                 />
               </div>
             </div>
@@ -284,6 +385,7 @@ const Login = () => {
               handleLogin={handleLogin}
               setShowPassword={setShowPassword}
               setShowModal={setShowModal}
+              isMobile={isMobile}
             />
           </div>
         </div>
@@ -303,6 +405,7 @@ const Login = () => {
           handleResetEmailChange={handleResetEmailChange}
           handlePasswordReset={handlePasswordReset}
           setShowModal={setShowModal}
+          isMobile={isMobile}
         />
       )}
     </>

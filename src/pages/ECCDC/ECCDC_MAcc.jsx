@@ -325,16 +325,10 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
   
     // Special validation for president type
     if (formData.type === 'president') {
-      if (!selectedCdc && !formData.cdc_id) {
+      if (!selectedCdc) {
         setError("Please select a CDC for the president");
         return;
       }
-    }
-  
-    // Password validation if changing
-    if (formData.password && formData.password.length < 8) {
-      setError("Password must be at least 8 characters");
-      return;
     }
   
     setShowConfirmation(true);
@@ -349,9 +343,9 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
         username: formData.username,
         type: formData.type,
         ...(formData.password && { password: formData.password }),
-        // Include CDC ID for president (either from selection or existing)
-        ...(formData.type === 'president' && { 
-          cdc_id: selectedCdc?.cdc_id || formData.cdc_id 
+        // Include CDC name and let backend handle ID assignment
+        ...(formData.type === 'president' && selectedCdc && {
+          cdc_name: selectedCdc.name
         })
       };
   
@@ -364,7 +358,7 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
       setLoading(false);
     }
   };
-  
+
   return (
     <>
       <Modal open={open} onClose={onClose}>

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 
 import Dashboard from "./pages/CDC/Dashboard";
-import StudentList from "./pages/CDC/StudentList";
 import Registration from "./pages/CDC/Registration";
 import VirtualC from "./pages/CDC/VirtualC";
 import Profile from "./pages/CDC/Profile";
@@ -13,11 +12,13 @@ import Login from "./pages/CDC/Login";
 import RegistrationForm from './pages/CDC/RegistrationForm';
 import CDCProfileForm from "./pages/CDC/CDProfile";
 import DomainForm from "./pages/CDC/Domain";
+import AccountProf from "./pages/CDC/CDProfile";
 
 import ECCDCManageAcc from "./pages/ECCDC/ECCDC_MAcc";
 import ECCDCCreateAcc from "./pages/ECCDC/ECCDC_CreateCDC";
 import ECCDCProfile from "./pages/ECCDC/ECCDC_Profile"
 import ECCDCAccount from "./pages/ECCDC/ECCDC_AccountList";
+
 
 import AdminDashboard from "./pages/Admin/AdminDasboard";
 import AccountList from "./pages/Admin/AccountList";
@@ -217,6 +218,14 @@ export default function App() {
           element={
             <ProtectedRoute allowedTypes={["eccdc"]}>
               <ECCDCAccount />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/account-profile"
+          element={
+            <ProtectedRoute allowedTypes={["eccdc"]}>
+              <AccountProf />
             </ProtectedRoute>
           }
         />

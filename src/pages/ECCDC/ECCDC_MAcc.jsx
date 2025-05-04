@@ -100,31 +100,33 @@ const fetchCdcOptions = async (query = "") => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-
+  
     if (!formData.username || !formData.password) {
       setError("Username and password are required");
       return;
     }
-
+  
     if (formData.password.length < 8) {
       setError("Password must be at least 8 characters");
       return;
     }
-
+  
     if (!selectedCdc) {
       setError("Please select a CDC for the president");
       return;
     }
-
+  
     setLoading(true);
-
+  
     try {
-      const userData = await apiRequest('/api/users', 'POST', {
-        ...formData,
+      // Use the dedicated president endpoint
+      const userData = await apiRequest('/api/users/presidents', 'POST', {
+        username: formData.username,
+        password: formData.password,
         cdc_id: selectedCdc.cdcId
       });
       
-      onUserCreated(userData.id);
+      onUserCreated(userData.userId);
       onClose();
     } catch (err) {
       setError(err.message);

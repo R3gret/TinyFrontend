@@ -5,6 +5,7 @@ import logo from "../../assets/logo.png";
 import { FiEye, FiEyeOff } from "react-icons/fi";
 import axios from "axios";
 
+// Set API base URL from Vite environment variables with localhost fallback
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 const Login = () => {
@@ -31,7 +32,7 @@ const Login = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Memoize the login handler to prevent unnecessary re-renders
+  // Memoize the login handler
   const handleLogin = useCallback(async (e) => {
     e.preventDefault();
     setError(null);
@@ -87,7 +88,8 @@ const Login = () => {
     }
   }, [loginUsername, loginPassword, navigate]);
 
-  const handlePasswordReset = async () => {
+  // Memoize the password reset handler
+  const handlePasswordReset = useCallback(async () => {
     if (!resetEmail) {
       setError("Please enter your email.");
       return;
@@ -100,15 +102,28 @@ const Login = () => {
     } catch (err) {
       setError(err.response?.data?.message || "Failed to send reset email.");
     }
-  };
+  }, [resetEmail]);
 
-  // Desktop Layout - Using React.memo to prevent unnecessary re-renders
-  const DesktopLayout = React.memo(() => (
+  // Stable input change handlers
+  const handleUsernameChange = useCallback((e) => {
+    setLoginUsername(e.target.value);
+  }, []);
+
+  const handlePasswordChange = useCallback((e) => {
+    setLoginPassword(e.target.value);
+  }, []);
+
+  const handleResetEmailChange = useCallback((e) => {
+    setResetEmail(e.target.value);
+  }, []);
+
+  // Desktop Layout - memoized to prevent unnecessary re-renders
+  const DesktopLayout = useCallback(() => (
     <div className="relative flex min-h-screen bg-cover bg-center" style={{ backgroundImage: `url(${bgImage})` }}>
       <div className="w-1/2 flex justify-center items-center bg-gradient-to-bl from-green-100 via-white to-green-100 z-10 relative">
         <div className={`w-80 h-[500px] z-20 transition-opacity duration-700 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
           <div className="relative w-full h-full">
-            <div className="absolute w-full h-[440px] bg-white/80 backdrop-blur-lg p-8 rounded-xl shadow-2xl">
+            <div className="absolute w-full h-[440px] bg-white/80 backdrop-blur-lg p-8 rounded-xl shadow-2xl transform transition-transform duration-700 ease-in-out scale-95 hover:scale-100">
               <div className="flex justify-center mb-4">
                 <img src={logo} alt="Logo" className="w-28 h-auto" />
               </div>
@@ -118,8 +133,8 @@ const Login = () => {
                   type="text"
                   placeholder="Enter your username"
                   value={loginUsername}
-                  onChange={(e) => setLoginUsername(e.target.value)}
-                  className="w-full px-4 py-2 border rounded-lg mb-4 text-gray-800 focus:outline-none focus:ring-2 focus:ring-green-500"
+                  onChange={handleUsernameChange}
+                  className="w-full px-4 py-2 border rounded-lg mb-4 text-gray-800"
                   required
                 />
                 <div className="relative mb-6">
@@ -127,21 +142,21 @@ const Login = () => {
                     type={showPassword ? "text" : "password"}
                     placeholder="Enter your password"
                     value={loginPassword}
-                    onChange={(e) => setLoginPassword(e.target.value)}
-                    className="w-full px-4 py-2 border rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-green-500"
+                    onChange={handlePasswordChange}
+                    className="w-full px-4 py-2 border rounded-lg text-gray-800"
                     required
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-3 text-gray-600 hover:text-gray-800 transition-colors"
+                    className="absolute right-3 top-3 text-gray-600"
                   >
                     {showPassword ? <FiEyeOff size={20} /> : <FiEye size={20} />}
                   </button>
                 </div>
                 <button
                   type="submit"
-                  className="w-full bg-green-700 text-white py-2 rounded-lg hover:bg-green-800 transition-colors"
+                  className="w-full bg-green-700 text-white py-2 rounded-lg hover:bg-green-800 transition"
                 >
                   Login
                 </button>
@@ -151,7 +166,7 @@ const Login = () => {
                 <p>
                   Forgot password?{" "}
                   <span
-                    className="text-blue-500 cursor-pointer hover:text-blue-700 transition-colors"
+                    className="text-blue-500 cursor-pointer"
                     onClick={() => setShowModal(true)}
                   >
                     Request password reset here
@@ -169,10 +184,10 @@ const Login = () => {
         </div>
       </div>
     </div>
-  ));
+  ), [isVisible, loginUsername, loginPassword, showPassword, error, handleLogin, handleUsernameChange, handlePasswordChange]);
 
-  // Mobile Layout - Using React.memo to prevent unnecessary re-renders
-  const MobileLayout = React.memo(() => (
+  // Mobile Layout - memoized to prevent unnecessary re-renders
+  const MobileLayout = useCallback(() => (
     <div className="relative flex min-h-screen items-center justify-center bg-gradient-to-bl from-green-100 via-white to-green-100 p-4">
       <div className={`w-full max-w-md z-20 transition-opacity duration-700 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
         <div className="w-full bg-white/80 backdrop-blur-lg p-6 rounded-xl shadow-lg">
@@ -185,8 +200,8 @@ const Login = () => {
               type="text"
               placeholder="Enter your username"
               value={loginUsername}
-              onChange={(e) => setLoginUsername(e.target.value)}
-              className="w-full px-4 py-2 border rounded-lg mb-4 text-gray-800 focus:outline-none focus:ring-2 focus:ring-green-500"
+              onChange={handleUsernameChange}
+              className="w-full px-4 py-2 border rounded-lg mb-4 text-gray-800"
               required
             />
             <div className="relative mb-6">
@@ -194,21 +209,21 @@ const Login = () => {
                 type={showPassword ? "text" : "password"}
                 placeholder="Enter your password"
                 value={loginPassword}
-                onChange={(e) => setLoginPassword(e.target.value)}
-                className="w-full px-4 py-2 border rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-green-500"
+                onChange={handlePasswordChange}
+                className="w-full px-4 py-2 border rounded-lg text-gray-800"
                 required
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-3 text-gray-600 hover:text-gray-800 transition-colors"
+                className="absolute right-3 top-3 text-gray-600"
               >
                 {showPassword ? <FiEyeOff size={20} /> : <FiEye size={20} />}
               </button>
             </div>
             <button
               type="submit"
-              className="w-full bg-green-700 text-white py-2 rounded-lg hover:bg-green-800 transition-colors"
+              className="w-full bg-green-700 text-white py-2 rounded-lg hover:bg-green-800 transition"
             >
               Login
             </button>
@@ -218,7 +233,7 @@ const Login = () => {
             <p>
               Forgot password?{" "}
               <span
-                className="text-blue-500 cursor-pointer hover:text-blue-700 transition-colors"
+                className="text-blue-500 cursor-pointer"
                 onClick={() => setShowModal(true)}
               >
                 Request password reset here
@@ -234,7 +249,47 @@ const Login = () => {
         </div>
       </div>
     </div>
-  ));
+  ), [isVisible, loginUsername, loginPassword, showPassword, error, handleLogin, handleUsernameChange, handlePasswordChange]);
+
+  // Common Modal Component - memoized
+  const Modal = useCallback(() => (
+    <div
+      className="fixed inset-0 flex justify-center items-center z-50 p-4"
+      style={{
+        backdropFilter: "blur(10px)",
+        backgroundColor: "rgba(0, 0, 0, 0.4)",
+      }}
+    >
+      <div className={`bg-white p-6 rounded-lg shadow-lg ${isMobile ? 'w-full max-w-sm' : 'w-80'}`}>
+        <div className="flex justify-center mb-4">
+          <img src={logo} alt="Logo" className={`${isMobile ? 'w-20' : 'w-24'} h-auto`} />
+        </div>
+        <h2 className="text-xl font-semibold text-center mb-4">Reset Password</h2>
+        <input
+          type="email"
+          placeholder="Enter your email"
+          value={resetEmail}
+          onChange={handleResetEmailChange}
+          className="w-full px-4 py-2 border rounded-lg mb-4"
+          required
+        />
+        <div className="flex justify-between gap-2">
+          <button
+            onClick={() => setShowModal(false)}
+            className="bg-gray-300 text-gray-800 py-2 px-4 rounded-lg flex-1"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handlePasswordReset}
+            className="bg-blue-600 text-white py-2 px-4 rounded-lg flex-1"
+          >
+            {isMobile ? 'Reset' : 'Reset Password'}
+          </button>
+        </div>
+      </div>
+    </div>
+  ), [isMobile, resetEmail, handleResetEmailChange, handlePasswordReset]);
 
   return (
     <>
@@ -246,46 +301,9 @@ const Login = () => {
         </div>
       )}
 
-      {showModal && (
-        <div
-          className="fixed inset-0 flex justify-center items-center z-50 p-4"
-          style={{
-            backdropFilter: "blur(10px)",
-            backgroundColor: "rgba(0, 0, 0, 0.4)",
-          }}
-        >
-          <div className={`bg-white p-6 rounded-lg shadow-lg ${isMobile ? 'w-full max-w-sm' : 'w-80'}`}>
-            <div className="flex justify-center mb-4">
-              <img src={logo} alt="Logo" className={`${isMobile ? 'w-20' : 'w-24'} h-auto`} />
-            </div>
-            <h2 className="text-xl font-semibold text-center mb-4">Reset Password</h2>
-            <input
-              type="email"
-              placeholder="Enter your email"
-              value={resetEmail}
-              onChange={(e) => setResetEmail(e.target.value)}
-              className="w-full px-4 py-2 border rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-green-500"
-              required
-            />
-            <div className="flex justify-between gap-2">
-              <button
-                onClick={() => setShowModal(false)}
-                className="bg-gray-300 text-gray-800 py-2 px-4 rounded-lg flex-1 hover:bg-gray-400 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handlePasswordReset}
-                className="bg-blue-600 text-white py-2 px-4 rounded-lg flex-1 hover:bg-blue-700 transition-colors"
-              >
-                {isMobile ? 'Reset' : 'Reset Password'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {showModal && <Modal />}
     </>
   );
 };
 
-export default React.memo(Login);
+export default Login;

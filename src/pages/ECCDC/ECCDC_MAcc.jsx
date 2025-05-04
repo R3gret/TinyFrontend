@@ -55,62 +55,36 @@ const CreateUserModal = ({ open, onClose, onUserCreated }) => {
     password: "",
     type: "president"
   });
-
   const [loading, setLoading] = useState(false);
   const [cdcLoading, setCdcLoading] = useState(false);
   const [error, setError] = useState("");
-  const [showConfirmation, setShowConfirmation] = useState(false);
   const [cdcOptions, setCdcOptions] = useState([]);
   const [selectedCdc, setSelectedCdc] = useState(null);
-
 
   const [searchTimeout, setSearchTimeout] = useState(null);
 
   const fetchCdcOptions = async (query = "") => {
-    if (!query.trim()) {
-      setCdcOptions([]);
-      return;
-    }
+    if (searchTimeout) clearTimeout(searchTimeout);
     
-    setCdcLoading(true);
-    try {
-      const response = await apiRequest(`/api/cdc/search/name?name=${encodeURIComponent(query)}`);
-      const cdcs = response.data || response;
-      setCdcOptions(Array.isArray(cdcs) ? cdcs : []);
-    } catch (err) {
-      console.error("Error fetching CDC options:", err);
-      setCdcOptions([]);
-    } finally {
-      setCdcLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    const loadInitialData = async () => {
-      if (open) {
-        // Load initial CDC if user is a president
-        if (user?.type === 'president' && user?.cdc_id) {
-          try {
-            const response = await apiRequest(`/api/cdc/${user.cdc_id}`);
-            if (response.success) {
-              setSelectedCdc(response.data);
-            }
-          } catch (err) {
-            console.error("Error loading initial CDC:", err);
-          }
-        }
-
-          setFormData({
-          username: user?.username || "",
-          type: user?.type || "worker",
-          password: "",
-        });
+    setSearchTimeout(setTimeout(async () => {
+      if (!query.trim()) {
+        setCdcOptions([]);
+        return;
       }
-    };
-
-    loadInitialData();
-  }, [open, user]);
-
+      
+      setCdcLoading(true);
+      try {
+        const response = await apiRequest(`/api/cdc/search/name?name=${encodeURIComponent(query)}`);
+        const cdcs = response.data || response;
+        setCdcOptions(Array.isArray(cdcs) ? cdcs : []);
+      } catch (err) {
+        console.error("Error fetching CDC options:", err);
+        setCdcOptions([]);
+      } finally {
+        setCdcLoading(false);
+      }
+    }, 300));
+  };
 
   useEffect(() => {
     if (open) {

@@ -511,35 +511,66 @@ const ECCDCManageAcc = () => {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const data = await apiRequest('/api/cdc/admins');
-      setUsers(data);
+      const response = await apiRequest('/api/cdc/admins');
+      
+      // Ensure we always have an array, even if the response is malformed
+      const adminUsers = Array.isArray(response?.data) 
+        ? response.data 
+        : Array.isArray(response) 
+          ? response 
+          : [];
+      
+      setUsers(adminUsers);
+      
     } catch (error) {
       console.error("Error fetching admin users:", error);
+      setUsers([]); // Reset to empty array on error
       setSnackbar({
         open: true,
-        message: "Failed to fetch admin users",
+        message: error.message || "Failed to fetch admin users",
         severity: "error"
       });
     } finally {
       setLoading(false);
     }
   };
-
+  
   const handleSearch = async (query) => {
     try {
-      const endpoint = query 
-        ? `/api/cdc/admins/search?query=${query}` 
+      setLoading(true);
+      const endpoint = query?.trim() 
+        ? `/api/cdc/admins/search?query=${encodeURIComponent(query)}` 
         : '/api/cdc/admins';
       
-      const data = await apiRequest(endpoint);
-      setUsers(data);
+      const response = await apiRequest(endpoint);
+      
+      // Ensure we always have an array
+      const filteredAdmins = Array.isArray(response?.data) 
+        ? response.data 
+        : Array.isArray(response) 
+          ? response 
+          : [];
+      
+      setUsers(filteredAdmins);
+      
+      if (filteredAdmins.length === 0 && query?.trim()) {
+        setSnackbar({
+          open: true,
+          message: "No matching admin users found",
+          severity: "info"
+        });
+      }
+      
     } catch (error) {
-      console.error("Error searching users:", error);
+      console.error("Error searching admin users:", error);
+      setUsers([]); // Reset to empty array on error
       setSnackbar({
         open: true,
-        message: "Failed to search users",
+        message: error.message || "Failed to search admin users",
         severity: "error"
       });
+    } finally {
+      setLoading(false);
     }
   };
 

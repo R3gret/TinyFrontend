@@ -131,7 +131,7 @@ const fetchCdcOptions = async (query = "") => {
       const verifyResponse = await apiRequest(`/api/cdc/${selectedCdc.cdc_id}`);  // CHANGED HERE TOO
       console.log('CDC verification response:', verifyResponse);
   
-      if (!verifyResponse.success || !verifyResponse.exists) {
+      if (!verifyResponse.success || !verifyResponse.data) {
         throw new Error('Selected CDC not found in database');
       }
   

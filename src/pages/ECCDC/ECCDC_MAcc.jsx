@@ -508,7 +508,8 @@ const ECCDCManageAcc = () => {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const data = await apiRequest('/api/users');
+      const endpoint = viewMode === 'admins' ? '/api/cdc/admins' : '/api/users';
+      const data = await apiRequest(endpoint);
       setUsers(data);
     } catch (error) {
       console.error("Error fetching users:", error);
@@ -524,7 +525,12 @@ const ECCDCManageAcc = () => {
 
   const handleSearch = async (query) => {
     try {
-      const endpoint = query ? `/api/users/search?query=${query}` : '/api/users';
+      let endpoint;
+      if (viewMode === 'admins') {
+        endpoint = query ? `/api/cdc/admins/search?query=${query}` : '/api/cdc/admins';
+      } else {
+        endpoint = query ? `/api/users/search?query=${query}` : '/api/users';
+      }
       const data = await apiRequest(endpoint);
       setUsers(data);
     } catch (error) {

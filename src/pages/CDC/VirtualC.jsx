@@ -1010,8 +1010,8 @@ function StudentsSection({ setSnackbar }) {
         setError(null);
         
         const endpoint = ageFilter !== 'all' 
-          ? `/api/students?ageFilter=${ageFilter}`
-          : '/api/students';
+          ? `/api/att?ageFilter=${ageFilter}`
+          : '/api/att';
         
         const data = await apiRequest(endpoint);
         

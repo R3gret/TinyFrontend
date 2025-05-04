@@ -90,7 +90,7 @@ export default function AssessmentTable() {
         setLoading(true);
         
         const [studentsData, domainsData] = await Promise.all([
-          apiRequest('/api/students'),
+          apiRequest('/api/att'),
           apiRequest('/api/domains')
         ]);
         

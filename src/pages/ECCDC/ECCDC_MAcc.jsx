@@ -23,6 +23,7 @@ import { Eye, EyeOff, Edit, Trash2 } from "lucide-react";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
+
 // API Service Helper
 const apiRequest = async (endpoint, method = 'GET', body = null) => {
   const token = localStorage.getItem('token');
@@ -48,10 +49,240 @@ const apiRequest = async (endpoint, method = 'GET', body = null) => {
   return response.json();
 };
 
+const CreateUserModal = ({ open, onClose, onUserCreated }) => {
+  const [showPassword, setShowPassword] = useState(false);
+  const [formData, setFormData] = useState({
+    username: "",
+    password: "",
+    type: "president"
+  });
+  const [loading, setLoading] = useState(false);
+  const [cdcLoading, setCdcLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [cdcOptions, setCdcOptions] = useState([]);
+  const [selectedCdc, setSelectedCdc] = useState(null);
+
+  const [searchTimeout, setSearchTimeout] = useState(null);
+
+const fetchCdcOptions = async (query = "") => {
+  // Clear previous timeout
+  if (searchTimeout) clearTimeout(searchTimeout);
+  
+  // Set new timeout
+  setSearchTimeout(setTimeout(async () => {
+    if (!query.trim()) {
+      setCdcOptions([]);
+      return;
+    }
+    
+    setCdcLoading(true);
+    try {
+      const response = await apiRequest(`/api/cdc/search/name?name=${encodeURIComponent(query)}`);
+      const cdcs = response.data || response;
+      setCdcOptions(Array.isArray(cdcs) ? cdcs : []);
+    } catch (err) {
+      console.error("Error fetching CDC options:", err);
+      setCdcOptions([]);
+    } finally {
+      setCdcLoading(false);
+    }
+  }, 300)); // 300ms delay
+};
+
+  useEffect(() => {
+    if (open) {
+      fetchCdcOptions();
+      setFormData({ username: "", password: "", type: "president" });
+      setSelectedCdc(null);
+      setError("");
+    }
+  }, [open]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+  
+    // Validation checks
+    if (!formData.username || !formData.password) {
+      setError("Username and password are required");
+      return;
+    }
+  
+    if (formData.password.length < 8) {
+      setError("Password must be at least 8 characters");
+      return;
+    }
+  
+    if (!selectedCdc) {
+      setError("Please select a CDC for the president");
+      return;
+    }
+  
+    setLoading(true);
+  
+    try {
+      console.log('Selected CDC from form:', selectedCdc);
+  
+      // Verify we have a valid CDC ID from the selected item
+      if (!selectedCdc.cdc_id) {  // CHANGED FROM cdcId to cdc_id
+        throw new Error('Invalid CDC selection - missing ID');
+      }
+  
+      // Verify the CDC exists directly by ID
+      const verifyResponse = await apiRequest(`/api/cdc/${selectedCdc.cdc_id}`);  // CHANGED HERE TOO
+      console.log('CDC verification response:', verifyResponse);
+  
+      if (!verifyResponse.success || !verifyResponse.data) {
+        throw new Error('Selected CDC not found in database');
+      }
+  
+      // Create the president with the verified CDC ID
+      const userData = await apiRequest('/api/cdc/presidents', 'POST', {
+        username: formData.username,
+        password: formData.password,
+        cdc_id: selectedCdc.cdc_id  // AND HERE
+      });
+      
+      if (!userData.success) {
+        throw new Error(userData.message || 'Failed to create president');
+      }
+      
+      console.log('President created successfully:', userData);
+      onUserCreated(userData.userId);
+      onClose();
+      
+    } catch (err) {
+      console.error('Error in president creation:', {
+        error: err,
+        message: err.message,
+        stack: err.stack
+      });
+      
+      setError(err.message || 'Failed to create president');
+      
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Modal open={open} onClose={onClose}>
+      <Box sx={{ 
+        width: "450px",
+        backgroundColor: "white",
+        borderRadius: 3,
+        p: 4,
+        boxShadow: 24,
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)'
+      }}>
+        <Typography variant="h6" component="h2" sx={{ mb: 2, textAlign: "center" }}>
+          Create New President
+        </Typography>
+
+        {error && (
+          <Typography color="error" sx={{ mb: 2, textAlign: "center" }}>
+            {error}
+          </Typography>
+        )}
+
+        <form onSubmit={handleSubmit}>
+          <TextField
+            label="Username"
+            value={formData.username}
+            onChange={(e) => setFormData({...formData, username: e.target.value})}
+            required
+            fullWidth
+            sx={{ mb: 2 }}
+            helperText="Only letters, numbers and underscores allowed"
+            inputProps={{
+              pattern: "[a-zA-Z0-9_]+",
+              title: "Only letters, numbers and underscores allowed",
+            }}
+          />
+
+          <TextField
+            label="Password"
+            type={showPassword ? "text" : "password"}
+            value={formData.password}
+            onChange={(e) => setFormData({...formData, password: e.target.value})}
+            required
+            fullWidth
+            sx={{ mb: 2 }}
+            helperText="Minimum 8 characters"
+            InputProps={{
+              endAdornment: (
+                <IconButton onClick={() => setShowPassword((prev) => !prev)}>
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </IconButton>
+              ),
+            }}
+          />
+
+          <TextField
+            label="User Type"
+            value="President"
+            fullWidth
+            sx={{ mb: 2 }}
+            disabled
+            helperText="All new users are created as Presidents"
+          />
+
+<Autocomplete
+  options={cdcOptions}
+  getOptionLabel={(option) => option.name}
+  value={selectedCdc}
+  onChange={(_, newValue) => setSelectedCdc(newValue)}
+  onInputChange={(_, newInputValue, reason) => {
+    // Only search when user is typing, not when selecting an option
+    if (reason === 'input') {
+      fetchCdcOptions(newInputValue);
+    }
+  }}
+  loading={cdcLoading}
+  filterOptions={(options) => options} // Server-side filtering
+  renderInput={(params) => (
+    <TextField
+      {...params}
+      label="Search CDC by Name"
+      required
+      helperText="Type at least 1 character to search"
+      InputProps={{
+        ...params.InputProps,
+        endAdornment: (
+          <>
+            {cdcLoading ? <CircularProgress size={20} /> : null}
+            {params.InputProps.endAdornment}
+          </>
+        ),
+      }}
+    />
+  )}
+/>
+          <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2, mt: 3 }}>
+            <Button onClick={onClose} disabled={loading} variant="outlined">
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="contained"
+              disabled={loading || !selectedCdc}
+            >
+              {loading ? <CircularProgress size={24} /> : "Create President"}
+            </Button>
+          </Box>
+        </form>
+      </Box>
+    </Modal>
+  );
+};
+
 const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
   const [formData, setFormData] = useState({
     username: user?.username || "",
-    type: user?.type || "admin",
+    type: user?.type || "worker",
     password: ""
   });
   const [showPassword, setShowPassword] = useState(false);
@@ -122,7 +353,7 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
           transform: 'translate(-50%, -50%)'
         }}>
           <Typography variant="h6" component="h2" sx={{ mb: 2, textAlign: "center" }}>
-            Edit Admin User
+            Edit User
           </Typography>
 
           {error && (
@@ -173,8 +404,10 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
                 label="User Type"
                 onChange={(e) => setFormData({...formData, type: e.target.value})}
               >
+                <MenuItem value="worker">CD Worker</MenuItem>
+                <MenuItem value="parent">Parent</MenuItem>
                 <MenuItem value="admin">Administrator</MenuItem>
-                <MenuItem value="superadmin">Super Administrator</MenuItem>
+                <MenuItem value="president">President</MenuItem>
               </Select>
             </FormControl>
 
@@ -211,11 +444,11 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
           transform: 'translate(-50%, -50%)'
         }}>
           <Typography variant="h6" component="h2" sx={{ mb: 3, textAlign: "center" }}>
-            Confirm Admin Changes
+            Confirm Changes
           </Typography>
 
           <Typography sx={{ mb: 2 }}>
-            Are you sure you want to update this admin user?
+            Are you sure you want to update this user?
           </Typography>
 
           <Box sx={{ 
@@ -261,20 +494,25 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
 const ECCDCManageAcc = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedUser, setSelectedUser] = useState(null);
+  const [openUserModal, setOpenUserModal] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [showInfoModal, setShowInfoModal] = useState(false);
+  const [newUserId, setNewUserId] = useState(null);
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
     severity: "success",
   });
 
-  const fetchAdminUsers = async () => {
+
+
+  const fetchUsers = async () => {
     setLoading(true);
     try {
-      const response = await apiRequest('/api/cdc/admins');
-      setUsers(response.data || response);
+      const data = await apiRequest('/api/admins');
+      setUsers(data);
     } catch (error) {
       console.error("Error fetching admin users:", error);
       setSnackbar({
@@ -287,66 +525,89 @@ const ECCDCManageAcc = () => {
     }
   };
 
-  const searchAdminUsers = async (query) => {
+  const handleSearch = async (query) => {
     try {
       const endpoint = query 
-        ? `/api/cdc/admins/search?query=${query}` 
-        : '/api/cdc/admins';
+        ? `/api/admins/search?query=${query}` 
+        : '/api/admins';
       
-      const response = await apiRequest(endpoint);
-      setUsers(response.data || response);
-      
-      if ((response.data || response).length === 0) {
-        setSnackbar({
-          open: true,
-          message: query ? "No matching admin users found" : "No admin users found",
-          severity: "info"
-        });
-      }
+      const data = await apiRequest(endpoint);
+      setUsers(data);
     } catch (error) {
-      console.error("Error searching admin users:", error);
+      console.error("Error searching users:", error);
       setSnackbar({
         open: true,
-        message: "Failed to search admin users",
+        message: "Failed to search users",
         severity: "error"
       });
     }
   };
 
   const handleDeleteUser = async (userId) => {
-    if (!window.confirm("Are you sure you want to delete this admin user?")) return;
+    if (!window.confirm("Are you sure you want to delete this user?")) return;
     
     try {
       await apiRequest(`/api/users/${userId}`, 'DELETE');
-      await fetchAdminUsers();
+      await fetchUsers();
       setSelectedUser(null);
       setSearchQuery("");
       setSnackbar({
         open: true,
-        message: "Admin user deleted successfully",
+        message: "User deleted successfully",
         severity: "success"
       });
     } catch (error) {
-      console.error("Error deleting admin user:", error);
+      console.error("Error deleting user:", error);
       setSnackbar({
         open: true,
-        message: "Failed to delete admin user",
+        message: "Failed to delete user",
         severity: "error"
       });
     }
   };
 
-  const handleUserUpdated = () => {
-    fetchAdminUsers();
+  const handleUserCreated = (userId) => {
+    fetchUsers();
+    setNewUserId(userId);
+    setShowInfoModal(true);
     setSnackbar({
       open: true,
-      message: "Admin user updated successfully",
+      message: "User created successfully",
       severity: "success"
     });
   };
 
+  const handleUserUpdated = () => {
+    fetchUsers();
+    setSnackbar({
+      open: true,
+      message: "User updated successfully",
+      severity: "success"
+    });
+  };
+
+  const saveUserInfo = async (infoData) => {
+    try {
+      await apiRequest('/api/users/user-info', 'POST', infoData);
+      await fetchUsers();
+      setSnackbar({
+        open: true,
+        message: "User info saved successfully",
+        severity: "success"
+      });
+    } catch (error) {
+      console.error("Error saving user info:", error);
+      setSnackbar({
+        open: true,
+        message: "Failed to save user info",
+        severity: "error"
+      });
+      throw error;
+    }
+  };
+
   useEffect(() => {
-    fetchAdminUsers();
+    fetchUsers();
   }, []);
 
   return (
@@ -364,7 +625,7 @@ const ECCDCManageAcc = () => {
 
         <div className="p-6 mb-1">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-gray-800">Manage Admin Accounts</h2>
+            <h2 className="text-2xl font-bold text-gray-800">Manage Account</h2>
             <div className="flex gap-2">
               <Button
                 variant="outlined"
@@ -372,7 +633,7 @@ const ECCDCManageAcc = () => {
                 onClick={() => setOpenEditModal(true)}
                 disabled={!selectedUser || loading}
               >
-                Edit Admin
+                Edit Account
               </Button>
               <Button
                 variant="outlined"
@@ -381,43 +642,50 @@ const ECCDCManageAcc = () => {
                 onClick={() => selectedUser && handleDeleteUser(selectedUser.id)}
                 disabled={!selectedUser || loading}
               >
-                Delete Admin
+                Delete Account
+              </Button>
+              <Button 
+                variant="contained" 
+                onClick={() => setOpenUserModal(true)}
+                disabled={loading}
+              >
+                Add President
               </Button>
             </div>
           </div>
         </div>
 
         <div className="px-6">
-          <Autocomplete
-            value={searchQuery}
-            onInputChange={(_, newValue) => {
-              setSearchQuery(newValue);
-              searchAdminUsers(newValue);
-            }}
-            onChange={(_, newValue) => {
-              const user = users.find(u => u.username === newValue);
-              setSelectedUser(user || null);
-            }}
-            options={users.map(user => user.username)}
-            loading={loading}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                label="Search Admin Users"
-                variant="outlined"
-                sx={{ width: "300px" }}
-                InputProps={{
-                  ...params.InputProps,
-                  endAdornment: (
-                    <>
-                      {loading ? <CircularProgress color="inherit" size={20} /> : null}
-                      {params.InputProps.endAdornment}
-                    </>
-                  ),
-                }}
-              />
-            )}
-          />
+        <Autocomplete
+  value={searchQuery}
+  onInputChange={(_, newValue) => {
+    setSearchQuery(newValue);
+    handleSearch(newValue);
+  }}
+  onChange={(_, newValue) => {
+    const user = users.find(u => u.username === newValue);
+    setSelectedUser(user || null);
+  }}
+  options={users.map(user => user.username)}
+  loading={loading}
+  renderInput={(params) => (
+    <TextField
+      {...params}
+      label="Search Admin Users"
+      variant="outlined"
+      sx={{ width: "300px" }}
+      InputProps={{
+        ...params.InputProps,
+        endAdornment: (
+          <>
+            {loading ? <CircularProgress color="inherit" size={20} /> : null}
+            {params.InputProps.endAdornment}
+          </>
+        ),
+      }}
+    />
+  )}
+/>
         </div>
 
         {selectedUser && (
@@ -429,7 +697,7 @@ const ECCDCManageAcc = () => {
               boxShadow: 3
             }}>
               <Typography variant="h6" gutterBottom>
-                Admin User Details
+                User Details
               </Typography>
               <Typography>Username: {selectedUser.username}</Typography>
               <Typography>
@@ -437,7 +705,7 @@ const ECCDCManageAcc = () => {
               </Typography>
               {selectedUser.cdc_id && (
                 <Typography>
-                  Associated CDC ID: {selectedUser.cdc_id}
+                  CDC ID: {selectedUser.cdc_id}
                 </Typography>
               )}
             </Box>
@@ -445,11 +713,24 @@ const ECCDCManageAcc = () => {
         )}
       </div>
 
+      <CreateUserModal
+        open={openUserModal}
+        onClose={() => setOpenUserModal(false)}
+        onUserCreated={handleUserCreated}
+      />
+
       <EditUserModal
         open={openEditModal}
         onClose={() => setOpenEditModal(false)}
         user={selectedUser}
         onUserUpdated={handleUserUpdated}
+      />
+
+      <UserInfoModal
+        open={showInfoModal}
+        onClose={() => setShowInfoModal(false)}
+        onSave={saveUserInfo}
+        userId={newUserId}
       />
 
       <Snackbar

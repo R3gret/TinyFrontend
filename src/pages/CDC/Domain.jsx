@@ -314,7 +314,7 @@ const TableComponent = () => {
     const fetchStudents = async () => {
       try {
         setLoading(true);
-        const data = await apiRequest('/api/domm/att');
+        const data = await apiRequest('/api/dom/att');
         setChildOptions(
           (data.students || []).map(student => ({
             id: student.student_id,

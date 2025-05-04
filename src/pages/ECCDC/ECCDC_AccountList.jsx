@@ -59,14 +59,19 @@ export default function AdminAccountList() {
         setLoading(true);
         setError(null);
         
-        const adminsData = await apiRequest(`/api/cdc?${new URLSearchParams({
+        const response = await apiRequest(`/api/cdc/preslist?${new URLSearchParams({
           search: searchTerm
         }).toString()}`);
-
-        setAdmins(adminsData.users);
+    
+        // Add this debug line to check the response structure
+        console.log('API Response:', response);
+    
+        // Safely handle the response
+        setAdmins(response?.users || []);
       } catch (err) {
         console.error('Fetch error:', err);
         setError(err.message);
+        setAdmins([]); // Reset to empty array on error
       } finally {
         setLoading(false);
       }

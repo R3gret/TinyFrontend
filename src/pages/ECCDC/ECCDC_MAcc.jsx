@@ -276,6 +276,7 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
   const [cdcOptions, setCdcOptions] = useState([]);
   const [selectedCdc, setSelectedCdc] = useState(null);
 
+  // Fetch CDC options and set initial selected CDC
   useEffect(() => {
     const fetchCdcOptions = async () => {
       if (open) {
@@ -285,11 +286,12 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
           const cdcs = response.data || response;
           setCdcOptions(Array.isArray(cdcs) ? cdcs : []);
           
-          // Initialize selected CDC if user is a president with a CDC
+          // If editing a president, find and set their current CDC
           if (user?.type === 'president' && user?.cdc_id) {
-            const userCdc = cdcs.find(c => c.cdc_id === user.cdc_id);
-            if (userCdc) {
-              setSelectedCdc(userCdc);
+            const currentCdc = cdcs.find(c => c.cdc_id === user.cdc_id);
+            if (currentCdc) {
+              setSelectedCdc(currentCdc);
+              setFormData(prev => ({ ...prev, cdc_id: currentCdc.cdc_id }));
             }
           }
         } catch (err) {
@@ -303,12 +305,15 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
 
     if (open) {
       fetchCdcOptions();
+      // Reset form when opening
       setFormData({
         username: user?.username || "",
         type: user?.type || "worker",
         password: "",
         cdc_id: user?.cdc_id || null
       });
+      setSelectedCdc(null);
+      setError("");
     }
   }, [open, user]);
 
@@ -316,6 +321,7 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
     e.preventDefault();
     setError("");
   
+    // Validation
     if (!formData.username) {
       setError("Username is required");
       return;
@@ -326,10 +332,14 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
       return;
     }
   
-    // For president type, we need to ensure CDC is selected
+    // Additional validation for president type
     if (formData.type === 'president') {
-      if (!selectedCdc?.cdc_id) {
+      if (!selectedCdc) {
         setError("Please select a CDC for the president");
+        return;
+      }
+      if (!selectedCdc.cdc_id) {
+        setError("Invalid CDC selection");
         return;
       }
     }
@@ -346,8 +356,9 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
         username: formData.username,
         type: formData.type,
         ...(formData.password && { password: formData.password }),
+        // Only include cdc_id if type is president
         ...(formData.type === 'president' && { 
-          cdc_id: selectedCdc?.cdc_id 
+          cdc_id: selectedCdc.cdc_id 
         })
       };
   
@@ -393,11 +404,6 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
               required
               fullWidth
               sx={{ mb: 2 }}
-              helperText="Only letters, numbers and underscores allowed"
-              inputProps={{
-                pattern: "[a-zA-Z0-9_]+",
-                title: "Only letters, numbers and underscores allowed",
-              }}
             />
 
             <TextField
@@ -407,7 +413,6 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
               onChange={(e) => setFormData({...formData, password: e.target.value})}
               fullWidth
               sx={{ mb: 2 }}
-              helperText="Minimum 8 characters if changing"
               InputProps={{
                 endAdornment: (
                   <IconButton 
@@ -430,8 +435,14 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
                     const newType = e.target.value;
                     setFormData({
                       ...formData,
-                      type: newType
+                      type: newType,
+                      // Clear CDC if changing from president to another type
+                      cdc_id: newType === 'president' ? formData.cdc_id : null
                     });
+                    // Clear CDC selection if not president
+                    if (newType !== 'president') {
+                      setSelectedCdc(null);
+                    }
                   }}
                 >
                   <MenuItem value="worker">CD Worker</MenuItem>
@@ -445,17 +456,22 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
                 <FormControl sx={{ flex: 1 }}>
                   <Autocomplete
                     options={cdcOptions}
-                    getOptionLabel={(option) => option.name}
+                    getOptionLabel={(option) => `${option.name} (${option.cdc_id})`}
                     value={selectedCdc}
                     onChange={(_, newValue) => {
                       setSelectedCdc(newValue);
+                      // Update formData with the new CDC ID
+                      setFormData(prev => ({
+                        ...prev,
+                        cdc_id: newValue?.cdc_id || null
+                      }));
                     }}
                     loading={cdcLoading}
                     renderInput={(params) => (
                       <TextField
                         {...params}
                         label="Select CDC"
-                        required={formData.type === 'president'}
+                        required
                         InputProps={{
                           ...params.InputProps,
                           endAdornment: (
@@ -485,13 +501,14 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
                 variant="contained"
                 disabled={loading}
               >
-                {loading ? <CircularProgress size={24} /> : "Review Changes"}
+                {loading ? <CircularProgress size={24} /> : "Update User"}
               </Button>
             </Box>
           </form>
         </Box>
       </Modal>
 
+      {/* Confirmation Modal */}
       <Modal open={showConfirmation} onClose={() => setShowConfirmation(false)}>
         <Box sx={{ 
           width: "500px", 
@@ -505,7 +522,7 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
           transform: 'translate(-50%, -50%)'
         }}>
           <Typography variant="h6" component="h2" sx={{ mb: 3, textAlign: "center" }}>
-            Confirm Changes
+            Confirm User Update
           </Typography>
 
           <Typography sx={{ mb: 2 }}>
@@ -516,20 +533,18 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
             backgroundColor: '#f5f5f5', 
             p: 2, 
             borderRadius: 1, 
-            mb: 3,
-            borderLeft: '4px solid',
-            borderColor: 'primary.main'
+            mb: 3
           }}>
             <Typography><strong>Username:</strong> {formData.username}</Typography>
             <Typography><strong>Type:</strong> {formData.type}</Typography>
             {formData.type === 'president' && selectedCdc && (
               <>
+                <Typography><strong>CDC:</strong> {selectedCdc.name}</Typography>
                 <Typography><strong>CDC ID:</strong> {selectedCdc.cdc_id}</Typography>
-                <Typography><strong>CDC Name:</strong> {selectedCdc.name}</Typography>
               </>
             )}
             {formData.password && (
-              <Typography><strong>Password:</strong> Will be updated (securely hashed)</Typography>
+              <Typography><strong>Password:</strong> Will be updated</Typography>
             )}
           </Box>
 
@@ -538,7 +553,6 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
               onClick={() => setShowConfirmation(false)} 
               variant="outlined"
               disabled={loading}
-              sx={{ minWidth: 100 }}
             >
               Cancel
             </Button>
@@ -547,7 +561,6 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
               variant="contained"
               color="primary"
               disabled={loading}
-              sx={{ minWidth: 150 }}
             >
               {loading ? <CircularProgress size={24} /> : "Confirm Update"}
             </Button>

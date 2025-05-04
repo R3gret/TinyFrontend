@@ -63,15 +63,17 @@ export default function AdminAccountList() {
           search: searchTerm
         }).toString()}`);
     
-        // Add this debug line to check the response structure
-        console.log('API Response:', response);
+        console.log('API Response:', response); // Debug log
+        
+        if (!response.success) {
+          throw new Error(response.message || 'Failed to fetch admins');
+        }
     
-        // Safely handle the response
-        setAdmins(response?.users || []);
+        setAdmins(response.users || []);
       } catch (err) {
         console.error('Fetch error:', err);
         setError(err.message);
-        setAdmins([]); // Reset to empty array on error
+        setAdmins([]);
       } finally {
         setLoading(false);
       }

@@ -447,29 +447,17 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
   options={cdcOptions}
   getOptionLabel={(option) => option.name}
   value={selectedCdc}
-  onChange={(_, newValue) => {
-    setSelectedCdc(newValue);
-    // Update formData immediately when CDC changes
-    setFormData(prev => ({
-      ...prev,
-      cdc_id: newValue?.cdc_id || null
-    }));
+  onChange={(_, newValue) => setSelectedCdc(newValue)}
+  onInputChange={(_, newInputValue) => {
+    if (newInputValue) {
+      fetchCdcOptions(newInputValue);
+    }
   }}
-  loading={cdcLoading}
   renderInput={(params) => (
     <TextField
       {...params}
       label="Select CDC"
       required={formData.type === 'president'}
-      InputProps={{
-        ...params.InputProps,
-        endAdornment: (
-          <>
-            {cdcLoading ? <CircularProgress size={20} /> : null}
-            {params.InputProps.endAdornment}
-          </>
-        ),
-      }}
     />
   )}
 />

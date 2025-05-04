@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import bgImage from "../../assets/login_bg.png";
 import logo from "../../assets/logo.png";
@@ -8,43 +8,51 @@ import axios from "axios";
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 const Login = () => {
+  const navigate = useNavigate();
+  const usernameRef = useRef(null);
+  const passwordRef = useRef(null);
+  const resetEmailRef = useRef(null);
+
   // State management
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
-  const [loginUsername, setLoginUsername] = useState('');
-  const [loginPassword, setLoginPassword] = useState('');
+  const [loginData, setLoginData] = useState({
+    username: '',
+    password: ''
+  });
   const [showPassword, setShowPassword] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-  
-  // Removed the isVisible state as it was causing issues
-  const navigate = useNavigate();
 
   // Responsive handling
   useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth < 768);
     };
-
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Stable input handlers
-  const handleUsernameChange = (e) => setLoginUsername(e.target.value);
-  const handlePasswordChange = (e) => setLoginPassword(e.target.value);
-  const handleResetEmailChange = (e) => setResetEmail(e.target.value);
+  // Input handlers
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setLoginData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleResetEmailChange = (e) => {
+    setResetEmail(e.target.value);
+  };
 
   // Login handler
-  const handleLogin = useCallback(async (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     setError(null);
     
     try {
       const response = await axios.post(`${API_BASE_URL}/api/login`, {
-        username: loginUsername,
-        password: loginPassword
+        username: loginData.username,
+        password: loginData.password
       }, {
         headers: {
           'Content-Type': 'application/json'
@@ -78,10 +86,10 @@ const Login = () => {
         "Login failed. Please try again.");
       setError(errorMessage);
     }
-  }, [loginUsername, loginPassword, navigate]);
+  };
 
   // Password reset handler
-  const handlePasswordReset = useCallback(async () => {
+  const handlePasswordReset = async () => {
     if (!resetEmail) {
       setError("Please enter your email.");
       return;
@@ -94,7 +102,7 @@ const Login = () => {
     } catch (err) {
       setError(err.response?.data?.message || "Failed to send reset email.");
     }
-  }, [resetEmail]);
+  };
 
   // Login Form Component
   const LoginForm = () => (
@@ -105,21 +113,27 @@ const Login = () => {
       <h2 className="text-2xl font-semibold text-center mb-4 text-green-700">Login</h2>
       <form onSubmit={handleLogin}>
         <input
+          ref={usernameRef}
           type="text"
+          name="username"
           placeholder="Enter your username"
-          value={loginUsername}
-          onChange={handleUsernameChange}
+          value={loginData.username}
+          onChange={handleInputChange}
           className="w-full px-4 py-2 border rounded-lg mb-4 text-gray-800"
           required
+          autoComplete="username"
         />
         <div className="relative mb-6">
           <input
+            ref={passwordRef}
             type={showPassword ? "text" : "password"}
+            name="password"
             placeholder="Enter your password"
-            value={loginPassword}
-            onChange={handlePasswordChange}
+            value={loginData.password}
+            onChange={handleInputChange}
             className="w-full px-4 py-2 border rounded-lg text-gray-800"
             required
+            autoComplete="current-password"
           />
           <button
             type="button"
@@ -158,7 +172,7 @@ const Login = () => {
   );
 
   // Modal Component
-  const Modal = () => (
+  const ResetModal = () => (
     <div className="fixed inset-0 flex justify-center items-center z-50 p-4" style={{
       backdropFilter: "blur(10px)",
       backgroundColor: "rgba(0, 0, 0, 0.4)",
@@ -169,12 +183,14 @@ const Login = () => {
         </div>
         <h2 className="text-xl font-semibold text-center mb-4">Reset Password</h2>
         <input
+          ref={resetEmailRef}
           type="email"
           placeholder="Enter your email"
           value={resetEmail}
           onChange={handleResetEmailChange}
           className="w-full px-4 py-2 border rounded-lg mb-4"
           required
+          autoComplete="email"
         />
         <div className="flex justify-between gap-2">
           <button
@@ -226,7 +242,7 @@ const Login = () => {
       )}
 
       {/* Modal */}
-      {showModal && <Modal />}
+      {showModal && <ResetModal />}
     </>
   );
 };

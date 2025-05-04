@@ -38,7 +38,7 @@ const apiRequest = async (endpoint, method = 'GET', body = null) => {
     console.log(`Mocking API call to ${endpoint}`);
     return new Promise(resolve => {
       setTimeout(() => {
-        if (endpoint === '/api/students/gender-distribution/age') {
+        if (endpoint === '/api/students/gender-distribution') {
           resolve({ 
             success: true,
             distribution: { 
@@ -47,7 +47,7 @@ const apiRequest = async (endpoint, method = 'GET', body = null) => {
               Other: 0
             }
           });
-        } else if (endpoint === '/api/students/age-distribution/age') {
+        } else if (endpoint === '/api/students/age-distribution') {
           resolve({
             success: true,
             distribution: {

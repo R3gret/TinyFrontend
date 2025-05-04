@@ -7,7 +7,7 @@ import axios from "axios";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
-// Memoized Input Component to prevent re-renders
+// Memoized Input Component
 const InputField = React.memo(({ 
   type, 
   name, 
@@ -15,9 +15,9 @@ const InputField = React.memo(({
   placeholder, 
   onChange, 
   inputRef,
-  autoComplete 
+  autoComplete,
+  className = "" 
 }) => {
-  console.log(`[Render] InputField ${name} rendering`);
   return (
     <input
       ref={inputRef}
@@ -26,7 +26,7 @@ const InputField = React.memo(({
       placeholder={placeholder}
       value={value}
       onChange={onChange}
-      className="w-full px-4 py-2 border rounded-lg text-gray-800"
+      className={`w-full px-4 py-2 border rounded-lg text-gray-800 ${className}`}
       required
       autoComplete={autoComplete}
     />
@@ -34,7 +34,6 @@ const InputField = React.memo(({
 });
 
 const Login = () => {
-  console.log("[Login] Component rendering");
   const navigate = useNavigate();
   const usernameRef = useRef(null);
   const passwordRef = useRef(null);
@@ -52,75 +51,32 @@ const Login = () => {
   const [resetEmail, setResetEmail] = useState('');
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
-  // Focus management
-  useEffect(() => {
-    console.log("[Effect] Setting up focus listeners");
-    const handleFocus = (e) => console.log(`[Focus] ${e.target.name} field received focus`);
-    const handleBlur = (e) => console.log(`[Focus] ${e.target.name} field lost focus`);
-
-    const inputs = [
-      { ref: usernameRef, name: 'username' },
-      { ref: passwordRef, name: 'password' },
-      { ref: resetEmailRef, name: 'resetEmail' }
-    ];
-
-    inputs.forEach(({ ref, name }) => {
-      if (ref.current) {
-        ref.current.name = name;
-        ref.current.addEventListener('focus', handleFocus);
-        ref.current.addEventListener('blur', handleBlur);
-      }
-    });
-
-    return () => {
-      inputs.forEach(({ ref }) => {
-        if (ref.current) {
-          ref.current.removeEventListener('focus', handleFocus);
-          ref.current.removeEventListener('blur', handleBlur);
-        }
-      });
-    };
-  }, []);
-
   // Responsive handling
   const handleResize = useCallback(() => {
     const mobile = window.innerWidth < 768;
     if (mobile !== isMobile) {
-      console.log(`[Responsive] Screen resize detected. Mobile: ${mobile}`);
       setIsMobile(mobile);
     }
   }, [isMobile]);
 
   useEffect(() => {
-    console.log("[Effect] Setting up resize listener");
     window.addEventListener('resize', handleResize);
-    return () => {
-      console.log("[Effect] Cleaning up resize listener");
-      window.removeEventListener('resize', handleResize);
-    };
+    return () => window.removeEventListener('resize', handleResize);
   }, [handleResize]);
 
   // Form handlers
   const handleInputChange = useCallback((e) => {
     const { name, value } = e.target;
-    console.log(`[Input] Field ${name} changed to: ${value}`);
     setFormData(prev => ({ ...prev, [name]: value }));
   }, []);
 
   const handleResetEmailChange = useCallback((e) => {
-    console.log(`[Input] Reset email changed to: ${e.target.value}`);
     setResetEmail(e.target.value);
   }, []);
 
   // Authentication handlers
   const handleLogin = useCallback(async (e) => {
     e.preventDefault();
-    console.log("[Auth] Login attempt initiated");
-    console.log("[Auth] Credentials:", { 
-      username: formData.username, 
-      password: '••••••' 
-    });
-    
     setError(null);
     
     try {
@@ -241,7 +197,7 @@ const Login = () => {
   );
 };
 
-// Extracted Form Components
+// Login Form Component
 const LoginFormContent = React.memo(({
   formData,
   showPassword,
@@ -254,13 +210,12 @@ const LoginFormContent = React.memo(({
   usernameRef,
   passwordRef
 }) => {
-  console.log("[Render] LoginFormContent rendering");
   return (
     <div className={`w-full ${isMobile ? 'bg-white/80 backdrop-blur-lg p-6 rounded-xl shadow-lg' : 'bg-white/80 backdrop-blur-lg p-8 rounded-xl shadow-2xl'}`}>
       <div className="flex justify-center mb-4">
         <img src={logo} alt="Logo" className={`${isMobile ? 'w-24' : 'w-28'} h-auto`} />
       </div>
-      <h2 className="text-2xl font-semibold text-center mb-4 text-green-700">Login</h2>
+      <h2 className="text-2xl font-semibold text-center mb-6 text-green-700">Login</h2>
       <form onSubmit={handleLogin}>
         <InputField
           type="text"
@@ -270,6 +225,7 @@ const LoginFormContent = React.memo(({
           onChange={handleInputChange}
           inputRef={usernameRef}
           autoComplete="username"
+          className="mb-6" // Increased spacing below username field
         />
         <div className="relative mb-6">
           <InputField
@@ -291,7 +247,7 @@ const LoginFormContent = React.memo(({
         </div>
         <button
           type="submit"
-          className="w-full bg-green-700 text-white py-2 rounded-lg hover:bg-green-800 transition"
+          className="w-full bg-green-700 text-white py-3 rounded-lg hover:bg-green-800 transition mb-4"
         >
           Login
         </button>
@@ -310,7 +266,7 @@ const LoginFormContent = React.memo(({
       </div>
 
       {error && (
-        <p className="text-red-500 text-center mt-2 bg-red-100 border border-red-500 p-2 rounded-lg">
+        <p className="text-red-500 text-center mt-4 bg-red-100 border border-red-500 p-2 rounded-lg">
           {error}
         </p>
       )}
@@ -318,6 +274,7 @@ const LoginFormContent = React.memo(({
   );
 });
 
+// Reset Modal Component
 const ResetModalContent = React.memo(({
   resetEmail,
   handleResetEmailChange,
@@ -326,7 +283,6 @@ const ResetModalContent = React.memo(({
   isMobile,
   resetEmailRef
 }) => {
-  console.log("[Render] ResetModalContent rendering");
   return (
     <div className="fixed inset-0 flex justify-center items-center z-50 p-4" style={{
       backdropFilter: "blur(10px)",
@@ -345,6 +301,7 @@ const ResetModalContent = React.memo(({
           onChange={handleResetEmailChange}
           inputRef={resetEmailRef}
           autoComplete="email"
+          className="mb-6"
         />
         <div className="flex justify-between gap-2">
           <button

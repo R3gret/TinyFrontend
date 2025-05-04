@@ -26,7 +26,7 @@ import PresVC from "./pages/President/PresVirtualC";
 
 import ParentVirtualC from "./pages/Parent/ParentVirtualC";
 import ParentDashboard from "./pages/Parent/ParentDashboard";
-import ParentProfile from "./pages/Parent/Parent_Profile";
+import ParentProfile from "./pages/Parent/ParentProfile";
 
 import AdminDashboard from "./pages/Admin/AdminDasboard";
 import AccountList from "./pages/Admin/AccountList";

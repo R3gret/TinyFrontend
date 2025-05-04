@@ -5,7 +5,6 @@ import logo from "../../assets/logo.png";
 import { FiEye, FiEyeOff } from "react-icons/fi";
 import axios from "axios";
 
-// Set API base URL from Vite environment variables with localhost fallback
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 const Login = () => {
@@ -102,14 +101,15 @@ const Login = () => {
     }
   };
 
-  // Desktop Layout
+  // Desktop Layout with fixed hover animation
   const DesktopLayout = () => (
     <div className="relative flex min-h-screen bg-cover bg-center" style={{ backgroundImage: `url(${bgImage})` }}>
       <div className="w-1/2 flex justify-center items-center bg-gradient-to-bl from-green-100 via-white to-green-100 z-10 relative">
         <div className={`w-80 h-[500px] z-20 transition-opacity duration-700 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
           <div className="relative w-full h-full">
-            <div className="absolute w-full h-[440px] bg-white/80 backdrop-blur-lg p-8 rounded-xl shadow-2xl transform transition-transform duration-700 ease-in-out scale-95 hover:scale-100">
-              <div className="flex justify-center mb-4">
+            {/* Removed transform hover from this container */}
+            <div className="absolute w-full h-[440px] bg-white/80 backdrop-blur-lg p-8 rounded-xl shadow-2xl">
+              <div className="flex justify-center mb-4 hover:scale-105 transition-transform duration-300">
                 <img src={logo} alt="Logo" className="w-28 h-auto" />
               </div>
               <h2 className="text-2xl font-semibold text-center mb-4 text-green-700">Login</h2>
@@ -119,7 +119,7 @@ const Login = () => {
                   placeholder="Enter your username"
                   value={loginUsername}
                   onChange={(e) => setLoginUsername(e.target.value)}
-                  className="w-full px-4 py-2 border rounded-lg mb-4 text-gray-800"
+                  className="w-full px-4 py-2 border rounded-lg mb-4 text-gray-800 focus:outline-none focus:ring-2 focus:ring-green-500"
                   required
                 />
                 <div className="relative mb-6">
@@ -128,20 +128,20 @@ const Login = () => {
                     placeholder="Enter your password"
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
-                    className="w-full px-4 py-2 border rounded-lg text-gray-800"
+                    className="w-full px-4 py-2 border rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-green-500"
                     required
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-3 text-gray-600"
+                    className="absolute right-3 top-3 text-gray-600 hover:text-gray-800 transition-colors"
                   >
                     {showPassword ? <FiEyeOff size={20} /> : <FiEye size={20} />}
                   </button>
                 </div>
                 <button
                   type="submit"
-                  className="w-full bg-green-700 text-white py-2 rounded-lg hover:bg-green-800 transition"
+                  className="w-full bg-green-700 text-white py-2 rounded-lg hover:bg-green-800 transition-colors"
                 >
                   Login
                 </button>
@@ -151,7 +151,7 @@ const Login = () => {
                 <p>
                   Forgot password?{" "}
                   <span
-                    className="text-blue-500 cursor-pointer"
+                    className="text-blue-500 cursor-pointer hover:text-blue-700 transition-colors"
                     onClick={() => setShowModal(true)}
                   >
                     Request password reset here
@@ -186,7 +186,7 @@ const Login = () => {
               placeholder="Enter your username"
               value={loginUsername}
               onChange={(e) => setLoginUsername(e.target.value)}
-              className="w-full px-4 py-2 border rounded-lg mb-4 text-gray-800"
+              className="w-full px-4 py-2 border rounded-lg mb-4 text-gray-800 focus:outline-none focus:ring-2 focus:ring-green-500"
               required
             />
             <div className="relative mb-6">
@@ -195,20 +195,20 @@ const Login = () => {
                 placeholder="Enter your password"
                 value={loginPassword}
                 onChange={(e) => setLoginPassword(e.target.value)}
-                className="w-full px-4 py-2 border rounded-lg text-gray-800"
+                className="w-full px-4 py-2 border rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-green-500"
                 required
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-3 text-gray-600"
+                className="absolute right-3 top-3 text-gray-600 hover:text-gray-800 transition-colors"
               >
                 {showPassword ? <FiEyeOff size={20} /> : <FiEye size={20} />}
               </button>
             </div>
             <button
               type="submit"
-              className="w-full bg-green-700 text-white py-2 rounded-lg hover:bg-green-800 transition"
+              className="w-full bg-green-700 text-white py-2 rounded-lg hover:bg-green-800 transition-colors"
             >
               Login
             </button>
@@ -218,7 +218,7 @@ const Login = () => {
             <p>
               Forgot password?{" "}
               <span
-                className="text-blue-500 cursor-pointer"
+                className="text-blue-500 cursor-pointer hover:text-blue-700 transition-colors"
                 onClick={() => setShowModal(true)}
               >
                 Request password reset here
@@ -255,19 +255,19 @@ const Login = () => {
           placeholder="Enter your email"
           value={resetEmail}
           onChange={(e) => setResetEmail(e.target.value)}
-          className="w-full px-4 py-2 border rounded-lg mb-4"
+          className="w-full px-4 py-2 border rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-green-500"
           required
         />
         <div className="flex justify-between gap-2">
           <button
             onClick={() => setShowModal(false)}
-            className="bg-gray-300 text-gray-800 py-2 px-4 rounded-lg flex-1"
+            className="bg-gray-300 text-gray-800 py-2 px-4 rounded-lg flex-1 hover:bg-gray-400 transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={handlePasswordReset}
-            className="bg-blue-600 text-white py-2 px-4 rounded-lg flex-1"
+            className="bg-blue-600 text-white py-2 px-4 rounded-lg flex-1 hover:bg-blue-700 transition-colors"
           >
             {isMobile ? 'Reset' : 'Reset Password'}
           </button>

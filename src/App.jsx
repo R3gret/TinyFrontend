@@ -17,6 +17,7 @@ import DomainForm from "./pages/CDC/Domain";
 import ECCDCManageAcc from "./pages/ECCDC/ECCDC_MAcc";
 import ECCDCCreateAcc from "./pages/ECCDC/ECCDC_CreateCDC";
 import ECCDCProfile from "./pages/ECCDC/ECCDC_Profile"
+import ECCDCAccount from "./pages/ECCDC/ECCDC_AccountList";
 
 import AdminDashboard from "./pages/Admin/AdminDasboard";
 import AccountList from "./pages/Admin/AccountList";
@@ -208,6 +209,14 @@ export default function App() {
           element={
             <ProtectedRoute allowedTypes={["eccdc"]}>
               <ECCDCProfile />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/president-list"
+          element={
+            <ProtectedRoute allowedTypes={["eccdc"]}>
+              <ECCDCAccount />
             </ProtectedRoute>
           }
         />

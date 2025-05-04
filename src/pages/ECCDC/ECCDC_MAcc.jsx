@@ -299,6 +299,23 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
     }
   }, [user]);
 
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+
+    if (!formData.username) {
+      setError("Username is required");
+      return;
+    }
+
+    if (formData.password && formData.password.length < 8) {
+      setError("Password must be at least 8 characters");
+      return;
+    }
+
+    setShowConfirmation(true);
+  };
+
   const executeUpdate = async () => {
     setShowConfirmation(false);
     setLoading(true);

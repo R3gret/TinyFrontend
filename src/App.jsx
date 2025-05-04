@@ -222,7 +222,7 @@ export default function App() {
           }
         />
         <Route
-          path="/account-profile"
+          path="/account-profile/:id"
           element={
             <ProtectedRoute allowedTypes={["eccdc"]}>
               <AccountProf />

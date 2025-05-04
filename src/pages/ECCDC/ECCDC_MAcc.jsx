@@ -61,27 +61,31 @@ const CreateUserModal = ({ open, onClose, onUserCreated }) => {
   const [cdcOptions, setCdcOptions] = useState([]);
   const [selectedCdc, setSelectedCdc] = useState(null);
 
-  // Fetch CDC options for autocomplete
-  // In your CreateUserModal component, update the fetchCdcOptions function:
+  const [searchTimeout, setSearchTimeout] = useState(null);
+
 const fetchCdcOptions = async (query = "") => {
-  setCdcLoading(true);
-  try {
-    // Use the new name-only search endpoint
-    const response = await apiRequest(`/api/cdc/search/name?name=${encodeURIComponent(query)}`);
+  // Clear previous timeout
+  if (searchTimeout) clearTimeout(searchTimeout);
+  
+  // Set new timeout
+  setSearchTimeout(setTimeout(async () => {
+    if (!query.trim()) {
+      setCdcOptions([]);
+      return;
+    }
     
-    // Handle the response format (data might be directly the array or in a data property)
-    const cdcs = response.data || response;
-    
-    // Ensure we always have an array
-    setCdcOptions(Array.isArray(cdcs) ? cdcs : []);
-    
-  } catch (err) {
-    console.error("Error fetching CDC options:", err);
-    setError("Failed to load CDC options. Please try again.");
-    setCdcOptions([]); // Reset to empty array on error
-  } finally {
-    setCdcLoading(false);
-  }
+    setCdcLoading(true);
+    try {
+      const response = await apiRequest(`/api/cdc/search/name?name=${encodeURIComponent(query)}`);
+      const cdcs = response.data || response;
+      setCdcOptions(Array.isArray(cdcs) ? cdcs : []);
+    } catch (err) {
+      console.error("Error fetching CDC options:", err);
+      setCdcOptions([]);
+    } finally {
+      setCdcLoading(false);
+    }
+  }, 300)); // 300ms delay
 };
 
   useEffect(() => {
@@ -196,25 +200,28 @@ const fetchCdcOptions = async (query = "") => {
 
 <Autocomplete
   options={cdcOptions}
-  getOptionLabel={(option) => option.name} // Now we only need to show the name
+  getOptionLabel={(option) => option.name}
   value={selectedCdc}
   onChange={(_, newValue) => setSelectedCdc(newValue)}
-  onInputChange={(_, newInputValue) => {
-    fetchCdcOptions(newInputValue);
+  onInputChange={(_, newInputValue, reason) => {
+    // Only search when user is typing, not when selecting an option
+    if (reason === 'input') {
+      fetchCdcOptions(newInputValue);
+    }
   }}
   loading={cdcLoading}
-  filterOptions={(options) => options} // We're filtering on the server side
+  filterOptions={(options) => options} // Server-side filtering
   renderInput={(params) => (
     <TextField
       {...params}
       label="Search CDC by Name"
       required
-      helperText="Type to search CDC names"
+      helperText="Type at least 1 character to search"
       InputProps={{
         ...params.InputProps,
         endAdornment: (
           <>
-            {cdcLoading ? <CircularProgress color="inherit" size={20} /> : null}
+            {cdcLoading ? <CircularProgress size={20} /> : null}
             {params.InputProps.endAdornment}
           </>
         ),
@@ -222,7 +229,6 @@ const fetchCdcOptions = async (query = "") => {
     />
   )}
 />
-
           <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2, mt: 3 }}>
             <Button onClick={onClose} disabled={loading} variant="outlined">
               Cancel

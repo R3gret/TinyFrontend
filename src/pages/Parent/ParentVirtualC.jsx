@@ -23,7 +23,8 @@ import {
   Chip,
   Grid,
   Card,
-  IconButton 
+  IconButton,
+  Box
 } from "@mui/material";
 import {
   Download as DownloadIcon,

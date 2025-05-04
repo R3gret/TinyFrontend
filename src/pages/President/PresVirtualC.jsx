@@ -96,7 +96,7 @@ export default function Dashboard() {
     severity: "success"
   });
 
-  const tabs = ["Stream", "Classworks", "Students"];
+  const tabs = ["Stream", "Classworks"];
 
   const handleSnackbarClose = () => {
     setSnackbar({...snackbar, open: false});

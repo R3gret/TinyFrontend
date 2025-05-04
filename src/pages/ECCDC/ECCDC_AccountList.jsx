@@ -63,15 +63,12 @@ export default function AdminAccountList() {
           search: searchTerm
         }).toString()}`);
     
-        console.log('API Response:', response); // Debug log
-        
         if (!response.success) {
-          throw new Error(response.message || 'Failed to fetch admins');
+          throw new Error(response.message || 'Failed to fetch data');
         }
     
-        setAdmins(response.users || []);
+        setAdmins(response.users || []); // Now properly accessing the users array
       } catch (err) {
-        console.error('Fetch error:', err);
         setError(err.message);
         setAdmins([]);
       } finally {

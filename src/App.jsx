@@ -12,7 +12,7 @@ import Login from "./pages/CDC/Login";
 import RegistrationForm from './pages/CDC/RegistrationForm';
 import CDCProfileForm from "./pages/CDC/CDProfile";
 import DomainForm from "./pages/CDC/Domain";
-import AccountProf from "./pages/CDC/CDProfile";
+import AccountProf from "./pages/Admin/AccProfiles";
 
 import ECCDCManageAcc from "./pages/ECCDC/ECCDC_MAcc";
 import ECCDCCreateAcc from "./pages/ECCDC/ECCDC_CreateCDC";

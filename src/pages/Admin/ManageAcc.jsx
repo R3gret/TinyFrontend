@@ -53,7 +53,7 @@ const CreateUserModal = ({ open, onClose, onUserCreated }) => {
   const [formData, setFormData] = useState({
     username: "",
     password: "",
-    type: "worker"
+    type: "parent" // Locked to parent
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -75,10 +75,13 @@ const CreateUserModal = ({ open, onClose, onUserCreated }) => {
     setLoading(true);
 
     try {
-      const data = await apiRequest('/api/users', 'POST', formData);
+      const data = await apiRequest('/api/parent', 'POST', {
+        username: formData.username,
+        password: formData.password
+      });
       onUserCreated(data.id);
       onClose();
-      setFormData({ username: "", password: "", type: "worker" });
+      setFormData({ username: "", password: "", type: "parent" });
     } catch (err) {
       setError(err.message);
     } finally {
@@ -100,7 +103,7 @@ const CreateUserModal = ({ open, onClose, onUserCreated }) => {
         transform: 'translate(-50%, -50%)'
       }}>
         <Typography variant="h6" component="h2" sx={{ mb: 2, textAlign: "center" }}>
-          Create New User
+          Create New Parent Account
         </Typography>
 
         {error && (
@@ -142,19 +145,9 @@ const CreateUserModal = ({ open, onClose, onUserCreated }) => {
             }}
           />
 
-          <FormControl fullWidth sx={{ mb: 3 }}>
-            <InputLabel>User Type</InputLabel>
-            <Select
-              value={formData.type}
-              label="User Type"
-              onChange={(e) => setFormData({...formData, type: e.target.value})}
-            >
-              <MenuItem value="worker">CD Worker</MenuItem>
-              <MenuItem value="parent">Parent</MenuItem>
-              <MenuItem value="admin">Administrator</MenuItem>
-              <MenuItem value="president">President</MenuItem>
-            </Select>
-          </FormControl>
+          <Typography variant="body2" sx={{ mb: 3, fontStyle: 'italic' }}>
+            This account will be created as a Parent type and linked to your CDC center.
+          </Typography>
 
           <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
             <Button onClick={onClose} disabled={loading}>
@@ -165,7 +158,7 @@ const CreateUserModal = ({ open, onClose, onUserCreated }) => {
               variant="contained"
               disabled={loading}
             >
-              {loading ? <CircularProgress size={24} /> : "Create User"}
+              {loading ? <CircularProgress size={24} /> : "Create Parent Account"}
             </Button>
           </Box>
         </form>
@@ -177,7 +170,7 @@ const CreateUserModal = ({ open, onClose, onUserCreated }) => {
 const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
   const [formData, setFormData] = useState({
     username: user?.username || "",
-    type: user?.type || "worker",
+    type: "parent", // Locked to parent
     password: ""
   });
   const [showPassword, setShowPassword] = useState(false);
@@ -189,7 +182,7 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
     if (user) {
       setFormData({
         username: user.username,
-        type: user.type,
+        type: "parent", // Force parent type
         password: ""
       });
     }
@@ -219,11 +212,11 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
     try {
       const updatePayload = {
         username: formData.username,
-        type: formData.type,
+        type: "parent", // Ensure type remains parent
         ...(formData.password && { password: formData.password })
       };
 
-      await apiRequest(`/api/users/${user.id}`, 'PUT', updatePayload);
+      await apiRequest(`/api/parent/${user.id}`, 'PUT', updatePayload);
       onUserUpdated();
       onClose();
     } catch (err) {
@@ -248,7 +241,7 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
           transform: 'translate(-50%, -50%)'
         }}>
           <Typography variant="h6" component="h2" sx={{ mb: 2, textAlign: "center" }}>
-            Edit User
+            Edit Parent Account
           </Typography>
 
           {error && (
@@ -292,19 +285,9 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
               }}
             />
 
-            <FormControl fullWidth sx={{ mb: 3 }}>
-              <InputLabel>User Type</InputLabel>
-              <Select
-                value={formData.type}
-                label="User Type"
-                onChange={(e) => setFormData({...formData, type: e.target.value})}
-              >
-                <MenuItem value="worker">CD Worker</MenuItem>
-                <MenuItem value="parent">Parent</MenuItem>
-                <MenuItem value="admin">Administrator</MenuItem>
-                <MenuItem value="president">President</MenuItem>
-              </Select>
-            </FormControl>
+            <Typography variant="body2" sx={{ mb: 3, fontStyle: 'italic' }}>
+              This account is a Parent type and cannot be changed.
+            </Typography>
 
             <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
               <Button 
@@ -343,7 +326,7 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
           </Typography>
 
           <Typography sx={{ mb: 2 }}>
-            Are you sure you want to update this user?
+            Are you sure you want to update this parent account?
           </Typography>
 
           <Box sx={{ 
@@ -355,7 +338,7 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
             borderColor: 'primary.main'
           }}>
             <Typography><strong>Username:</strong> {formData.username}</Typography>
-            <Typography><strong>Type:</strong> {formData.type}</Typography>
+            <Typography><strong>Type:</strong> Parent (cannot be changed)</Typography>
             {formData.password && (
               <Typography><strong>Password:</strong> Will be updated (securely hashed)</Typography>
             )}
@@ -404,13 +387,13 @@ const ManageAcc = () => {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const data = await apiRequest('/api/users');
+      const data = await apiRequest('/api/parent');
       setUsers(data);
     } catch (error) {
-      console.error("Error fetching users:", error);
+      console.error("Error fetching parent accounts:", error);
       setSnackbar({
         open: true,
-        message: "Failed to fetch users",
+        message: "Failed to fetch parent accounts",
         severity: "error"
       });
     } finally {
@@ -420,37 +403,37 @@ const ManageAcc = () => {
 
   const handleSearch = async (query) => {
     try {
-      const endpoint = query ? `/api/users/search?query=${query}` : '/api/users';
+      const endpoint = query ? `/api/parent/search?query=${query}` : '/api/parent';
       const data = await apiRequest(endpoint);
       setUsers(data);
     } catch (error) {
-      console.error("Error searching users:", error);
+      console.error("Error searching parent accounts:", error);
       setSnackbar({
         open: true,
-        message: "Failed to search users",
+        message: "Failed to search parent accounts",
         severity: "error"
       });
     }
   };
 
   const handleDeleteUser = async (userId) => {
-    if (!window.confirm("Are you sure you want to delete this user?")) return;
+    if (!window.confirm("Are you sure you want to delete this parent account?")) return;
     
     try {
-      await apiRequest(`/api/users/${userId}`, 'DELETE');
+      await apiRequest(`/api/parent/${userId}`, 'DELETE');
       await fetchUsers();
       setSelectedUser(null);
       setSearchQuery("");
       setSnackbar({
         open: true,
-        message: "User deleted successfully",
+        message: "Parent account deleted successfully",
         severity: "success"
       });
     } catch (error) {
-      console.error("Error deleting user:", error);
+      console.error("Error deleting parent account:", error);
       setSnackbar({
         open: true,
-        message: "Failed to delete user",
+        message: "Failed to delete parent account",
         severity: "error"
       });
     }
@@ -462,7 +445,7 @@ const ManageAcc = () => {
     setShowInfoModal(true);
     setSnackbar({
       open: true,
-      message: "User created successfully",
+      message: "Parent account created successfully",
       severity: "success"
     });
   };
@@ -471,25 +454,25 @@ const ManageAcc = () => {
     fetchUsers();
     setSnackbar({
       open: true,
-      message: "User updated successfully",
+      message: "Parent account updated successfully",
       severity: "success"
     });
   };
 
   const saveUserInfo = async (infoData) => {
     try {
-      await apiRequest('/api/users/user-info', 'POST', infoData);
+      await apiRequest('/api/parent/user-info', 'POST', infoData);
       await fetchUsers();
       setSnackbar({
         open: true,
-        message: "User info saved successfully",
+        message: "Parent info saved successfully",
         severity: "success"
       });
     } catch (error) {
-      console.error("Error saving user info:", error);
+      console.error("Error saving parent info:", error);
       setSnackbar({
         open: true,
-        message: "Failed to save user info",
+        message: "Failed to save parent info",
         severity: "error"
       });
       throw error;
@@ -515,7 +498,7 @@ const ManageAcc = () => {
 
         <div className="p-6 mb-1">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-gray-800">Manage Account</h2>
+            <h2 className="text-2xl font-bold text-gray-800">Manage Parent Accounts</h2>
             <div className="flex gap-2">
               <Button
                 variant="outlined"
@@ -539,7 +522,7 @@ const ManageAcc = () => {
                 onClick={() => setOpenUserModal(true)}
                 disabled={loading}
               >
-                Add User
+                Add Parent
               </Button>
             </div>
           </div>
@@ -561,7 +544,7 @@ const ManageAcc = () => {
             renderInput={(params) => (
               <TextField
                 {...params}
-                label="Search User"
+                label="Search Parent Accounts"
                 variant="outlined"
                 sx={{ width: "300px" }}
                 InputProps={{
@@ -587,12 +570,10 @@ const ManageAcc = () => {
               boxShadow: 3
             }}>
               <Typography variant="h6" gutterBottom>
-                User Details
+                Parent Account Details
               </Typography>
               <Typography>Username: {selectedUser.username}</Typography>
-              <Typography>
-                Role: {selectedUser.type.charAt(0).toUpperCase() + selectedUser.type.slice(1)}
-              </Typography>
+              <Typography>CDC ID: {selectedUser.cdc_id}</Typography>
             </Box>
           </div>
         )}

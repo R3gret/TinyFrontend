@@ -4,7 +4,7 @@ import {
   LayoutDashboard,
   List,
   Settings,
-  Users,
+  User,
   Baby
 } from "lucide-react";
 
@@ -15,6 +15,7 @@ export default function ECCDCSidebar() {
         <SidebarItem to="/account-list" icon={List} label="Account List" />
         <SidebarItem to="/eccdc-manageacc" icon={Settings} label="Manage Account" />
         <SidebarItem to="/eccdc-createacc" icon={Baby} label="ECCDC Centers" />
+        <SidebarItem to="/eccdc-profile" icon={User} label="ECCDC PRofile" />
       </div>
     </aside>
   );

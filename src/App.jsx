@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 
 import Dashboard from "./pages/CDC/Dashboard";
+import StudentList from "./pages/CDC/StudentList";
 import Registration from "./pages/CDC/Registration";
 import VirtualC from "./pages/CDC/VirtualC";
 import Profile from "./pages/CDC/Profile";
@@ -13,14 +14,15 @@ import RegistrationForm from './pages/CDC/RegistrationForm';
 import CDCProfileForm from "./pages/CDC/CDProfile";
 import DomainForm from "./pages/CDC/Domain";
 
+import ECCDCManageAcc from "./pages/ECCDC/ECCDC_MAcc";
+import ECCDCCreateAcc from "./pages/ECCDC/ECCDC_CreateCDC";
+import ECCDCProfile from "./pages/ECCDC/ECCDC_Profile"
+
 import AdminDashboard from "./pages/Admin/AdminDasboard";
 import AccountList from "./pages/Admin/AccountList";
 import AccProfiles from "./pages/Admin/AccProfiles";
 import ManageAcc from "./pages/Admin/ManageAcc";
 import AdminProfile from "./pages/Admin/AdminProfile";
-
-import ECCDCCreate from "./pages/ECCDC/ECCDC_CreateCDC";
-import ECCDCMAcc from "./pages/ECCDC/ECCDC_MAcc";
 
 import ProtectedRoute from "./components/all/ProtectedRoute";
 
@@ -176,10 +178,20 @@ export default function App() {
           }
         />
         <Route
+          path="/admin-profile"
+          element={
+            <ProtectedRoute allowedTypes={["admin"]}>
+              <AdminProfile />
+            </ProtectedRoute>
+          }
+        />
+
+
+        <Route
           path="/eccdc-manageacc"
           element={
             <ProtectedRoute allowedTypes={["eccdc"]}>
-              <ECCDCMAcc />
+              <ECCDCManageAcc />
             </ProtectedRoute>
           }
         />
@@ -187,15 +199,15 @@ export default function App() {
           path="/eccdc-createacc"
           element={
             <ProtectedRoute allowedTypes={["eccdc"]}>
-              <ECCDCCreate />
+              <ECCDCCreateAcc />
             </ProtectedRoute>
           }
         />
         <Route
-          path="/admin-profile"
+          path="/eccdc-profile"
           element={
-            <ProtectedRoute allowedTypes={["admin"]}>
-              <AdminProfile />
+            <ProtectedRoute allowedTypes={["eccdc"]}>
+              <ECCDCProfile />
             </ProtectedRoute>
           }
         />

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import Navbar from "../../components/all/Navbar";
-import Sidebar from "../../components/CDC/Sidebar";
+import Sidebar from "../../components/President/PresidentSidebar";
 import bgImage from "../../assets/bg1.jpg";
 import defaultProfile from "../../assets/default-profile.png";
 import { useNavigate } from 'react-router-dom';

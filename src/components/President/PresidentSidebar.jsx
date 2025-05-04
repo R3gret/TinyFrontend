@@ -13,9 +13,9 @@ export default function ECCDCSidebar() {
     <aside className="bg-white text-gray-700 w-16 h-screen fixed top-0 left-0 flex flex-col items-center py-4 shadow-md z-50">
       <div className="mt-16 flex flex-col space-y-4">
         <SidebarItem to="/president-dashboard" icon={List} label="Dashboard" />
-        <SidebarItem to="/eccdc-manageacc" icon={Settings} label="Manage Account" />
-        <SidebarItem to="/eccdc-createacc" icon={Baby} label="ECCDC Centers" />
-        <SidebarItem to="/eccdc-profile" icon={User} label="ECCDC PRofile" />
+        <SidebarItem to="/pres-account-list" icon={Settings} label="Admin Accounts List" />
+        <SidebarItem to="/pres-student-list" icon={Baby} label="Student List" />
+        <SidebarItem to="/president-profile" icon={User} label="President Profile" />
       </div>
     </aside>
   );

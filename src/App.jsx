@@ -20,6 +20,8 @@ import ECCDCAccount from "./pages/ECCDC/ECCDC_AccountList";
 
 import PresProfile from "./pages/President/President_Profile";
 import PresDashboard from "./pages/President/PresidentDashboard";
+import StudentList from "./pages/President/StudentList";
+import AccList from "./pages/President/AccountList";
 
 
 import AdminDashboard from "./pages/Admin/AdminDasboard";
@@ -236,6 +238,22 @@ export default function App() {
           element={
             <ProtectedRoute allowedTypes={["president"]}>
               <PresDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/pres-account-list"
+          element={
+            <ProtectedRoute allowedTypes={["president"]}>
+              <AccList />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/pres-student-list"
+          element={
+            <ProtectedRoute allowedTypes={["president"]}>
+              <StudentList />
             </ProtectedRoute>
           }
         />

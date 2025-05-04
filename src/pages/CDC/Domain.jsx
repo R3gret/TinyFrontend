@@ -309,7 +309,7 @@ const TableComponent = () => {
     return 'Above Average';
   };
 
-//Fetching of data
+//Fetching of datasss
   useEffect(() => {
     const fetchStudents = async () => {
       try {

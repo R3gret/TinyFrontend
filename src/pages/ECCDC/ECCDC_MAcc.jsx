@@ -316,32 +316,31 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-
+  
     if (!formData.username) {
       setError("Username is required");
       return;
     }
-
+  
     if (formData.password && formData.password.length < 8) {
       setError("Password must be at least 8 characters");
       return;
     }
-
+  
     // Check if CDC is properly set for presidents
     if (formData.type === 'president') {
-      if (!formData.cdc_id) {
+      if (!selectedCdc || !selectedCdc.cdc_id) {
         setError("Please select a CDC for the president");
         return;
       }
       
-      // Additional check to ensure the selected CDC exists in our options
-      const cdcExists = cdcOptions.some(cdc => cdc.cdc_id === formData.cdc_id);
-      if (!cdcExists) {
-        setError("Selected CDC is not valid");
-        return;
-      }
+      // Update formData with the selected CDC's ID
+      setFormData(prev => ({
+        ...prev,
+        cdc_id: selectedCdc.cdc_id
+      }));
     }
-
+  
     setShowConfirmation(true);
   };
 
@@ -349,15 +348,17 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
   const executeUpdate = async () => {
     setShowConfirmation(false);
     setLoading(true);
-
+  
     try {
       const updatePayload = {
         username: formData.username,
         type: formData.type,
         ...(formData.password && { password: formData.password }),
-        ...(formData.type === 'president' && { cdc_id: formData.cdc_id })
+        ...(formData.type === 'president' && { 
+          cdc_id: selectedCdc?.cdc_id || formData.cdc_id 
+        })
       };
-
+  
       await apiRequest(`/api/users/cdc/${user.id}`, 'PUT', updatePayload);
       onUserUpdated();
       onClose();
@@ -367,7 +368,6 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
       setLoading(false);
     }
   };
-
   return (
     <>
       <Modal open={open} onClose={onClose}>
@@ -453,35 +453,35 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
           {formData.type === 'president' && (
             <FormControl sx={{ flex: 1 }}>
               <Autocomplete
-                options={cdcOptions}
-                getOptionLabel={(option) => option.name}
-                value={selectedCdc}
-                onChange={(_, newValue) => {
-                  setSelectedCdc(newValue);
-                  // Update both formData and selectedCdc
-                  setFormData({
-                    ...formData,
-                    cdc_id: newValue?.cdc_id || null
-                  });
-                }}
-                loading={cdcLoading}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Select CDC"
-                    required={formData.type === 'president'}
-                    InputProps={{
-                      ...params.InputProps,
-                      endAdornment: (
-                        <>
-                          {cdcLoading ? <CircularProgress size={20} /> : null}
-                          {params.InputProps.endAdornment}
-                        </>
-                      ),
-                    }}
-                  />
-                )}
-              />
+  options={cdcOptions}
+  getOptionLabel={(option) => option.name}
+  value={selectedCdc}
+  onChange={(_, newValue) => {
+    setSelectedCdc(newValue);
+    // Update formData immediately when CDC changes
+    setFormData(prev => ({
+      ...prev,
+      cdc_id: newValue?.cdc_id || null
+    }));
+  }}
+  loading={cdcLoading}
+  renderInput={(params) => (
+    <TextField
+      {...params}
+      label="Select CDC"
+      required={formData.type === 'president'}
+      InputProps={{
+        ...params.InputProps,
+        endAdornment: (
+          <>
+            {cdcLoading ? <CircularProgress size={20} /> : null}
+            {params.InputProps.endAdornment}
+          </>
+        ),
+      }}
+    />
+  )}
+/>
             </FormControl>
           )}
         </Box>

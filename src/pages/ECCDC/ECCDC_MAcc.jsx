@@ -55,36 +55,62 @@ const CreateUserModal = ({ open, onClose, onUserCreated }) => {
     password: "",
     type: "president"
   });
+
   const [loading, setLoading] = useState(false);
   const [cdcLoading, setCdcLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showConfirmation, setShowConfirmation] = useState(false);
   const [cdcOptions, setCdcOptions] = useState([]);
   const [selectedCdc, setSelectedCdc] = useState(null);
+
 
   const [searchTimeout, setSearchTimeout] = useState(null);
 
   const fetchCdcOptions = async (query = "") => {
-    if (searchTimeout) clearTimeout(searchTimeout);
+    if (!query.trim()) {
+      setCdcOptions([]);
+      return;
+    }
     
-    setSearchTimeout(setTimeout(async () => {
-      if (!query.trim()) {
-        setCdcOptions([]);
-        return;
-      }
-      
-      setCdcLoading(true);
-      try {
-        const response = await apiRequest(`/api/cdc/search/name?name=${encodeURIComponent(query)}`);
-        const cdcs = response.data || response;
-        setCdcOptions(Array.isArray(cdcs) ? cdcs : []);
-      } catch (err) {
-        console.error("Error fetching CDC options:", err);
-        setCdcOptions([]);
-      } finally {
-        setCdcLoading(false);
-      }
-    }, 300));
+    setCdcLoading(true);
+    try {
+      const response = await apiRequest(`/api/cdc/search/name?name=${encodeURIComponent(query)}`);
+      const cdcs = response.data || response;
+      setCdcOptions(Array.isArray(cdcs) ? cdcs : []);
+    } catch (err) {
+      console.error("Error fetching CDC options:", err);
+      setCdcOptions([]);
+    } finally {
+      setCdcLoading(false);
+    }
   };
+
+  useEffect(() => {
+    const loadInitialData = async () => {
+      if (open) {
+        // Load initial CDC if user is a president
+        if (user?.type === 'president' && user?.cdc_id) {
+          try {
+            const response = await apiRequest(`/api/cdc/${user.cdc_id}`);
+            if (response.success) {
+              setSelectedCdc(response.data);
+            }
+          } catch (err) {
+            console.error("Error loading initial CDC:", err);
+          }
+        }
+
+        setFormData({
+          username: user?.username || "",
+          type: user?.type || "worker",
+          password: "",
+        });
+      }
+    };
+
+    loadInitialData();
+  }, [open, user]);
+
 
   useEffect(() => {
     if (open) {
@@ -317,22 +343,24 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
     e.preventDefault();
     setError("");
   
-    // Validate required fields
     if (!formData.username) {
       setError("Username is required");
       return;
     }
   
-    // Special validation for president type
-    if (formData.type === 'president') {
-      if (!selectedCdc) {
-        setError("Please select a CDC for the president");
-        return;
-      }
+    if (formData.password && formData.password.length < 8) {
+      setError("Password must be at least 8 characters");
+      return;
+    }
+  
+    if (formData.type === 'president' && !selectedCdc) {
+      setError("Please select a CDC for the president");
+      return;
     }
   
     setShowConfirmation(true);
   };
+
   
   const executeUpdate = async () => {
     setShowConfirmation(false);
@@ -343,7 +371,7 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
         username: formData.username,
         type: formData.type,
         ...(formData.password && { password: formData.password }),
-        // Include CDC name and let backend handle ID assignment
+        // Send CDC name instead of ID
         ...(formData.type === 'president' && selectedCdc && {
           cdc_name: selectedCdc.name
         })
@@ -442,28 +470,37 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
           </FormControl>
 
           {formData.type === 'president' && (
-            <FormControl sx={{ flex: 1 }}>
-              <Autocomplete
-  options={cdcOptions}
-  getOptionLabel={(option) => option.name}
-  value={selectedCdc}
-  onChange={(_, newValue) => setSelectedCdc(newValue)}
-  onInputChange={(_, newInputValue) => {
-    if (newInputValue) {
-      fetchCdcOptions(newInputValue);
-    }
-  }}
-  renderInput={(params) => (
-    <TextField
-      {...params}
-      label="Select CDC"
-      required={formData.type === 'president'}
-    />
-  )}
-/>
-            </FormControl>
-          )}
-        </Box>
+                <FormControl sx={{ flex: 1 }}>
+                  <Autocomplete
+                    options={cdcOptions}
+                    getOptionLabel={(option) => option.name}
+                    value={selectedCdc}
+                    onChange={(_, newValue) => setSelectedCdc(newValue)}
+                    onInputChange={(_, newInputValue) => {
+                      fetchCdcOptions(newInputValue);
+                    }}
+                    loading={cdcLoading}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="Select CDC"
+                        required
+                        InputProps={{
+                          ...params.InputProps,
+                          endAdornment: (
+                            <>
+                              {cdcLoading ? <CircularProgress size={20} /> : null}
+                              {params.InputProps.endAdornment}
+                            </>
+                          ),
+                        }}
+                      />
+                    )}
+                  />
+                </FormControl>
+              )}
+            </Box>
+
 
             <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
               <Button 

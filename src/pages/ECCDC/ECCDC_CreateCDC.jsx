@@ -21,9 +21,10 @@ import {
   TableHead,
   TableRow,
   Paper,
-  InputAdornment
+  InputAdornment,
+  IconButton
 } from "@mui/material";
-import { Search, Add, Save, Close } from "@mui/icons-material";
+import { Search, Add, Save, Close, Edit, Delete } from "@mui/icons-material";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -61,6 +62,8 @@ const CDCPage = () => {
   });
   const [loading, setLoading] = useState(false);
   const [openModal, setOpenModal] = useState(false);
+  const [openEditModal, setOpenEditModal] = useState(false);
+  const [selectedCDC, setSelectedCDC] = useState(null);
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
@@ -196,6 +199,70 @@ const CDCPage = () => {
     }
   };
 
+  // Edit CDC with API helper
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    
+    try {
+      const data = await apiRequest(`/api/cdc/${selectedCDC.cdcId}`, 'PUT', formData);
+      setSnackbar({
+        open: true,
+        message: "CDC updated successfully!",
+        severity: "success"
+      });
+      setOpenEditModal(false);
+      setSelectedCDC(null);
+      fetchCDCs();
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        message: err.message,
+        severity: "error"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Delete CDC with API helper
+  const handleDelete = async () => {
+    if (!selectedCDC) return;
+    
+    setLoading(true);
+    try {
+      const data = await apiRequest(`/api/cdc/${selectedCDC.cdcId}`, 'DELETE');
+      setSnackbar({
+        open: true,
+        message: "CDC deleted successfully!",
+        severity: "success"
+      });
+      setSelectedCDC(null);
+      fetchCDCs();
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        message: err.message,
+        severity: "error"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Open edit modal with selected CDC data
+  const handleEditClick = (cdc) => {
+    setSelectedCDC(cdc);
+    setFormData({
+      name: cdc.name || "",
+      region: cdc.region || "",
+      province: cdc.province || "",
+      municipality: cdc.municipality || "",
+      barangay: cdc.barangay || ""
+    });
+    setOpenEditModal(true);
+  };
+
   // Styled components
   const modalStyle = {
     width: "900px",
@@ -281,24 +348,62 @@ const CDCPage = () => {
               />
             </Box>
             
-            <Button 
-              variant="contained" 
-              startIcon={<Add />}
-              onClick={() => setOpenModal(true)}
-              sx={{ 
-                ...buttonStyle,
-                backgroundColor: "#2e7d32",
-                "&:hover": { backgroundColor: "#1b5e20" }
-              }}
-            >
-              Create CDC
-            </Button>
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <Button 
+                variant="contained" 
+                startIcon={<Edit />}
+                onClick={() => selectedCDC && handleEditClick(selectedCDC)}
+                disabled={!selectedCDC}
+                sx={{ 
+                  ...buttonStyle,
+                  backgroundColor: "#1976d2",
+                  "&:hover": { backgroundColor: "#1565c0" }
+                }}
+              >
+                Edit CDC
+              </Button>
+              <Button 
+                variant="contained" 
+                startIcon={<Delete />}
+                onClick={handleDelete}
+                disabled={!selectedCDC}
+                sx={{ 
+                  ...buttonStyle,
+                  backgroundColor: "#d32f2f",
+                  "&:hover": { backgroundColor: "#b71c1c" }
+                }}
+              >
+                Delete CDC
+              </Button>
+              <Button 
+                variant="contained" 
+                startIcon={<Add />}
+                onClick={() => {
+                  setFormData({
+                    name: "",
+                    region: "",
+                    province: "",
+                    municipality: "",
+                    barangay: ""
+                  });
+                  setOpenModal(true);
+                }}
+                sx={{ 
+                  ...buttonStyle,
+                  backgroundColor: "#2e7d32",
+                  "&:hover": { backgroundColor: "#1b5e20" }
+                }}
+              >
+                Create CDC
+              </Button>
+            </Box>
           </Box>
 
           <TableContainer component={Paper} sx={{ maxHeight: 'calc(100vh - 250px)' }}>
             <Table stickyHeader>
               <TableHead>
                 <TableRow>
+                  <TableCell>Select</TableCell>
                   <TableCell>CDC ID</TableCell>
                   <TableCell>Region</TableCell>
                   <TableCell>Province</TableCell>
@@ -309,13 +414,27 @@ const CDCPage = () => {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={5} align="center">
+                    <TableCell colSpan={6} align="center">
                       <CircularProgress />
                     </TableCell>
                   </TableRow>
                 ) : cdcList.length > 0 ? (
                   cdcList.map((cdc) => (
-                    <TableRow key={cdc.cdcId}>
+                    <TableRow 
+                      key={cdc.cdcId}
+                      onClick={() => setSelectedCDC(cdc)}
+                      selected={selectedCDC?.cdcId === cdc.cdcId}
+                      hover
+                      sx={{ cursor: 'pointer' }}
+                    >
+                      <TableCell>
+                        <input
+                          type="radio"
+                          name="selectedCDC"
+                          checked={selectedCDC?.cdcId === cdc.cdcId}
+                          onChange={() => setSelectedCDC(cdc)}
+                        />
+                      </TableCell>
                       <TableCell>{cdc.cdcId}</TableCell>
                       <TableCell>{cdc.region}</TableCell>
                       <TableCell>{cdc.province}</TableCell>
@@ -325,7 +444,7 @@ const CDCPage = () => {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={5} align="center">
+                    <TableCell colSpan={6} align="center">
                       No CDC records found
                     </TableCell>
                   </TableRow>
@@ -468,6 +587,147 @@ const CDCPage = () => {
                       }}
                     >
                       {loading ? <CircularProgress size={24} /> : "Create CDC"}
+                    </Button>
+                  </Box>
+                </Box>
+              </form>
+            </Box>
+          </Modal>
+
+          {/* Edit CDC Modal */}
+          <Modal open={openEditModal} onClose={() => setOpenEditModal(false)}>
+            <Box sx={modalStyle}>
+              <Typography variant="h6" component="h2" sx={{ mb: 3, textAlign: "center" }}>
+                Edit CDC
+              </Typography>
+              
+              {snackbar.open && (
+                <Alert severity={snackbar.severity} sx={{ mb: 3 }}>
+                  {snackbar.message}
+                </Alert>
+              )}
+
+              <form onSubmit={handleEditSubmit}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  {/* CDC Name */}
+                  <TextField
+                    label="CDC Name"
+                    value={formData.name}
+                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                    required
+                    sx={textFieldStyle}
+                  />
+
+                  {/* Location Fields - Two Columns */}
+                  <Box sx={{ display: 'flex', gap: 3 }}>
+                    {/* Region */}
+                    <Autocomplete
+                      freeSolo
+                      options={regions.map(region => region.name)}
+                      value={formData.region}
+                      onChange={(e, value) => handleRegionChange(value || '')}
+                      onInputChange={(e, value) => handleRegionChange(value || '')}
+                      sx={{ flex: 1 }}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label="Region"
+                          variant="outlined"
+                          required
+                        />
+                      )}
+                    />
+
+                    {/* Province */}
+                    <Autocomplete
+                      freeSolo
+                      options={provinces.map(province => province.name)}
+                      value={formData.province}
+                      onChange={(e, value) => handleProvinceChange(value || '')}
+                      onInputChange={(e, value) => handleProvinceChange(value || '')}
+                      disabled={!formData.region}
+                      sx={{ flex: 1 }}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label="Province"
+                          variant="outlined"
+                          required
+                        />
+                      )}
+                    />
+                  </Box>
+
+                  <Box sx={{ display: 'flex', gap: 3 }}>
+                    {/* Municipality */}
+                    <Autocomplete
+                      freeSolo
+                      options={municipalities.map(municipality => municipality.name)}
+                      value={formData.municipality}
+                      onChange={(e, value) => handleMunicipalityChange(value || '')}
+                      onInputChange={(e, value) => handleMunicipalityChange(value || '')}
+                      disabled={!formData.province}
+                      sx={{ flex: 1 }}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label="Municipality"
+                          variant="outlined"
+                          required
+                        />
+                      )}
+                    />
+
+                    {/* Barangay */}
+                    <Autocomplete
+                      freeSolo
+                      options={barangays.map(barangay => barangay.name)}
+                      value={formData.barangay}
+                      onChange={(e, value) => setFormData({...formData, barangay: value || ''})}
+                      onInputChange={(e, value) => setFormData({...formData, barangay: value || ''})}
+                      disabled={!formData.municipality}
+                      sx={{ flex: 1 }}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label="Barangay"
+                          variant="outlined"
+                          required
+                        />
+                      )}
+                    />
+                  </Box>
+
+                  {/* Buttons */}
+                  <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 2 }}>
+                    <Button 
+                      onClick={() => setOpenEditModal(false)} 
+                      variant="outlined" 
+                      startIcon={<Close />}
+                      disabled={loading}
+                      sx={{ 
+                        ...buttonStyle,
+                        color: "#2e7d32", 
+                        borderColor: "#2e7d32",
+                        '&:hover': {
+                          borderColor: "#1b5e20"
+                        }
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="submit"
+                      variant="contained"
+                      startIcon={<Save />}
+                      disabled={loading}
+                      sx={{ 
+                        ...buttonStyle,
+                        backgroundColor: "#2e7d32",
+                        "&:hover": { backgroundColor: "#1b5e20" }
+                      }}
+                    >
+                      {loading ? <CircularProgress size={24} /> : "Update CDC"}
                     </Button>
                   </Box>
                 </Box>

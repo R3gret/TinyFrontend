@@ -14,7 +14,7 @@ export default function ECCDCSidebar() {
       <div className="mt-16 flex flex-col space-y-4">
         <SidebarItem to="/account-list" icon={List} label="Account List" />
         <SidebarItem to="/eccdc-manageacc" icon={Settings} label="Manage Account" />
-        <SidebarItem to="/eccdc-createacc" icon={Baby} label="ECCDC Profile" />
+        <SidebarItem to="/eccdc-createacc" icon={Baby} label="ECCDC Centers" />
       </div>
     </aside>
   );

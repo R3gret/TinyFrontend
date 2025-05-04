@@ -365,7 +365,7 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
         })
       };
   
-      await apiRequest(`/api/users/cdc/${user.id}`, 'PUT', updatePayload);
+      await apiRequest(`/api/cdc/users/cdc/${user.id}`, 'PUT', updatePayload);
       onUserUpdated();
       onClose();
     } catch (err) {

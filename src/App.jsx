@@ -235,7 +235,7 @@ export default function App() {
           path="/president-dashboard"
           element={
             <ProtectedRoute allowedTypes={["president"]}>
-              <PresProfile />
+              <PresDashboard />
             </ProtectedRoute>
           }
         />

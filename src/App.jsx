@@ -26,6 +26,7 @@ import PresVC from "./pages/President/PresVirtualC";
 
 import ParentVirtualC from "./pages/Parent/ParentVirtualC";
 import ParentDashboard from "./pages/Parent/ParentDashboard";
+import ParentProfile from "./pages/Parent/Parent_Profile";
 
 import AdminDashboard from "./pages/Admin/AdminDasboard";
 import AccountList from "./pages/Admin/AccountList";
@@ -281,6 +282,14 @@ export default function App() {
           element={
             <ProtectedRoute allowedTypes={["parent"]}>
               <ParentVirtualC />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/parent-profile"
+          element={
+            <ProtectedRoute allowedTypes={["parent"]}>
+              <ParentProfile />
             </ProtectedRoute>
           }
         />

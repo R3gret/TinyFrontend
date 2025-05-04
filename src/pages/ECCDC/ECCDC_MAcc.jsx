@@ -53,10 +53,36 @@ const CreateUserModal = ({ open, onClose, onUserCreated }) => {
   const [formData, setFormData] = useState({
     username: "",
     password: "",
-    type: "worker"
+    type: "president"
   });
   const [loading, setLoading] = useState(false);
+  const [cdcLoading, setCdcLoading] = useState(false);
   const [error, setError] = useState("");
+  const [cdcOptions, setCdcOptions] = useState([]);
+  const [selectedCdc, setSelectedCdc] = useState(null);
+
+  // Fetch CDC options for autocomplete
+  const fetchCdcOptions = async (query = "") => {
+    setCdcLoading(true);
+    try {
+      const data = await apiRequest(`/api/cdc/search?query=${query}`);
+      setCdcOptions(data.data || []);
+    } catch (err) {
+      console.error("Error fetching CDC options:", err);
+      setError("Failed to load CDC options");
+    } finally {
+      setCdcLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (open) {
+      fetchCdcOptions();
+      setFormData({ username: "", password: "", type: "president" });
+      setSelectedCdc(null);
+      setError("");
+    }
+  }, [open]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -72,13 +98,21 @@ const CreateUserModal = ({ open, onClose, onUserCreated }) => {
       return;
     }
 
+    if (!selectedCdc) {
+      setError("Please select a CDC for the president");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const data = await apiRequest('/api/users', 'POST', formData);
-      onUserCreated(data.id);
+      const userData = await apiRequest('/api/users', 'POST', {
+        ...formData,
+        cdc_id: selectedCdc.cdcId
+      });
+      
+      onUserCreated(userData.id);
       onClose();
-      setFormData({ username: "", password: "", type: "worker" });
     } catch (err) {
       setError(err.message);
     } finally {
@@ -89,7 +123,7 @@ const CreateUserModal = ({ open, onClose, onUserCreated }) => {
   return (
     <Modal open={open} onClose={onClose}>
       <Box sx={{ 
-        width: "600px", 
+        width: "450px",
         backgroundColor: "white",
         borderRadius: 3,
         p: 4,
@@ -100,7 +134,7 @@ const CreateUserModal = ({ open, onClose, onUserCreated }) => {
         transform: 'translate(-50%, -50%)'
       }}>
         <Typography variant="h6" component="h2" sx={{ mb: 2, textAlign: "center" }}>
-          Create New User
+          Create New President
         </Typography>
 
         {error && (
@@ -142,31 +176,55 @@ const CreateUserModal = ({ open, onClose, onUserCreated }) => {
             }}
           />
 
-          <FormControl fullWidth sx={{ mb: 3 }}>
-            <InputLabel>User Type</InputLabel>
-            <Select
-              value={formData.type}
-              label="User Type"
-              onChange={(e) => setFormData({...formData, type: e.target.value})}
-            >
-              <MenuItem value="worker">CD Worker</MenuItem>
-              <MenuItem value="parent">Parent</MenuItem>
-              <MenuItem value="admin">Administrator</MenuItem>
-              <MenuItem value="president">President</MenuItem>
-              
-            </Select>
-          </FormControl>
+          <TextField
+            label="User Type"
+            value="President"
+            fullWidth
+            sx={{ mb: 2 }}
+            disabled
+            helperText="All new users are created as Presidents"
+          />
 
-          <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
-            <Button onClick={onClose} disabled={loading}>
+          <Autocomplete
+            options={cdcOptions}
+            getOptionLabel={(option) => 
+              `${option.name} - ${option.barangay}, ${option.municipality}, ${option.province}`
+            }
+            value={selectedCdc}
+            onChange={(_, newValue) => setSelectedCdc(newValue)}
+            onInputChange={(_, newInputValue) => {
+              fetchCdcOptions(newInputValue);
+            }}
+            loading={cdcLoading}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Select CDC"
+                required
+                helperText="Search and select the CDC this president will manage"
+                InputProps={{
+                  ...params.InputProps,
+                  endAdornment: (
+                    <>
+                      {cdcLoading ? <CircularProgress color="inherit" size={20} /> : null}
+                      {params.InputProps.endAdornment}
+                    </>
+                  ),
+                }}
+              />
+            )}
+          />
+
+          <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2, mt: 3 }}>
+            <Button onClick={onClose} disabled={loading} variant="outlined">
               Cancel
             </Button>
             <Button
               type="submit"
               variant="contained"
-              disabled={loading}
+              disabled={loading || !selectedCdc}
             >
-              {loading ? <CircularProgress size={24} /> : "Create User"}
+              {loading ? <CircularProgress size={24} /> : "Create President"}
             </Button>
           </Box>
         </form>
@@ -540,7 +598,7 @@ const ECCDCManageAcc = () => {
                 onClick={() => setOpenUserModal(true)}
                 disabled={loading}
               >
-                Add User
+                Add President
               </Button>
             </div>
           </div>
@@ -594,6 +652,11 @@ const ECCDCManageAcc = () => {
               <Typography>
                 Role: {selectedUser.type.charAt(0).toUpperCase() + selectedUser.type.slice(1)}
               </Typography>
+              {selectedUser.cdc_id && (
+                <Typography>
+                  CDC ID: {selectedUser.cdc_id}
+                </Typography>
+              )}
             </Box>
           </div>
         )}

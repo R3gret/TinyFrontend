@@ -119,17 +119,27 @@ const fetchCdcOptions = async (query = "") => {
     setLoading(true);
   
     try {
-      // Use the dedicated president endpoint
-      const userData = await apiRequest('/api/users/presidents', 'POST', {
+      // Verify the CDC exists and get its ID
+      const cdcData = await apiRequest(`/api/cdc/search/name?name=${encodeURIComponent(selectedCdc.name)}`);
+      
+      if (!cdcData || cdcData.length === 0) {
+        throw new Error('Selected CDC not found in database');
+      }
+  
+      // Use the first matching CDC (you might want to add more validation here)
+      const cdcId = cdcData[0].cdcId;
+  
+      // Create the president with the verified CDC ID
+      const userData = await apiRequest('/api/cdc/presidents', 'POST', {
         username: formData.username,
         password: formData.password,
-        cdc_id: selectedCdc.cdcId
+        cdc_id: cdcId
       });
       
       onUserCreated(userData.userId);
       onClose();
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Failed to create president');
     } finally {
       setLoading(false);
     }

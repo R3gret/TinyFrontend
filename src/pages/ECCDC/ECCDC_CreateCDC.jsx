@@ -404,7 +404,8 @@ const CDCPage = () => {
               <TableHead>
                 <TableRow>
                   <TableCell>Select</TableCell>
-                  <TableCell>CDC ID</TableCell>
+                  <TableCell>ID</TableCell>
+                  <TableCell>Name</TableCell>
                   <TableCell>Region</TableCell>
                   <TableCell>Province</TableCell>
                   <TableCell>Municipality</TableCell>
@@ -414,7 +415,7 @@ const CDCPage = () => {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={6} align="center">
+                    <TableCell colSpan={7} align="center">
                       <CircularProgress />
                     </TableCell>
                   </TableRow>
@@ -436,6 +437,7 @@ const CDCPage = () => {
                         />
                       </TableCell>
                       <TableCell>{cdc.cdcId}</TableCell>
+                      <TableCell>{cdc.name}</TableCell>
                       <TableCell>{cdc.region}</TableCell>
                       <TableCell>{cdc.province}</TableCell>
                       <TableCell>{cdc.municipality}</TableCell>
@@ -444,7 +446,7 @@ const CDCPage = () => {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={6} align="center">
+                    <TableCell colSpan={7} align="center">
                       No CDC records found
                     </TableCell>
                   </TableRow>

@@ -506,19 +506,18 @@ const ECCDCManageAcc = () => {
     severity: "success",
   });
 
-  const [viewMode, setViewMode] = useState('presidents'); // or 'admins' depending on your default
+
 
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const endpoint = viewMode === 'admins' ? '/api/cdc/admins' : '/api/users';
-      const data = await apiRequest(endpoint);
+      const data = await apiRequest('/api/cdc/admins');
       setUsers(data);
     } catch (error) {
-      console.error("Error fetching users:", error);
+      console.error("Error fetching admin users:", error);
       setSnackbar({
         open: true,
-        message: "Failed to fetch users",
+        message: "Failed to fetch admin users",
         severity: "error"
       });
     } finally {
@@ -657,36 +656,36 @@ const ECCDCManageAcc = () => {
         </div>
 
         <div className="px-6">
-          <Autocomplete
-            value={searchQuery}
-            onInputChange={(_, newValue) => {
-              setSearchQuery(newValue);
-              handleSearch(newValue);
-            }}
-            onChange={(_, newValue) => {
-              const user = users.find(u => u.username === newValue);
-              setSelectedUser(user || null);
-            }}
-            options={users.map(user => user.username)}
-            loading={loading}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                label="Search User"
-                variant="outlined"
-                sx={{ width: "300px" }}
-                InputProps={{
-                  ...params.InputProps,
-                  endAdornment: (
-                    <>
-                      {loading ? <CircularProgress color="inherit" size={20} /> : null}
-                      {params.InputProps.endAdornment}
-                    </>
-                  ),
-                }}
-              />
-            )}
-          />
+        <Autocomplete
+  value={searchQuery}
+  onInputChange={(_, newValue) => {
+    setSearchQuery(newValue);
+    handleSearch(newValue);
+  }}
+  onChange={(_, newValue) => {
+    const user = users.find(u => u.username === newValue);
+    setSelectedUser(user || null);
+  }}
+  options={users.map(user => user.username)}
+  loading={loading}
+  renderInput={(params) => (
+    <TextField
+      {...params}
+      label="Search Admin Users"
+      variant="outlined"
+      sx={{ width: "300px" }}
+      InputProps={{
+        ...params.InputProps,
+        endAdornment: (
+          <>
+            {loading ? <CircularProgress color="inherit" size={20} /> : null}
+            {params.InputProps.endAdornment}
+          </>
+        ),
+      }}
+    />
+  )}
+/>
         </div>
 
         {selectedUser && (

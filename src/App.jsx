@@ -12,7 +12,6 @@ import Login from "./pages/CDC/Login";
 import RegistrationForm from './pages/CDC/RegistrationForm';
 import CDCProfileForm from "./pages/CDC/CDProfile";
 import DomainForm from "./pages/CDC/Domain";
-import AccountProf from "./pages/Admin/AccProfiles";
 
 import ECCDCManageAcc from "./pages/ECCDC/ECCDC_MAcc";
 import ECCDCCreateAcc from "./pages/ECCDC/ECCDC_CreateCDC";
@@ -166,7 +165,7 @@ export default function App() {
         <Route
           path="/account-profile/:id"
           element={
-            <ProtectedRoute allowedTypes={["admin"]}>
+            <ProtectedRoute allowedTypes={["admin", "eccdc"]}>
               <AccProfiles />
             </ProtectedRoute>
           }
@@ -218,14 +217,6 @@ export default function App() {
           element={
             <ProtectedRoute allowedTypes={["eccdc"]}>
               <ECCDCAccount />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/account-profile/:id"
-          element={
-            <ProtectedRoute allowedTypes={["eccdc"]}>
-              <AccountProf />
             </ProtectedRoute>
           }
         />

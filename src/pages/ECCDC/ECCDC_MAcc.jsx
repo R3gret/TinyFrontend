@@ -327,17 +327,23 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
       return;
     }
   
-    // Check if CDC is properly set for presidents
+    // For president type, we need to ensure CDC is selected
     if (formData.type === 'president') {
-      if (!selectedCdc || !selectedCdc.cdc_id) {
+      if (!selectedCdc) {
         setError("Please select a CDC for the president");
         return;
       }
       
-      // Update formData with the selected CDC's ID
+      // Update formData with the selected CDC
       setFormData(prev => ({
         ...prev,
         cdc_id: selectedCdc.cdc_id
+      }));
+    } else {
+      // Clear CDC if not president
+      setFormData(prev => ({
+        ...prev,
+        cdc_id: null
       }));
     }
   

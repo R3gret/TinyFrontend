@@ -123,12 +123,12 @@ const fetchCdcOptions = async (query = "") => {
       console.log('Selected CDC from form:', selectedCdc);
   
       // Verify we have a valid CDC ID from the selected item
-      if (!selectedCdc.cdcId) {
+      if (!selectedCdc.cdc_id) {  // CHANGED FROM cdcId to cdc_id
         throw new Error('Invalid CDC selection - missing ID');
       }
   
-      // Verify the CDC exists directly by ID (more reliable than searching by name)
-      const verifyResponse = await apiRequest(`/api/cdc/${selectedCdc.cdcId}`);
+      // Verify the CDC exists directly by ID
+      const verifyResponse = await apiRequest(`/api/cdc/${selectedCdc.cdc_id}`);  // CHANGED HERE TOO
       console.log('CDC verification response:', verifyResponse);
   
       if (!verifyResponse.success || !verifyResponse.exists) {
@@ -139,7 +139,7 @@ const fetchCdcOptions = async (query = "") => {
       const userData = await apiRequest('/api/cdc/presidents', 'POST', {
         username: formData.username,
         password: formData.password,
-        cdc_id: selectedCdc.cdcId  // Use the ID from selectedCdc
+        cdc_id: selectedCdc.cdc_id  // AND HERE
       });
       
       if (!userData.success) {
@@ -298,23 +298,6 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
       });
     }
   }, [user]);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError("");
-
-    if (!formData.username) {
-      setError("Username is required");
-      return;
-    }
-
-    if (formData.password && formData.password.length < 8) {
-      setError("Password must be at least 8 characters");
-      return;
-    }
-
-    setShowConfirmation(true);
-  };
 
   const executeUpdate = async () => {
     setShowConfirmation(false);

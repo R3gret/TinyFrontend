@@ -285,10 +285,12 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
           const cdcs = response.data || response;
           setCdcOptions(Array.isArray(cdcs) ? cdcs : []);
           
-          if (user?.cdc_id) {
+          // Initialize selected CDC if user is a president with a CDC
+          if (user?.type === 'president' && user?.cdc_id) {
             const userCdc = cdcs.find(c => c.cdc_id === user.cdc_id);
             if (userCdc) {
               setSelectedCdc(userCdc);
+              setFormData(prev => ({ ...prev, cdc_id: userCdc.cdc_id }));
             }
           }
         } catch (err) {
@@ -325,13 +327,24 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
       return;
     }
 
-    if (formData.type === 'president' && !formData.cdc_id) {
-      setError("Please select a CDC for the president");
-      return;
+    // Check if CDC is properly set for presidents
+    if (formData.type === 'president') {
+      if (!formData.cdc_id) {
+        setError("Please select a CDC for the president");
+        return;
+      }
+      
+      // Additional check to ensure the selected CDC exists in our options
+      const cdcExists = cdcOptions.some(cdc => cdc.cdc_id === formData.cdc_id);
+      if (!cdcExists) {
+        setError("Selected CDC is not valid");
+        return;
+      }
     }
 
     setShowConfirmation(true);
   };
+
 
   const executeUpdate = async () => {
     setShowConfirmation(false);
@@ -414,62 +427,64 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
               }}
             />
 
-            <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
-              <FormControl sx={{ flex: 1 }}>
-                <InputLabel>User Type</InputLabel>
-                <Select
-                  value={formData.type}
-                  label="User Type"
-                  onChange={(e) => {
-                    const newType = e.target.value;
-                    setFormData({
-                      ...formData,
-                      type: newType,
-                      cdc_id: newType === 'president' ? formData.cdc_id : null
-                    });
-                  }}
+<Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+          <FormControl sx={{ flex: 1 }}>
+            <InputLabel>User Type</InputLabel>
+            <Select
+              value={formData.type}
+              label="User Type"
+              onChange={(e) => {
+                const newType = e.target.value;
+                setFormData({
+                  ...formData,
+                  type: newType,
+                  // Clear CDC if changing from president to another type
+                  cdc_id: newType === 'president' ? formData.cdc_id : null
+                });
+              }}
                 >
                   <MenuItem value="worker">CD Worker</MenuItem>
-                  <MenuItem value="parent">Parent</MenuItem>
-                  <MenuItem value="admin">Administrator</MenuItem>
-                  <MenuItem value="president">President</MenuItem>
-                </Select>
-              </FormControl>
+              <MenuItem value="parent">Parent</MenuItem>
+              <MenuItem value="admin">Administrator</MenuItem>
+              <MenuItem value="president">President</MenuItem>
+            </Select>
+          </FormControl>
 
-              {formData.type === 'president' && (
-                <FormControl sx={{ flex: 1 }}>
-                  <Autocomplete
-                    options={cdcOptions}
-                    getOptionLabel={(option) => option.name}
-                    value={selectedCdc}
-                    onChange={(_, newValue) => {
-                      setSelectedCdc(newValue);
-                      setFormData({
-                        ...formData,
-                        cdc_id: newValue?.cdc_id || null
-                      });
+          {formData.type === 'president' && (
+            <FormControl sx={{ flex: 1 }}>
+              <Autocomplete
+                options={cdcOptions}
+                getOptionLabel={(option) => option.name}
+                value={selectedCdc}
+                onChange={(_, newValue) => {
+                  setSelectedCdc(newValue);
+                  // Update both formData and selectedCdc
+                  setFormData({
+                    ...formData,
+                    cdc_id: newValue?.cdc_id || null
+                  });
+                }}
+                loading={cdcLoading}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Select CDC"
+                    required={formData.type === 'president'}
+                    InputProps={{
+                      ...params.InputProps,
+                      endAdornment: (
+                        <>
+                          {cdcLoading ? <CircularProgress size={20} /> : null}
+                          {params.InputProps.endAdornment}
+                        </>
+                      ),
                     }}
-                    loading={cdcLoading}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        label="Select CDC"
-                        required
-                        InputProps={{
-                          ...params.InputProps,
-                          endAdornment: (
-                            <>
-                              {cdcLoading ? <CircularProgress size={20} /> : null}
-                              {params.InputProps.endAdornment}
-                            </>
-                          ),
-                        }}
-                      />
-                    )}
                   />
-                </FormControl>
-              )}
-            </Box>
+                )}
+              />
+            </FormControl>
+          )}
+        </Box>
 
             <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
               <Button 

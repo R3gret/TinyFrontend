@@ -283,15 +283,26 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
         setCdcLoading(true);
         try {
           const response = await apiRequest('/api/cdc');
-          const cdcs = response.data || response;
-          setCdcOptions(Array.isArray(cdcs) ? cdcs : []);
+          const cdcs = Array.isArray(response?.data) ? response.data : Array.isArray(response) ? response : [];
+          
+          // Transform CDC data to ensure consistent structure
+          const formattedCdcs = cdcs.map(cdc => ({
+            cdcId: cdc.cdcId || cdc.cdc_id,
+            name: cdc.name,
+            region: cdc.region,
+            province: cdc.province,
+            municipality: cdc.municipality,
+            barangay: cdc.barangay
+          }));
+
+          setCdcOptions(formattedCdcs);
           
           // If editing a president, find and set their current CDC
           if (user?.type === 'president' && user?.cdc_id) {
-            const currentCdc = cdcs.find(c => c.cdc_id === user.cdc_id);
+            const currentCdc = formattedCdcs.find(c => c.cdcId === user.cdc_id);
             if (currentCdc) {
               setSelectedCdc(currentCdc);
-              setFormData(prev => ({ ...prev, cdc_id: currentCdc.cdc_id }));
+              setFormData(prev => ({ ...prev, cdc_id: currentCdc.cdcId }));
             }
           }
         } catch (err) {
@@ -338,8 +349,8 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
         setError("Please select a CDC for the president");
         return;
       }
-      if (!selectedCdc.cdc_id) {
-        setError("Invalid CDC selection");
+      if (!selectedCdc?.cdcId) {
+        setError("Please select a valid CDC");
         return;
       }
     }
@@ -358,7 +369,7 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
         ...(formData.password && { password: formData.password }),
         // Only include cdc_id if type is president
         ...(formData.type === 'president' && { 
-          cdc_id: selectedCdc.cdc_id 
+          cdc_id: selectedCdc?.cdcId 
         })
       };
   
@@ -366,7 +377,7 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
       onUserUpdated();
       onClose();
     } catch (err) {
-      setError(err.message);
+      setError(err.message || "Failed to update user");
     } finally {
       setLoading(false);
     }
@@ -456,16 +467,17 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
                 <FormControl sx={{ flex: 1 }}>
                   <Autocomplete
                     options={cdcOptions}
-                    getOptionLabel={(option) => `${option.name} (${option.cdc_id})`}
+                    getOptionLabel={(option) => `${option.name} (ID: ${option.cdcId})`}
                     value={selectedCdc}
                     onChange={(_, newValue) => {
                       setSelectedCdc(newValue);
                       // Update formData with the new CDC ID
                       setFormData(prev => ({
                         ...prev,
-                        cdc_id: newValue?.cdc_id || null
+                        cdc_id: newValue?.cdcId || null
                       }));
                     }}
+                    isOptionEqualToValue={(option, value) => option.cdcId === value.cdcId}
                     loading={cdcLoading}
                     renderInput={(params) => (
                       <TextField
@@ -539,8 +551,8 @@ const EditUserModal = ({ open, onClose, user, onUserUpdated }) => {
             <Typography><strong>Type:</strong> {formData.type}</Typography>
             {formData.type === 'president' && selectedCdc && (
               <>
-                <Typography><strong>CDC:</strong> {selectedCdc.name}</Typography>
-                <Typography><strong>CDC ID:</strong> {selectedCdc.cdc_id}</Typography>
+                <Typography><strong>CDC Name:</strong> {selectedCdc.name}</Typography>
+                <Typography><strong>CDC ID:</strong> {selectedCdc.cdcId}</Typography>
               </>
             )}
             {formData.password && (

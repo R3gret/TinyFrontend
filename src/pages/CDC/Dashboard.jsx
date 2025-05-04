@@ -254,7 +254,7 @@ export default function Dashboard() {
         const [genderRes, enrollmentRes, ageRes, domainProgressRes, attendanceRes, announcementsRes] = await Promise.all([
           apiRequest('/api/students/gender-distribution'),
           apiRequest('/api/students/enrollment-stats'),
-          apiRequest('/api/students/age-distribution'),
+          apiRequest('/api/students/age-distribution/age'),
           apiRequest('/api/domains/progress-summary'),
           apiRequest('/api/attendance/stats'),
           apiRequest('/api/announcements')

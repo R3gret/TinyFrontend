@@ -101,6 +101,7 @@ const fetchCdcOptions = async (query = "") => {
     e.preventDefault();
     setError("");
   
+    // Validation checks remain the same
     if (!formData.username || !formData.password) {
       setError("Username and password are required");
       return;
@@ -119,15 +120,25 @@ const fetchCdcOptions = async (query = "") => {
     setLoading(true);
   
     try {
+      // Debug: Log the selected CDC before API call
+      console.log('Selected CDC from form:', selectedCdc);
+  
       // Verify the CDC exists and get its ID
-      const cdcData = await apiRequest(`/api/cdc/search/name?name=${encodeURIComponent(selectedCdc.name)}`);
+      const response = await apiRequest(`/api/cdc/search/name?name=${encodeURIComponent(selectedCdc.name)}`);
       
-      if (!cdcData || cdcData.length === 0) {
+      // Debug: Log the entire API response
+      console.log('API Response:', response);
+      console.log('CDC Data:', response.data);
+      console.log('First CDC:', response.data[0]);
+  
+      // Check if we got valid data
+      if (!response.success || !response.data || response.data.length === 0) {
         throw new Error('Selected CDC not found in database');
       }
   
-      // Use the first matching CDC (you might want to add more validation here)
-      const cdcId = cdcData[0].cdcId;
+      // Use the first matching CDC
+      const cdcId = response.data[0].cdcId;
+      console.log('Extracted CDC ID:', cdcId); // Debug: Log the extracted ID
   
       // Create the president with the verified CDC ID
       const userData = await apiRequest('/api/cdc/presidents', 'POST', {
@@ -136,9 +147,12 @@ const fetchCdcOptions = async (query = "") => {
         cdc_id: cdcId
       });
       
+      console.log('President created:', userData); // Debug: Log creation response
+      
       onUserCreated(userData.userId);
       onClose();
     } catch (err) {
+      console.error('Error creating president:', err); // Debug: Log any errors
       setError(err.message || 'Failed to create president');
     } finally {
       setLoading(false);

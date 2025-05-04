@@ -2,20 +2,38 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
   LayoutDashboard,
-  List,
+  Users,
+  BookOpen,
+  UserCircle,
+  ListOrdered,
   Settings,
-  User,
-  Baby
+  School
 } from "lucide-react";
 
-export default function ECCDCSidebar() {
+export default function PresidentSidebar() {
   return (
     <aside className="bg-white text-gray-700 w-16 h-screen fixed top-0 left-0 flex flex-col items-center py-4 shadow-md z-50">
       <div className="mt-16 flex flex-col space-y-4">
-        <SidebarItem to="/president-dashboard" icon={List} label="Dashboard" />
-        <SidebarItem to="/pres-account-list" icon={Settings} label="Admin Accounts List" />
-        <SidebarItem to="/pres-student-list" icon={Baby} label="Student List" />
-        <SidebarItem to="/president-profile" icon={User} label="President Profile" />
+        <SidebarItem 
+          to="/president-dashboard" 
+          icon={LayoutDashboard} 
+          label="Dashboard" 
+        />
+        <SidebarItem 
+          to="/pres-account-list" 
+          icon={Users} 
+          label="Admin Accounts" 
+        />
+        <SidebarItem 
+          to="/pres-student-list" 
+          icon={School} 
+          label="Students" 
+        />
+        <SidebarItem 
+          to="/president-profile" 
+          icon={UserCircle} 
+          label="My Profile" 
+        />
       </div>
     </aside>
   );

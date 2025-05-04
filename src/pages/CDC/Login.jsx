@@ -83,7 +83,7 @@ const Login = () => {
               break;
             case 'eccdc':
                 console.log("Redirecting to eccdc dashboard");
-                navigate("/eccdc-manageacc");
+                navigate("/president-list");
                 break;
             default:
               console.warn("Unknown user type, redirecting to home");

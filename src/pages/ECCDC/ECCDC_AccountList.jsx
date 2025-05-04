@@ -1,12 +1,17 @@
 import { useState, useEffect } from "react";
 import Navbar from "../../components/all/Navbar";
 import Sidebar from "../../components/ECCDC/ECCDCSidebar";
+import locationData from "../../components/ECCDC/loc.json";
 import bgImage from "../../assets/bg1.jpg";
 import defaultProfile from "../../assets/default-profile.png";
 import { useNavigate } from 'react-router-dom';
-import { Table, TableBody, TableCell, TableHead, TableRow, Paper, TextField, TableContainer } from "@mui/material";
+import { 
+  Table, TableBody, TableCell, TableHead, TableRow, 
+  Paper, TextField, TableContainer, Box, Autocomplete 
+} from "@mui/material";
+import { Search } from "@mui/icons-material";
 
-// API Service Helper (same as before)
+// API Service Helper
 const apiRequest = async (endpoint, method = 'GET', body = null) => {
   const token = localStorage.getItem('token');
   const headers = {
@@ -41,6 +46,13 @@ const SearchBar = ({ searchTerm, setSearchTerm }) => {
         size="small"
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
+        InputProps={{
+          startAdornment: (
+            <InputAdornment position="start">
+              <Search />
+            </InputAdornment>
+          ),
+        }}
       />
     </div>
   );
@@ -50,9 +62,72 @@ export default function AdminAccountList() {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [admins, setAdmins] = useState([]);
+  const [filteredAdmins, setFilteredAdmins] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  
+  // Location filter states
+  const [locationFilter, setLocationFilter] = useState({
+    province: null,
+    municipality: null,
+    barangay: null
+  });
+  
+  // Location options
+  const [provinces, setProvinces] = useState([]);
+  const [municipalities, setMunicipalities] = useState([]);
+  const [barangays, setBarangays] = useState([]);
 
+  // Extract all provinces from location data
+  useEffect(() => {
+    const allProvinces = [];
+    Object.values(locationData).forEach(region => {
+      Object.keys(region.province_list || {}).forEach(province => {
+        allProvinces.push(province);
+      });
+    });
+    setProvinces([...new Set(allProvinces)].sort());
+  }, []);
+
+  // Update municipalities when province changes
+  useEffect(() => {
+    if (!locationFilter.province) {
+      setMunicipalities([]);
+      setLocationFilter(prev => ({ ...prev, municipality: null, barangay: null }));
+      return;
+    }
+
+    const foundMunicipalities = [];
+    Object.values(locationData).forEach(region => {
+      if (region.province_list?.[locationFilter.province]) {
+        Object.keys(region.province_list[locationFilter.province].municipality_list || {}).forEach(municipality => {
+          foundMunicipalities.push(municipality);
+        });
+      }
+    });
+    setMunicipalities([...new Set(foundMunicipalities)].sort());
+    setLocationFilter(prev => ({ ...prev, municipality: null, barangay: null }));
+  }, [locationFilter.province]);
+
+  // Update barangays when municipality changes
+  useEffect(() => {
+    if (!locationFilter.municipality || !locationFilter.province) {
+      setBarangays([]);
+      setLocationFilter(prev => ({ ...prev, barangay: null }));
+      return;
+    }
+
+    const foundBarangays = [];
+    Object.values(locationData).forEach(region => {
+      if (region.province_list?.[locationFilter.province]?.municipality_list?.[locationFilter.municipality]) {
+        foundBarangays.push(...region.province_list[locationFilter.province].municipality_list[locationFilter.municipality].barangay_list || []);
+      }
+    });
+    setBarangays([...new Set(foundBarangays)].sort());
+    setLocationFilter(prev => ({ ...prev, barangay: null }));
+  }, [locationFilter.municipality]);
+
+  // Fetch admin data
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -60,17 +135,22 @@ export default function AdminAccountList() {
         setError(null);
         
         const response = await apiRequest(`/api/cdc/preslist?${new URLSearchParams({
-          search: searchTerm
+          search: searchTerm,
+          province: locationFilter.province || '',
+          municipality: locationFilter.municipality || '',
+          barangay: locationFilter.barangay || ''
         }).toString()}`);
     
         if (!response.success) {
           throw new Error(response.message || 'Failed to fetch data');
         }
     
-        setAdmins(response.users || []); // Now properly accessing the users array
+        setAdmins(response.users || []);
+        setFilteredAdmins(response.users || []);
       } catch (err) {
         setError(err.message);
         setAdmins([]);
+        setFilteredAdmins([]);
       } finally {
         setLoading(false);
       }
@@ -81,7 +161,7 @@ export default function AdminAccountList() {
     }, 300);
 
     return () => clearTimeout(debounceTimer);
-  }, [searchTerm]);
+  }, [searchTerm, locationFilter]);
 
   const handleViewProfile = (userId) => {
     navigate(`/account-profile/${userId}`);
@@ -111,7 +191,7 @@ export default function AdminAccountList() {
       );
     }
 
-    if (admins.length === 0) {
+    if (filteredAdmins.length === 0) {
       return (
         <div className="text-center py-8 text-gray-500">
           No admin accounts found matching your criteria
@@ -132,11 +212,12 @@ export default function AdminAccountList() {
                   <TableCell align="center">ID</TableCell>
                   <TableCell>Profile</TableCell>
                   <TableCell align="center">Username</TableCell>
+                  <TableCell align="center">CDC Location</TableCell>
                   <TableCell align="center">Action</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {admins.map((admin) => (
+                {filteredAdmins.map((admin) => (
                   <TableRow
                     key={admin.id}
                     hover
@@ -155,6 +236,11 @@ export default function AdminAccountList() {
                       />
                     </TableCell>
                     <TableCell align="center">{admin.username}</TableCell>
+                    <TableCell align="center">
+                      {admin.cdc_location ? 
+                        `${admin.cdc_location.barangay}, ${admin.cdc_location.municipality}, ${admin.cdc_location.province}` : 
+                        'N/A'}
+                    </TableCell>
                     <TableCell align="center">
                       <button
                         className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition"
@@ -186,6 +272,8 @@ export default function AdminAccountList() {
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-2xl font-bold text-gray-800">Account List</h2>
           </div>
+          
+          {/* Location Filters */}
           <div className="flex flex-col space-y-4 mb-6">
             <div className="flex flex-col md:flex-row gap-4">
               <SearchBar 
@@ -193,7 +281,63 @@ export default function AdminAccountList() {
                 setSearchTerm={setSearchTerm}
               />
             </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Province Filter */}
+              <Autocomplete
+                options={provinces}
+                value={locationFilter.province}
+                onChange={(event, newValue) => {
+                  setLocationFilter(prev => ({ ...prev, province: newValue }));
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Filter by Province"
+                    variant="outlined"
+                    size="small"
+                  />
+                )}
+              />
+              
+              {/* Municipality Filter */}
+              <Autocomplete
+                options={municipalities}
+                value={locationFilter.municipality}
+                onChange={(event, newValue) => {
+                  setLocationFilter(prev => ({ ...prev, municipality: newValue }));
+                }}
+                disabled={!locationFilter.province}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Filter by Municipality"
+                    variant="outlined"
+                    size="small"
+                  />
+                )}
+              />
+              
+              {/* Barangay Filter */}
+              <Autocomplete
+                options={barangays}
+                value={locationFilter.barangay}
+                onChange={(event, newValue) => {
+                  setLocationFilter(prev => ({ ...prev, barangay: newValue }));
+                }}
+                disabled={!locationFilter.municipality}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Filter by Barangay"
+                    variant="outlined"
+                    size="small"
+                  />
+                )}
+              />
+            </div>
           </div>
+          
           {renderAdminTable()}
         </div>
       </div>

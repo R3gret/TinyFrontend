@@ -99,7 +99,7 @@ const Login = () => {
             case 'admin': navigate("/admin-dashboard"); break;
             case 'president': navigate("/president-dashboard"); break;
             case 'worker': navigate("/dashboard"); break;
-            case 'parent': navigate("/dashboard"); break;
+            case 'parent': navigate("/parent-dashboard"); break;
             case 'eccdc': navigate("/president-list"); break;
             default: navigate("/");
           }

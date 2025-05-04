@@ -24,6 +24,8 @@ import StudentList from "./pages/President/StudentList";
 import AccList from "./pages/President/AccountList";
 import PresVC from "./pages/President/PresVirtualC";
 
+import ParentVirtualC from "./pages/Parent/ParentVirtualC";
+import ParentDashboard from "./pages/Parent/ParentDashboard";
 
 import AdminDashboard from "./pages/Admin/AdminDasboard";
 import AccountList from "./pages/Admin/AccountList";
@@ -171,7 +173,7 @@ export default function App() {
         <Route
           path="/account-profile/:id"
           element={
-            <ProtectedRoute allowedTypes={["admin", "eccdc", "president"]}>
+            <ProtectedRoute allowedTypes={["admin", "eccdc", "president","parent"]}>
               <AccProfiles />
             </ProtectedRoute>
           }
@@ -263,6 +265,22 @@ export default function App() {
           element={
             <ProtectedRoute allowedTypes={["president"]}>
               <PresVC />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/parent-dashboard"
+          element={
+            <ProtectedRoute allowedTypes={["parent"]}>
+              <ParentDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/parent-announcement"
+          element={
+            <ProtectedRoute allowedTypes={["parent"]}>
+              <ParentVirtualC />
             </ProtectedRoute>
           }
         />

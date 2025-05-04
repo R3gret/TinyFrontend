@@ -123,7 +123,7 @@ export default function AttendancePage() {
         setLoading(true);
         
         const [studentsData, attendanceData] = await Promise.all([
-          apiRequest('/api/students'),
+          apiRequest('/api/att'),
           apiRequest('/api/attendance')
         ]);
 

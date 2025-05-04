@@ -7,6 +7,32 @@ import axios from "axios";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
+// Memoized Input Component to prevent re-renders
+const InputField = React.memo(({ 
+  type, 
+  name, 
+  value, 
+  placeholder, 
+  onChange, 
+  inputRef,
+  autoComplete 
+}) => {
+  console.log(`[Render] InputField ${name} rendering`);
+  return (
+    <input
+      ref={inputRef}
+      type={type}
+      name={name}
+      placeholder={placeholder}
+      value={value}
+      onChange={onChange}
+      className="w-full px-4 py-2 border rounded-lg text-gray-800"
+      required
+      autoComplete={autoComplete}
+    />
+  );
+});
+
 const Login = () => {
   console.log("[Login] Component rendering");
   const navigate = useNavigate();
@@ -17,7 +43,7 @@ const Login = () => {
   // State management
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
-  const [loginData, setLoginData] = useState({
+  const [formData, setFormData] = useState({
     username: '',
     password: ''
   });
@@ -26,59 +52,44 @@ const Login = () => {
   const [resetEmail, setResetEmail] = useState('');
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
-  // Log focus events
+  // Focus management
   useEffect(() => {
     console.log("[Effect] Setting up focus listeners");
-    const usernameInput = usernameRef.current;
-    const passwordInput = passwordRef.current;
-    const emailInput = resetEmailRef.current;
+    const handleFocus = (e) => console.log(`[Focus] ${e.target.name} field received focus`);
+    const handleBlur = (e) => console.log(`[Focus] ${e.target.name} field lost focus`);
 
-    const logFocus = (fieldName) => {
-      console.log(`[Focus] ${fieldName} field received focus`);
-    };
+    const inputs = [
+      { ref: usernameRef, name: 'username' },
+      { ref: passwordRef, name: 'password' },
+      { ref: resetEmailRef, name: 'resetEmail' }
+    ];
 
-    const logBlur = (fieldName) => {
-      console.log(`[Focus] ${fieldName} field lost focus`);
-    };
-
-    if (usernameInput) {
-      usernameInput.addEventListener('focus', () => logFocus('Username'));
-      usernameInput.addEventListener('blur', () => logBlur('Username'));
-    }
-
-    if (passwordInput) {
-      passwordInput.addEventListener('focus', () => logFocus('Password'));
-      passwordInput.addEventListener('blur', () => logBlur('Password'));
-    }
-
-    if (emailInput) {
-      emailInput.addEventListener('focus', () => logFocus('Reset Email'));
-      emailInput.addEventListener('blur', () => logBlur('Reset Email'));
-    }
+    inputs.forEach(({ ref, name }) => {
+      if (ref.current) {
+        ref.current.name = name;
+        ref.current.addEventListener('focus', handleFocus);
+        ref.current.addEventListener('blur', handleBlur);
+      }
+    });
 
     return () => {
-      console.log("[Effect] Cleaning up focus listeners");
-      if (usernameInput) {
-        usernameInput.removeEventListener('focus', () => logFocus('Username'));
-        usernameInput.removeEventListener('blur', () => logBlur('Username'));
-      }
-      if (passwordInput) {
-        passwordInput.removeEventListener('focus', () => logFocus('Password'));
-        passwordInput.removeEventListener('blur', () => logBlur('Password'));
-      }
-      if (emailInput) {
-        emailInput.removeEventListener('focus', () => logFocus('Reset Email'));
-        emailInput.removeEventListener('blur', () => logBlur('Reset Email'));
-      }
+      inputs.forEach(({ ref }) => {
+        if (ref.current) {
+          ref.current.removeEventListener('focus', handleFocus);
+          ref.current.removeEventListener('blur', handleBlur);
+        }
+      });
     };
   }, []);
 
-  // Responsive handling - memoized callback
+  // Responsive handling
   const handleResize = useCallback(() => {
     const mobile = window.innerWidth < 768;
-    console.log(`[Responsive] Screen resize detected. Mobile: ${mobile}`);
-    setIsMobile(mobile);
-  }, []);
+    if (mobile !== isMobile) {
+      console.log(`[Responsive] Screen resize detected. Mobile: ${mobile}`);
+      setIsMobile(mobile);
+    }
+  }, [isMobile]);
 
   useEffect(() => {
     console.log("[Effect] Setting up resize listener");
@@ -89,11 +100,11 @@ const Login = () => {
     };
   }, [handleResize]);
 
-  // Input handlers - stable references
+  // Form handlers
   const handleInputChange = useCallback((e) => {
     const { name, value } = e.target;
     console.log(`[Input] Field ${name} changed to: ${value}`);
-    setLoginData(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => ({ ...prev, [name]: value }));
   }, []);
 
   const handleResetEmailChange = useCallback((e) => {
@@ -101,22 +112,21 @@ const Login = () => {
     setResetEmail(e.target.value);
   }, []);
 
-  // Login handler - stable reference
+  // Authentication handlers
   const handleLogin = useCallback(async (e) => {
     e.preventDefault();
     console.log("[Auth] Login attempt initiated");
     console.log("[Auth] Credentials:", { 
-      username: loginData.username, 
-      password: '••••••' // Don't log actual password
+      username: formData.username, 
+      password: '••••••' 
     });
     
     setError(null);
     
     try {
-      console.log("[API] Sending request to:", `${API_BASE_URL}/api/login`);
       const response = await axios.post(`${API_BASE_URL}/api/login`, {
-        username: loginData.username,
-        password: loginData.password
+        username: formData.username,
+        password: formData.password
       }, {
         headers: {
           'Content-Type': 'application/json'
@@ -124,60 +134,24 @@ const Login = () => {
         withCredentials: true
       });
 
-      console.log("[API] Response received:", {
-        status: response.status,
-        data: response.data
-      });
-
       if (response.data.success) {
-        console.log("[Auth] Login successful");
         localStorage.setItem("token", response.data.token);
         localStorage.setItem("user", JSON.stringify(response.data.user));
         
-        console.log("[Auth] User data:", {
-          id: response.data.user.id,
-          username: response.data.user.username,
-          type: response.data.user.type
-        });
-
         setTimeout(() => {
-          console.log("[Navigation] Redirecting to dashboard");
           switch(response.data.user.type.toLowerCase()) {
-            case 'admin': 
-              navigate("/admin-dashboard");
-              break;
-            case 'president': 
-              navigate("/president-dashboard");
-              break;
-            case 'worker': 
-              navigate("/dashboard");
-              break;
-            case 'parent': 
-              navigate("/dashboard");
-              break;
-            case 'eccdc': 
-              navigate("/president-list");
-              break;
-            default: 
-              navigate("/");
+            case 'admin': navigate("/admin-dashboard"); break;
+            case 'president': navigate("/president-dashboard"); break;
+            case 'worker': navigate("/dashboard"); break;
+            case 'parent': navigate("/dashboard"); break;
+            case 'eccdc': navigate("/president-list"); break;
+            default: navigate("/");
           }
         }, 2000);
       } else {
-        console.warn("[Auth] Login failed:", response.data.message);
         setError(response.data.message || "Invalid username or password.");
       }
     } catch (err) {
-      console.error("[API] Error during login:", {
-        message: err.message,
-        code: err.code,
-        status: err.response?.status,
-        response: err.response?.data,
-        config: {
-          url: err.config?.url,
-          method: err.config?.method
-        }
-      });
-
       const errorMessage = 
         err.response?.data?.message ||
         (err.response?.status === 500 ? "Server error. Please try again later." :
@@ -187,178 +161,33 @@ const Login = () => {
       
       setError(errorMessage);
     }
-  }, [loginData, navigate]);
+  }, [formData, navigate]);
 
-  // Password reset handler - stable reference
   const handlePasswordReset = useCallback(async () => {
     if (!resetEmail) {
-      console.warn("[Auth] Reset attempt with empty email");
       setError("Please enter your email.");
       return;
     }
     
     try {
-      console.log("[API] Sending password reset request for email:", resetEmail);
       await axios.post(`${API_BASE_URL}/api/password-reset`, { email: resetEmail });
-      console.log("[Auth] Password reset email sent successfully");
       setSuccessMessage("Password reset link sent to your email!");
       setShowModal(false);
     } catch (err) {
-      console.error("[API] Password reset error:", {
-        message: err.message,
-        status: err.response?.status,
-        response: err.response?.data
-      });
       setError(err.response?.data?.message || "Failed to send reset email.");
     }
   }, [resetEmail]);
 
-  // Login Form Component - memoized with all dependencies
-  const LoginForm = React.memo(({ 
-    loginData, 
-    showPassword, 
-    error, 
-    handleInputChange, 
-    handleLogin, 
-    setShowPassword, 
-    setShowModal,
-    isMobile
-  }) => {
-    console.log("[Render] LoginForm rendering");
-    return (
-      <div className={`w-full ${isMobile ? 'bg-white/80 backdrop-blur-lg p-6 rounded-xl shadow-lg' : 'bg-white/80 backdrop-blur-lg p-8 rounded-xl shadow-2xl'}`}>
-        <div className="flex justify-center mb-4">
-          <img src={logo} alt="Logo" className={`${isMobile ? 'w-24' : 'w-28'} h-auto`} />
-        </div>
-        <h2 className="text-2xl font-semibold text-center mb-4 text-green-700">Login</h2>
-        <form onSubmit={handleLogin}>
-          <input
-            ref={usernameRef}
-            type="text"
-            name="username"
-            placeholder="Enter your username"
-            value={loginData.username}
-            onChange={handleInputChange}
-            className="w-full px-4 py-2 border rounded-lg mb-4 text-gray-800"
-            required
-            autoComplete="username"
-          />
-          <div className="relative mb-6">
-            <input
-              ref={passwordRef}
-              type={showPassword ? "text" : "password"}
-              name="password"
-              placeholder="Enter your password"
-              value={loginData.password}
-              onChange={handleInputChange}
-              className="w-full px-4 py-2 border rounded-lg text-gray-800"
-              required
-              autoComplete="current-password"
-            />
-            <button
-              type="button"
-              onClick={() => {
-                console.log(`[UI] Password visibility toggled: ${!showPassword}`);
-                setShowPassword(!showPassword);
-              }}
-              className="absolute right-3 top-3 text-gray-600"
-            >
-              {showPassword ? <FiEyeOff size={20} /> : <FiEye size={20} />}
-            </button>
-          </div>
-          <button
-            type="submit"
-            className="w-full bg-green-700 text-white py-2 rounded-lg hover:bg-green-800 transition"
-          >
-            Login
-          </button>
-        </form>
-
-        <div className="text-center mt-4 text-sm text-gray-600">
-          <p>
-            Forgot password?{" "}
-            <span
-              className="text-blue-500 cursor-pointer hover:underline"
-              onClick={() => {
-                console.log("[UI] Password reset modal triggered");
-                setShowModal(true);
-              }}
-            >
-              Request password reset here
-            </span>
-          </p>
-        </div>
-
-        {error && (
-          <p className="text-red-500 text-center mt-2 bg-red-100 border border-red-500 p-2 rounded-lg">
-            {error}
-          </p>
-        )}
-      </div>
-    );
-  });
-
-  // Modal Component - memoized with all dependencies
-  const ResetModal = React.memo(({ 
-    resetEmail, 
-    handleResetEmailChange, 
-    handlePasswordReset, 
-    setShowModal,
-    isMobile
-  }) => {
-    console.log("[Render] ResetModal rendering");
-    return (
-      <div className="fixed inset-0 flex justify-center items-center z-50 p-4" style={{
-        backdropFilter: "blur(10px)",
-        backgroundColor: "rgba(0, 0, 0, 0.4)",
-      }}>
-        <div className={`bg-white p-6 rounded-lg shadow-lg ${isMobile ? 'w-full max-w-sm' : 'w-80'}`}>
-          <div className="flex justify-center mb-4">
-            <img src={logo} alt="Logo" className={`${isMobile ? 'w-20' : 'w-24'} h-auto`} />
-          </div>
-          <h2 className="text-xl font-semibold text-center mb-4">Reset Password</h2>
-          <input
-            ref={resetEmailRef}
-            type="email"
-            placeholder="Enter your email"
-            value={resetEmail}
-            onChange={handleResetEmailChange}
-            className="w-full px-4 py-2 border rounded-lg mb-4"
-            required
-            autoComplete="email"
-          />
-          <div className="flex justify-between gap-2">
-            <button
-              onClick={() => {
-                console.log("[UI] Password reset modal cancelled");
-                setShowModal(false);
-              }}
-              className="bg-gray-300 text-gray-800 py-2 px-4 rounded-lg flex-1"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handlePasswordReset}
-              className="bg-blue-600 text-white py-2 px-4 rounded-lg flex-1"
-            >
-              {isMobile ? 'Reset' : 'Reset Password'}
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  });
-
+  // Main render
   return (
     <>
-      {/* Desktop Layout */}
-      {!isMobile && (
+      {!isMobile ? (
         <div className="relative flex min-h-screen bg-cover bg-center" style={{ backgroundImage: `url(${bgImage})` }}>
           <div className="w-1/2 flex justify-center items-center bg-gradient-to-bl from-green-100 via-white to-green-100 z-10 relative">
             <div className="w-80 h-[500px] z-20">
               <div className="relative w-full h-full">
-                <LoginForm 
-                  loginData={loginData}
+                <LoginFormContent 
+                  formData={formData}
                   showPassword={showPassword}
                   error={error}
                   handleInputChange={handleInputChange}
@@ -366,19 +195,18 @@ const Login = () => {
                   setShowPassword={setShowPassword}
                   setShowModal={setShowModal}
                   isMobile={isMobile}
+                  usernameRef={usernameRef}
+                  passwordRef={passwordRef}
                 />
               </div>
             </div>
           </div>
         </div>
-      )}
-
-      {/* Mobile Layout */}
-      {isMobile && (
+      ) : (
         <div className="relative flex min-h-screen items-center justify-center bg-gradient-to-bl from-green-100 via-white to-green-100 p-4">
           <div className="w-full max-w-md z-20">
-            <LoginForm 
-              loginData={loginData}
+            <LoginFormContent 
+              formData={formData}
               showPassword={showPassword}
               error={error}
               handleInputChange={handleInputChange}
@@ -386,30 +214,155 @@ const Login = () => {
               setShowPassword={setShowPassword}
               setShowModal={setShowModal}
               isMobile={isMobile}
+              usernameRef={usernameRef}
+              passwordRef={passwordRef}
             />
           </div>
         </div>
       )}
 
-      {/* Success Message */}
       {successMessage && (
         <div className="fixed top-4 right-4 bg-green-100 text-green-600 border border-green-300 p-3 rounded-lg shadow-md z-30">
           {successMessage}
         </div>
       )}
 
-      {/* Modal */}
       {showModal && (
-        <ResetModal 
+        <ResetModalContent 
           resetEmail={resetEmail}
           handleResetEmailChange={handleResetEmailChange}
           handlePasswordReset={handlePasswordReset}
           setShowModal={setShowModal}
           isMobile={isMobile}
+          resetEmailRef={resetEmailRef}
         />
       )}
     </>
   );
 };
+
+// Extracted Form Components
+const LoginFormContent = React.memo(({
+  formData,
+  showPassword,
+  error,
+  handleInputChange,
+  handleLogin,
+  setShowPassword,
+  setShowModal,
+  isMobile,
+  usernameRef,
+  passwordRef
+}) => {
+  console.log("[Render] LoginFormContent rendering");
+  return (
+    <div className={`w-full ${isMobile ? 'bg-white/80 backdrop-blur-lg p-6 rounded-xl shadow-lg' : 'bg-white/80 backdrop-blur-lg p-8 rounded-xl shadow-2xl'}`}>
+      <div className="flex justify-center mb-4">
+        <img src={logo} alt="Logo" className={`${isMobile ? 'w-24' : 'w-28'} h-auto`} />
+      </div>
+      <h2 className="text-2xl font-semibold text-center mb-4 text-green-700">Login</h2>
+      <form onSubmit={handleLogin}>
+        <InputField
+          type="text"
+          name="username"
+          value={formData.username}
+          placeholder="Enter your username"
+          onChange={handleInputChange}
+          inputRef={usernameRef}
+          autoComplete="username"
+        />
+        <div className="relative mb-6">
+          <InputField
+            type={showPassword ? "text" : "password"}
+            name="password"
+            value={formData.password}
+            placeholder="Enter your password"
+            onChange={handleInputChange}
+            inputRef={passwordRef}
+            autoComplete="current-password"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-3 top-3 text-gray-600"
+          >
+            {showPassword ? <FiEyeOff size={20} /> : <FiEye size={20} />}
+          </button>
+        </div>
+        <button
+          type="submit"
+          className="w-full bg-green-700 text-white py-2 rounded-lg hover:bg-green-800 transition"
+        >
+          Login
+        </button>
+      </form>
+
+      <div className="text-center mt-4 text-sm text-gray-600">
+        <p>
+          Forgot password?{" "}
+          <span
+            className="text-blue-500 cursor-pointer hover:underline"
+            onClick={() => setShowModal(true)}
+          >
+            Request password reset here
+          </span>
+        </p>
+      </div>
+
+      {error && (
+        <p className="text-red-500 text-center mt-2 bg-red-100 border border-red-500 p-2 rounded-lg">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+});
+
+const ResetModalContent = React.memo(({
+  resetEmail,
+  handleResetEmailChange,
+  handlePasswordReset,
+  setShowModal,
+  isMobile,
+  resetEmailRef
+}) => {
+  console.log("[Render] ResetModalContent rendering");
+  return (
+    <div className="fixed inset-0 flex justify-center items-center z-50 p-4" style={{
+      backdropFilter: "blur(10px)",
+      backgroundColor: "rgba(0, 0, 0, 0.4)",
+    }}>
+      <div className={`bg-white p-6 rounded-lg shadow-lg ${isMobile ? 'w-full max-w-sm' : 'w-80'}`}>
+        <div className="flex justify-center mb-4">
+          <img src={logo} alt="Logo" className={`${isMobile ? 'w-20' : 'w-24'} h-auto`} />
+        </div>
+        <h2 className="text-xl font-semibold text-center mb-4">Reset Password</h2>
+        <InputField
+          type="email"
+          name="resetEmail"
+          value={resetEmail}
+          placeholder="Enter your email"
+          onChange={handleResetEmailChange}
+          inputRef={resetEmailRef}
+          autoComplete="email"
+        />
+        <div className="flex justify-between gap-2">
+          <button
+            onClick={() => setShowModal(false)}
+            className="bg-gray-300 text-gray-800 py-2 px-4 rounded-lg flex-1"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handlePasswordReset}
+            className="bg-blue-600 text-white py-2 px-4 rounded-lg flex-1"
+          >
+            {isMobile ? 'Reset' : 'Reset Password'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+});
 
 export default Login;

@@ -522,41 +522,42 @@ function StreamSection({ setSnackbar }) {
 }
 
 function ClassworksSection({ setSnackbar }) {
-  const [categories, setCategories] = useState([]);
-  const [ageGroups, setAgeGroups] = useState([]);
-  const [selectedAgeGroup, setSelectedAgeGroup] = useState(null);
-  const [selectedCategory, setSelectedCategory] = useState(null);
-  const [files, setFiles] = useState([]);
+  const [classworks, setClassworks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [fileCounts, setFileCounts] = useState({});
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [studentInfo, setStudentInfo] = useState(null);
+  const [categories, setCategories] = useState([]);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
         
-        const [categoriesData, ageGroupsData] = await Promise.all([
-          apiRequest('/api/files/categories'),
-          apiRequest('/api/files/age-groups')
-        ]);
+        // First fetch student info and filtered classworks
+        const classworksData = await apiRequest('/api/parentannouncements/filtered-classworks');
         
-        setCategories(categoriesData.categories || []);
-        setAgeGroups(ageGroupsData.ageGroups || []);
-        
-        if (selectedAgeGroup) {
-          const countsData = await apiRequest(
-            `/api/files/counts?age_group_id=${selectedAgeGroup}`
-          );
-          setFileCounts(countsData.counts || {});
+        if (!classworksData.success) {
+          throw new Error(classworksData.message || 'Failed to fetch classworks');
         }
+
+        // Then fetch categories
+        const categoriesData = await apiRequest('/api/files/categories');
         
+        setClassworks(classworksData.classworks || []);
+        setStudentInfo({
+          age: classworksData.age,
+          ageGroup: classworksData.ageGroup,
+          cdc_id: classworksData.cdc_id
+        });
+        setCategories(categoriesData.categories || []);
+        setError(null);
       } catch (err) {
         console.error('Error fetching data:', err);
         setError(err.message);
         setSnackbar({
           open: true,
-          message: 'Failed to fetch data',
+          message: 'Failed to fetch classworks data',
           severity: 'error'
         });
       } finally {
@@ -565,63 +566,24 @@ function ClassworksSection({ setSnackbar }) {
     };
     
     fetchData();
-  }, [selectedAgeGroup, setSnackbar]);
-
-  useEffect(() => {
-    if (selectedAgeGroup && !selectedCategory) {
-      const fetchFileCounts = async () => {
-        try {
-          const data = await apiRequest(
-            `/api/files/counts?age_group_id=${selectedAgeGroup}`
-          );
-          setFileCounts(data.counts || {});
-        } catch (err) {
-          console.error('Error fetching file counts:', err);
-        }
-      };
-      
-      fetchFileCounts();
-    }
-  }, [selectedAgeGroup, selectedCategory]);
-
-  useEffect(() => {
-    if (selectedCategory && selectedAgeGroup) {
-      const fetchFiles = async () => {
-        try {
-          setLoading(true);
-          const data = await apiRequest(
-            `/api/files?category_id=${selectedCategory}&age_group_id=${selectedAgeGroup}`
-          );
-          setFiles(data.files || []);
-        } catch (err) {
-          console.error('Error fetching files:', err);
-          setError(err.message);
-          setSnackbar({
-            open: true,
-            message: 'Failed to fetch files',
-            severity: 'error'
-          });
-        } finally {
-          setLoading(false);
-        }
-      };
-      
-      fetchFiles();
-    }
-  }, [selectedCategory, selectedAgeGroup, setSnackbar]);
+  }, [setSnackbar]);
 
   const handleDownload = async (fileId, fileName) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/files/download/${fileId}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/files/download/${fileId}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          credentials: 'include'
         }
-      });
-      
+      );
+
       if (!response.ok) {
         throw new Error('Failed to download file');
       }
-      
+
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -631,10 +593,8 @@ function ClassworksSection({ setSnackbar }) {
       a.click();
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
-      
     } catch (err) {
       console.error('Error downloading file:', err);
-      setError(err.message);
       setSnackbar({
         open: true,
         message: 'Failed to download file',
@@ -644,17 +604,14 @@ function ClassworksSection({ setSnackbar }) {
   };
 
   const handleBackClick = () => {
-    if (selectedCategory) {
-      setSelectedCategory(null);
-    } else if (selectedAgeGroup) {
-      setSelectedAgeGroup(null);
-    }
+    setSelectedCategory(null);
   };
 
-  const showBackButton = selectedAgeGroup || selectedCategory;
-  const backButtonLabel = selectedCategory ? "Back to Categories" : "Back to Age Groups";
+  const filteredClassworks = selectedCategory
+    ? classworks.filter(cw => cw.category_id == selectedCategory)
+    : classworks;
 
-  if (loading && !selectedCategory) {
+  if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
         <CircularProgress />
@@ -674,13 +631,13 @@ function ClassworksSection({ setSnackbar }) {
     <div className="text-gray-800">
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          {showBackButton && (
+          {selectedCategory && (
             <Button
               onClick={handleBackClick}
               startIcon={<ArrowBackIcon />}
               sx={{ mr: 2 }}
             >
-              {backButtonLabel}
+              Back to Categories
             </Button>
           )}
           <Typography variant="h5" component="h2">
@@ -688,29 +645,25 @@ function ClassworksSection({ setSnackbar }) {
           </Typography>
         </Box>
 
-        {!selectedCategory && (
-          <FormControl sx={{ minWidth: 200 }} size="small">
-            <InputLabel>Select Age Group</InputLabel>
-            <Select
-              value={selectedAgeGroup || ''}
-              label="Select Age Group"
-              onChange={(e) => setSelectedAgeGroup(e.target.value)}
-            >
-              <MenuItem value="">Select Age</MenuItem>
-              {ageGroups.map((ageGroup) => (
-                <MenuItem key={ageGroup.age_group_id} value={ageGroup.age_group_id}>
-                  {ageGroup.age_range.replace(/\?/g, '-')}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+        {studentInfo && !selectedCategory && (
+          <Typography variant="body2">
+            Showing classworks for: {studentInfo.ageGroup} years
+          </Typography>
         )}
       </Box>
 
-      {!selectedAgeGroup ? (
-        <Box sx={{ textAlign: 'center', py: 4 }}>
-          <Typography color="text.secondary">
-            Please select an age group to view categories
+      {classworks.length === 0 ? (
+        <Box sx={{ 
+          border: 2, 
+          borderColor: 'grey.300', 
+          borderStyle: 'dashed', 
+          borderRadius: 1, 
+          p: 6, 
+          textAlign: 'center',
+          my: 4
+        }}>
+          <Typography variant="h6" gutterBottom>
+            No classworks available for your child's age group
           </Typography>
         </Box>
       ) : selectedCategory ? (
@@ -718,11 +671,11 @@ function ClassworksSection({ setSnackbar }) {
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
             <Typography variant="h6">
               {categories.find(c => c.category_id == selectedCategory)?.category_name} - 
-              {ageGroups.find(a => a.age_group_id == selectedAgeGroup)?.age_range}
+              {studentInfo?.ageGroup} years
             </Typography>
           </Box>
 
-          {files.length === 0 ? (
+          {filteredClassworks.length === 0 ? (
             <Box sx={{ 
               border: 2, 
               borderColor: 'grey.300', 
@@ -733,31 +686,39 @@ function ClassworksSection({ setSnackbar }) {
               my: 4
             }}>
               <Typography variant="h6" gutterBottom>
-                No files available
+                No files available in this category
               </Typography>
             </Box>
           ) : (
             <Grid container spacing={2}>
-              {files.map((file) => (
-                <Grid item xs={12} sm={6} md={4} key={file.file_id}>
+              {filteredClassworks.map((classwork) => (
+                <Grid item xs={12} sm={6} md={4} key={classwork.id}>
                   <Paper elevation={3} sx={{ p: 2, height: '100%' }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                       <Box>
-                        <Typography variant="subtitle1">{file.file_name}</Typography>
+                        <Typography variant="subtitle1">{classwork.title}</Typography>
                         <Typography variant="body2" color="text.secondary">
-                          {file.file_type}
+                          {classwork.description}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
-                          Uploaded: {new Date(file.upload_date).toLocaleDateString()}
+                          Posted: {new Date(classwork.created_at).toLocaleDateString()}
                         </Typography>
                       </Box>
                       <IconButton
-                        onClick={() => handleDownload(file.file_id, file.file_name)}
+                        onClick={() => handleDownload(classwork.file_id, classwork.file_name)}
                         color="primary"
                       >
                         <DownloadIcon />
                       </IconButton>
                     </Box>
+                    {classwork.attachment_path && (
+                      <Box sx={{ mt: 1, display: 'flex', alignItems: 'center' }}>
+                        <InsertDriveFileIcon color="primary" sx={{ mr: 1 }} />
+                        <Typography variant="body2" sx={{ flexGrow: 1 }}>
+                          {classwork.attachment_name}
+                        </Typography>
+                      </Box>
+                    )}
                   </Paper>
                 </Grid>
               ))}
@@ -766,39 +727,42 @@ function ClassworksSection({ setSnackbar }) {
         </Box>
       ) : (
         <Grid container spacing={3}>
-          {categories.map((category) => (
-            <Grid item xs={12} sm={6} md={4} lg={3} key={category.category_id}>
-              <Card 
-                sx={{ 
-                  height: '100%', 
-                  display: 'flex', 
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  p: 3,
-                  textAlign: 'center',
-                  cursor: 'pointer',
-                  '&:hover': {
-                    boxShadow: 4,
-                    bgcolor: 'success.light',
-                    color: 'primary.contrastText',
-                    '& .MuiSvgIcon-root': {
-                      color: 'primary.contrastText'
+          {categories.map((category) => {
+            const count = classworks.filter(cw => cw.category_id == category.category_id).length;
+            return count > 0 ? (
+              <Grid item xs={12} sm={6} md={4} lg={3} key={category.category_id}>
+                <Card 
+                  sx={{ 
+                    height: '100%', 
+                    display: 'flex', 
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    p: 3,
+                    textAlign: 'center',
+                    cursor: 'pointer',
+                    '&:hover': {
+                      boxShadow: 4,
+                      bgcolor: 'success.light',
+                      color: 'primary.contrastText',
+                      '& .MuiSvgIcon-root': {
+                        color: 'primary.contrastText'
+                      }
                     }
-                  }
-                }}
-                onClick={() => setSelectedCategory(category.category_id)}
-              >
-                <FolderIcon sx={{ fontSize: 60, color: 'success.main', mb: 1 }} />
-                <Typography variant="h6" component="h3">
-                  {category.category_name}
-                </Typography>
-                <Typography variant="body2">
-                  {fileCounts[category.category_id] || 0} files
-                </Typography>
-              </Card>
-            </Grid>
-          ))}
+                  }}
+                  onClick={() => setSelectedCategory(category.category_id)}
+                >
+                  <FolderIcon sx={{ fontSize: 60, color: 'success.main', mb: 1 }} />
+                  <Typography variant="h6" component="h3">
+                    {category.category_name}
+                  </Typography>
+                  <Typography variant="body2">
+                    {count} files
+                  </Typography>
+                </Card>
+              </Grid>
+            ) : null;
+          })}
         </Grid>
       )}
     </div>

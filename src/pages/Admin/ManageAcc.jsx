@@ -53,10 +53,43 @@ const CreateUserModal = ({ open, onClose, onUserCreated }) => {
   const [formData, setFormData] = useState({
     username: "",
     password: "",
-    type: "parent" // Locked to parent
+    type: "parent",
+    guardianId: "" // New field for guardian association
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [guardians, setGuardians] = useState([]);
+  const [guardiansLoading, setGuardiansLoading] = useState(false);
+
+  // Fetch guardians when modal opens
+  useEffect(() => {
+    if (open) {
+      const fetchGuardians = async () => {
+        setGuardiansLoading(true);
+        try {
+          const token = localStorage.getItem('token');
+          const response = await fetch(`${API_URL}/api/parent/guardians`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          
+          if (!response.ok) {
+            throw new Error('Failed to fetch guardians');
+          }
+          
+          const data = await response.json();
+          setGuardians(data);
+        } catch (err) {
+          console.error("Failed to fetch guardians:", err);
+          setError("Failed to load guardians list");
+        } finally {
+          setGuardiansLoading(false);
+        }
+      };
+      fetchGuardians();
+    }
+  }, [open]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -75,13 +108,28 @@ const CreateUserModal = ({ open, onClose, onUserCreated }) => {
     setLoading(true);
 
     try {
-      const data = await apiRequest('/api/parent', 'POST', {
-        username: formData.username,
-        password: formData.password
+      const response = await fetch(`${API_URL}/api/parent`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          username: formData.username,
+          password: formData.password,
+          guardianId: formData.guardianId || null
+        })
       });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create parent account');
+      }
+
+      const data = await response.json();
       onUserCreated(data.id);
       onClose();
-      setFormData({ username: "", password: "", type: "parent" });
+      setFormData({ username: "", password: "", type: "parent", guardianId: "" });
     } catch (err) {
       setError(err.message);
     } finally {
@@ -145,6 +193,30 @@ const CreateUserModal = ({ open, onClose, onUserCreated }) => {
             }}
           />
 
+          <FormControl fullWidth sx={{ mb: 2 }}>
+            <InputLabel id="guardian-select-label">Associate Existing Guardian (Optional)</InputLabel>
+            <Select
+              labelId="guardian-select-label"
+              id="guardian-select"
+              value={formData.guardianId}
+              label="Associate Existing Guardian (Optional)"
+              onChange={(e) => setFormData({...formData, guardianId: e.target.value})}
+              disabled={guardiansLoading}
+            >
+              <MenuItem value="">
+                <em>None - Create new guardian</em>
+              </MenuItem>
+              {guardians.map((guardian) => (
+                <MenuItem key={guardian.guardian_id} value={guardian.guardian_id}>
+                  {guardian.guardian_name} ({guardian.relationship} of {guardian.student_name})
+                </MenuItem>
+              ))}
+            </Select>
+            <Typography variant="caption" sx={{ mt: 1, display: 'block' }}>
+              You can associate this account with an existing guardian record
+            </Typography>
+          </FormControl>
+
           <Typography variant="body2" sx={{ mb: 3, fontStyle: 'italic' }}>
             This account will be created as a Parent type and linked to your CDC center.
           </Typography>
@@ -156,7 +228,7 @@ const CreateUserModal = ({ open, onClose, onUserCreated }) => {
             <Button
               type="submit"
               variant="contained"
-              disabled={loading}
+              disabled={loading || guardiansLoading}
             >
               {loading ? <CircularProgress size={24} /> : "Create Parent Account"}
             </Button>

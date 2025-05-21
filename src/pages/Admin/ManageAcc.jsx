@@ -65,28 +65,38 @@ const CreateUserModal = ({ open, onClose, onUserCreated }) => {
   useEffect(() => {
     if (open) {
       const fetchGuardians = async () => {
-        setGuardiansLoading(true);
-        try {
-          const token = localStorage.getItem('token');
-          const response = await fetch(`${API_URL}/api/parent/guardians`, {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          });
-          
-          if (!response.ok) {
-            throw new Error('Failed to fetch guardians');
-          }
-          
-          const data = await response.json();
-          setGuardians(data);
-        } catch (err) {
-          console.error("Failed to fetch guardians:", err);
-          setError("Failed to load guardians list");
-        } finally {
-          setGuardiansLoading(false);
-        }
-      };
+  setGuardiansLoading(true);
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error('No authentication token found');
+    }
+
+    console.log('Fetching guardians...');
+    const response = await fetch(`${API_URL}/api/parent/guardians`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    console.log('Response status:', response.status);
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Error response data:', errorData);
+      throw new Error(errorData.error || 'Failed to fetch guardians');
+    }
+    
+    const data = await response.json();
+    console.log('Received guardians data:', data);
+    setGuardians(data);
+  } catch (err) {
+    console.error("Failed to fetch guardians:", err);
+    setError(`Failed to load guardians list: ${err.message}`);
+  } finally {
+    setGuardiansLoading(false);
+  }
+};
       fetchGuardians();
     }
   }, [open]);

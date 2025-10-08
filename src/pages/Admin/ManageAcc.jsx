@@ -575,7 +575,7 @@ const ManageAcc = () => {
 
       <Sidebar />
 
-      <div className="flex flex-col flex-grow pl-16 pt-16 bg-white/50 overflow-auto w-full">
+      <div className="flex flex-col flex-grow pl-64 pt-16 bg-white/50 overflow-auto w-full">
         <Navbar />
 
         <div className="p-6 mb-1">

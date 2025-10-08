@@ -264,7 +264,7 @@ export default function WeeklyPlans() {
   return (
     <div className="w-screen h-screen flex overflow-hidden">
       <Sidebar />
-      <div className="flex flex-col flex-grow pl-16 pt-16 bg-gray-100 overflow-auto">
+      <div className="flex flex-col flex-grow pl-64 pt-16 bg-gray-100 overflow-auto">
         <Navbar />
         <div className="p-10 flex gap-8">
           {/* Calendar Section */}

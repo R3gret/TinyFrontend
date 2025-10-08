@@ -200,7 +200,7 @@ export default function AdminParentList() {
       
       <Sidebar />
       
-      <div className="flex flex-col flex-grow pl-16 pt-16 bg-white/50 overflow-auto">
+      <div className="flex flex-col flex-grow pl-64 pt-16 bg-white/50 overflow-auto">
         <Navbar />
         
         <div className="p-6">

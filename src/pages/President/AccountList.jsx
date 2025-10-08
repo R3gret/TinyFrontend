@@ -182,7 +182,7 @@ export default function PresidentAdminList() {
     <div className="w-screen h-screen flex overflow-hidden">
       <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${bgImage})`, zIndex: -1 }}></div>
       <Sidebar />
-      <div className="flex flex-col flex-grow pl-16 pt-16 bg-white/50 overflow-auto">
+      <div className="flex flex-col flex-grow pl-64 pt-16 bg-white/50 overflow-auto">
         <Navbar />
         <div className="p-6">
           <div className="flex justify-between items-center mb-4">

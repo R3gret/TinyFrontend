@@ -28,7 +28,25 @@ const Navbar = () => {
 
   // Define the link based on the user type
   const dashboardLink =
-    userType === "admin" ? "/admin-dashboard" : userType === "worker" ? "/dashboard" : null;
+    userType === "admin"
+      ? "/admin-dashboard"
+      : userType === "worker"
+      ? "/dashboard"
+      : null;
+
+  const profileLink =
+    userType === "admin"
+      ? "/admin-profile"
+      : userType === "worker"
+      ? "/profile"
+      : userType === "president"
+      ? "/president-profile"
+      : userType === "parent"
+      ? "/parent-profile"
+      : userType === "eccdc"
+      ? "/eccdc-profile"
+      : "/";
+
   const userProfilePic = "/default-profile.png"; // static fallback
 
   return (
@@ -44,7 +62,9 @@ const Navbar = () => {
           <div className="flex items-center space-x-6">
             {userType && (
               <>
-                <img src={userProfilePic} alt="Profile" className="w-10 h-10 rounded-full object-cover" />
+                <Link to={profileLink}>
+                  <img src={userProfilePic} alt="Profile" className="w-10 h-10 rounded-full object-cover cursor-pointer" />
+                </Link>
                 <button
                   onClick={handleLogout}
                   className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition duration-300"

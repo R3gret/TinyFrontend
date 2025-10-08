@@ -158,7 +158,7 @@ export default function Registration() {
       style={{ backgroundImage: `url(${bgImage})` }}
     >
       <Sidebar />
-      <div className="flex flex-col flex-grow pl-16 pt-16 bg-white/50">
+      <div className="flex flex-col flex-grow pl-64 pt-16 bg-white/50">
         <Navbar />
         <h1 className="text-2xl font-bold text-gray-800 mt-11 mb-4 ml-10">Child Registration</h1>
 

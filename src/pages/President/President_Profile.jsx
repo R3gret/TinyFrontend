@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../../components/all/Navbar";
 import Sidebar from "../../components/President/PresidentSidebar";
-import bgImage from "../../assets/bg1.jpg";
 import { FaPhone, FaEnvelope, FaMapMarkerAlt, FaLink, FaUserEdit, FaKey } from "react-icons/fa";
 import { ImSpinner8 } from "react-icons/im";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
@@ -587,18 +586,10 @@ export default function Profile() {
   );
 
   return (
-    <div className="w-screen h-screen flex overflow-hidden">
-      {/* Background Image */}
-      <div
-        className="absolute inset-0 bg-cover bg-center"
-        style={{ backgroundImage: `url(${bgImage})`, zIndex: -1 }}
-      ></div>
-
+    <div className="min-h-screen bg-white">
       <Sidebar />
-
-      <div className="flex flex-col flex-grow pl-16 pt-16 bg-white/50 overflow-auto">
+      <div className="ml-64">
         <Navbar />
-
         <div className="flex justify-center items-start min-h-screen mt-8">
           <div
             className={`bg-white shadow-lg rounded-lg p-8 w-full max-w-5xl min-h-[450px] transform transition-all duration-500 ${

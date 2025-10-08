@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import Navbar from "../../components/all/Navbar";
 import Sidebar from "../../components/President/PresidentSidebar";
-import bgImage from "../../assets/bg1.jpg";
 import {
   Table,
   TableBody,
@@ -103,10 +102,9 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="w-screen h-screen flex overflow-hidden">
-      <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${bgImage})`, zIndex: -1 }}></div>
+    <div className="min-h-screen bg-white">
       <Sidebar />
-      <div className="flex flex-col flex-grow pl-16 pt-16 bg-white/50 overflow-auto">
+      <div className="ml-64">
         <Navbar />
         <div className="p-10">
           <div className="flex space-x-4 border-b-2 pb-2">

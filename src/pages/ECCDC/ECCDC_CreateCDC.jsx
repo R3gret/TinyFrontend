@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import Navbar from "../../components/all/Navbar";
 import Sidebar from "../../components/ECCDC/ECCDCSidebar";
 import locationData from "../../components/ECCDC/loc.json";
-import bgImage from "../../assets/bg1.jpg";
 import {
   TextField,
   Button,
@@ -22,7 +21,8 @@ import {
   TableRow,
   Paper,
   InputAdornment,
-  IconButton
+  IconButton,
+  TablePagination
 } from "@mui/material";
 import { Search, Add, Save, Close, Edit, Delete } from "@mui/icons-material";
 
@@ -80,6 +80,8 @@ const CDCPage = () => {
   const [provinces, setProvinces] = useState([]);
   const [municipalities, setMunicipalities] = useState([]);
   const [barangays, setBarangays] = useState([]);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
 
   // Load regions from imported JSON
   useEffect(() => {
@@ -291,23 +293,17 @@ const CDCPage = () => {
   };
 
   const buttonStyle = {
-    width: '150px',
-    height: '48px',
-    fontSize: '0.95rem',
+    width: '120px',
+    height: '40px',
+    fontSize: '0.75rem',
     whiteSpace: 'nowrap'
   };
 
   return (
-    <div className="w-screen h-screen flex overflow-hidden relative">
-      {/* Background Image */}
-      <div
-        className="absolute inset-0 bg-cover bg-center"
-        style={{ backgroundImage: `url(${bgImage})`, zIndex: -1 }}
-      ></div>
-
+    <div className="min-h-screen bg-white">
       <Sidebar />
 
-      <div className="flex flex-col flex-grow pl-16 pt-16 bg-white/50 overflow-auto w-full">
+      <div className="ml-64 pt-16">
         <Navbar />
 
         <div className="p-6">
@@ -399,61 +395,71 @@ const CDCPage = () => {
             </Box>
           </Box>
 
-          <TableContainer component={Paper} sx={{ maxHeight: 'calc(100vh - 250px)' }}>
-            <Table stickyHeader>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Select</TableCell>
-                  <TableCell>ID</TableCell>
-                  <TableCell>Name</TableCell>
-                  <TableCell>Region</TableCell>
-                  <TableCell>Province</TableCell>
-                  <TableCell>Municipality</TableCell>
-                  <TableCell>Barangay</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {loading ? (
+          <Paper>
+            <TableContainer>
+              <Table stickyHeader>
+                <TableHead>
                   <TableRow>
-                    <TableCell colSpan={7} align="center">
-                      <CircularProgress />
-                    </TableCell>
+                    <TableCell>Select</TableCell>
+                    <TableCell>Name</TableCell>
+                    <TableCell>Region</TableCell>
+                    <TableCell>Province</TableCell>
+                    <TableCell>Municipality</TableCell>
+                    <TableCell>Barangay</TableCell>
                   </TableRow>
-                ) : cdcList.length > 0 ? (
-                  cdcList.map((cdc) => (
-                    <TableRow 
-                      key={cdc.cdcId}
-                      onClick={() => setSelectedCDC(cdc)}
-                      selected={selectedCDC?.cdcId === cdc.cdcId}
-                      hover
-                      sx={{ cursor: 'pointer' }}
-                    >
-                      <TableCell>
-                        <input
-                          type="radio"
-                          name="selectedCDC"
-                          checked={selectedCDC?.cdcId === cdc.cdcId}
-                          onChange={() => setSelectedCDC(cdc)}
-                        />
+                </TableHead>
+                <TableBody>
+                  {loading ? (
+                    <TableRow>
+                      <TableCell colSpan={6} align="center">
+                        <CircularProgress />
                       </TableCell>
-                      <TableCell>{cdc.cdcId}</TableCell>
-                      <TableCell>{cdc.name}</TableCell>
-                      <TableCell>{cdc.region}</TableCell>
-                      <TableCell>{cdc.province}</TableCell>
-                      <TableCell>{cdc.municipality}</TableCell>
-                      <TableCell>{cdc.barangay}</TableCell>
                     </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={7} align="center">
-                      No CDC records found
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
+                  ) : cdcList.length > 0 ? (
+                    cdcList
+                    .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                    .map((cdc) => (
+                      <TableRow 
+                        key={cdc.cdcId}
+                        onClick={() => setSelectedCDC(cdc)}
+                        selected={selectedCDC?.cdcId === cdc.cdcId}
+                        hover
+                        sx={{ cursor: 'pointer' }}
+                      >
+                        <TableCell>
+                          <input
+                            type="radio"
+                            name="selectedCDC"
+                            checked={selectedCDC?.cdcId === cdc.cdcId}
+                            onChange={() => setSelectedCDC(cdc)}
+                          />
+                        </TableCell>
+                        <TableCell>{cdc.name}</TableCell>
+                        <TableCell>{cdc.region}</TableCell>
+                        <TableCell>{cdc.province}</TableCell>
+                        <TableCell>{cdc.municipality}</TableCell>
+                        <TableCell>{cdc.barangay}</TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={6} align="center">
+                        No CDC records found
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+            <TablePagination
+              rowsPerPageOptions={[]}
+              component="div"
+              count={cdcList.length}
+              rowsPerPage={rowsPerPage}
+              page={page}
+              onPageChange={(event, newPage) => setPage(newPage)}
+            />
+          </Paper>
 
           {/* Create CDC Modal */}
           <Modal open={openModal} onClose={() => setOpenModal(false)}>

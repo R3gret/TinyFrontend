@@ -129,7 +129,7 @@ const AccProfiles = () => {
       <Sidebar />
       <Navbar />
       
-      <div className="flex flex-col flex-grow pl-16 pt-16">
+      <div className="flex flex-col flex-grow pl-64 pt-16">
         <button 
           onClick={() => navigate('/president-list')}
           className="absolute bottom-10 right-10 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg shadow-md transition z-10"

@@ -476,7 +476,7 @@ const TableComponent = () => {
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Navbar />
-        <div className="flex-1 overflow-y-auto p-4 ml-16 mt-16">
+        <div className="flex-1 overflow-y-auto p-4 ml-64 mt-16">
           <div className="max-w-6xl mx-auto">
             {/* Search Section */}
             <Box component={Paper} elevation={3} sx={{ p: 2, mb: 3, display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center' }}>

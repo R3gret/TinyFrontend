@@ -12,7 +12,7 @@ export default function Home() {
       <Sidebar />
 
       {/* Main Content - Adjusted for Sidebar & Navbar */}
-      <div className="flex flex-col flex-grow pl-16 pt-16 bg-white/50"> {/* Semi-transparent white background */}
+      <div className="flex flex-col flex-grow pl-64 pt-16 bg-white/50"> {/* Semi-transparent white background */}
         <Navbar />
         <div className="p-10 flex flex-col justify-center items-start h-full">
           {/* Large Welcome Text */}

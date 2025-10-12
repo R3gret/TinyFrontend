@@ -9,7 +9,7 @@ import Attendance from "./pages/CDC/Attendance";
 import WeeklyPlans from "./pages/CDC/WeeklyPlans";
 import ChildrenProgress from "./pages/CDC/ChildrenProgress";
 import Login from "./pages/CDC/Login";
-import RegistrationForm from './pages/CDC/RegistrationForm';
+import RegistrationForm from "./pages/CDC/RegistrationForm";
 import CDCProfileForm from "./pages/CDC/CDProfile";
 import DomainForm from "./pages/CDC/Domain";
 
@@ -25,6 +25,7 @@ import PresVC from "./pages/President/PresVirtualC";
 import PresWeeklyPlans from "./pages/President/WeeklyPlans";
 import PresidentProfile from "./pages/President/President_Profile";
 import WorkerProfile from "./pages/President/WorkerProfile";
+import InstructionalMaterials from "./pages/President/InstructionalMaterials";
 
 import ParentVirtualC from "./pages/Parent/ParentVirtualC";
 import ParentDashboard from "./pages/Parent/ParentDashboard";
@@ -256,18 +257,10 @@ export default function App() {
           }
         />
         <Route
-          path="/president-profile"
+          path="/instructional-materials"
           element={
             <ProtectedRoute allowedTypes={["president"]}>
-              <PresidentProfile />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/worker-profile/:userId"
-          element={
-            <ProtectedRoute allowedTypes={["president"]}>
-              <WorkerProfile />
+              <InstructionalMaterials />
             </ProtectedRoute>
           }
         />

@@ -4,7 +4,8 @@ import {
   Users,
   Megaphone,
   School,
-  Calendar
+  Calendar,
+  BookOpen
 } from "lucide-react";
 
 export default function PresidentSidebar() {
@@ -23,6 +24,7 @@ export default function PresidentSidebar() {
         />
         <SidebarItem to="/pres-virtualc" icon={Megaphone} label="Announcements" />
         <SidebarItem to="/pres-weekly-plans" icon={Calendar} label="Weekly Plans" />
+        <SidebarItem to="/instructional-materials" icon={BookOpen} label="Instructional Materials" />
       </div>
     </aside>
   );

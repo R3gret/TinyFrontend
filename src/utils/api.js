@@ -56,3 +56,36 @@ export const apiRequest = async (endpoint, method = 'GET', body = null, isFormDa
     throw error;
   }
 };
+
+export const apiDownload = async (endpoint) => {
+  const token = localStorage.getItem('token');
+  const headers = {
+    ...(token && { 'Authorization': `Bearer ${token}` })
+  };
+
+  const config = {
+    method: 'GET',
+    headers,
+  };
+
+  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+  
+  try {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+  
+    if (response.status === 401) {
+      handleUnauthorized();
+      return new Promise(() => {}); 
+    }
+  
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Request failed');
+    }
+  
+    return response.blob();
+  } catch (error) {
+    console.error('API Request Error:', error);
+    throw error;
+  }
+};

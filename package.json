@@ -27,6 +27,7 @@
     "express": "^5.1.0",
     "firebase": "^11.5.0",
     "firebase-admin": "^13.2.0",
+    "jwt-decode": "^4.0.0",
     "lucide-react": "^0.484.0",
     "mysql2": "^3.14.1",
     "react": "^19.0.0",

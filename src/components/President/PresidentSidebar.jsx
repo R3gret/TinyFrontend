@@ -2,9 +2,9 @@ import { Link } from "react-router-dom";
 import {
   LayoutDashboard,
   Users,
-  UserCircle,
-  Video,
-  School
+  Megaphone,
+  School,
+  Calendar
 } from "lucide-react";
 
 export default function PresidentSidebar() {
@@ -19,19 +19,10 @@ export default function PresidentSidebar() {
         <SidebarItem 
           to="/pres-account-list" 
           icon={Users} 
-          label="Admin Accounts" 
+          label="CD Workers List" 
         />
-        <SidebarItem 
-          to="/pres-student-list" 
-          icon={School} 
-          label="Students" 
-        />
-        <SidebarItem to="/pres-virtualc" icon={Video} label="Virtual Classroom" />
-        <SidebarItem 
-          to="/president-profile" 
-          icon={UserCircle} 
-          label="My Profile" 
-        />
+        <SidebarItem to="/pres-virtualc" icon={Megaphone} label="Announcements" />
+        <SidebarItem to="/pres-weekly-plans" icon={Calendar} label="Weekly Plans" />
       </div>
     </aside>
   );

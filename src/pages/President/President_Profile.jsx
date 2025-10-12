@@ -6,32 +6,7 @@ import { FaPhone, FaEnvelope, FaMapMarkerAlt, FaLink, FaUserEdit, FaKey } from "
 import { ImSpinner8 } from "react-icons/im";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 
-// API Service Helper
-const apiRequest = async (endpoint, method = 'GET', body = null) => {
-  const token = localStorage.getItem('token');
-  const user = JSON.parse(localStorage.getItem('user'));
-  const headers = {
-    'Content-Type': 'application/json',
-    ...(token && { 'Authorization': `Bearer ${token}` })
-  };
-
-  const config = {
-    method,
-    headers,
-    credentials: 'include',
-    ...(body && { body: JSON.stringify(body) })
-  };
-
-  const API_BASE_URL = import.meta.env.VITE_API_URL;
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
-  
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.message || 'Request failed');
-  }
-
-  return response.json();
-};
+import { apiRequest } from "../../utils/api";
 
 // Custom hook for form state management
 const useFormState = (initialState) => {
@@ -588,8 +563,10 @@ export default function Profile() {
   return (
     <div className="min-h-screen bg-white">
       <Sidebar />
-      <div className="ml-64">
+
+      <div className="ml-64 pt-16">
         <Navbar />
+
         <div className="flex justify-center items-start min-h-screen mt-8">
           <div
             className={`bg-white shadow-lg rounded-lg p-8 w-full max-w-5xl min-h-[450px] transform transition-all duration-500 ${

@@ -20,33 +20,9 @@ import {
   Alert,
 } from "@mui/material";
 import { Eye, EyeOff, Edit, Trash2 } from "lucide-react";
+import { apiRequest } from "../../utils/api";
 
 const API_URL = import.meta.env.VITE_API_URL;
-
-// API Service Helper
-const apiRequest = async (endpoint, method = 'GET', body = null) => {
-  const token = localStorage.getItem('token');
-  const headers = {
-    'Content-Type': 'application/json',
-    ...(token && { 'Authorization': `Bearer ${token}` })
-  };
-
-  const config = {
-    method,
-    headers,
-    credentials: 'include',
-    ...(body && { body: JSON.stringify(body) })
-  };
-
-  const response = await fetch(`${API_URL}${endpoint}`, config);
-  
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.message || 'Request failed');
-  }
-
-  return response.json();
-};
 
 const CreateUserModal = ({ open, onClose, onUserCreated }) => {
   const [showPassword, setShowPassword] = useState(false);

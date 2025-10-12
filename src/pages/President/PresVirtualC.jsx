@@ -37,65 +37,14 @@ import {
   CloudUpload as CloudUploadIcon
 } from "@mui/icons-material";
 
-// API Service Helper
-const apiRequest = async (endpoint, method = 'GET', body = null, isFormData = false) => {
-  const token = localStorage.getItem('token');
-  const headers = {};
-  
-  // Always include Authorization if token exists
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-
-  // Only set Content-Type for non-FormData requests
-  if (!isFormData && method !== 'GET') {
-    headers['Content-Type'] = 'application/json';
-  }
-
-  const config = {
-    method,
-    headers,
-    credentials: 'include', // Only needed if using cookies
-    ...(body && { body: isFormData ? body : JSON.stringify(body) })
-  };
-
-  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-  
-  try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
-    
-    // Handle 401 specifically to trigger token refresh/logout
-    if (response.status === 401) {
-      localStorage.removeItem('token');
-      window.location.href = '/login';
-      throw new Error('Session expired. Please login again.');
-    }
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `Request failed with status ${response.status}`);
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('API request error:', {
-      endpoint,
-      method,
-      error: error.message
-    });
-    throw error;
-  }
-};
+import { apiRequest } from "../../utils/api";
 
 export default function Dashboard() {
-  const [activeTab, setActiveTab] = useState("Stream");
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
     severity: "success"
   });
-
-  const tabs = ["Stream", "Classworks"];
 
   const handleSnackbarClose = () => {
     setSnackbar({...snackbar, open: false});
@@ -104,26 +53,11 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-white">
       <Sidebar />
-      <div className="ml-64">
+      <div className="ml-64 pt-16">
         <Navbar />
-        <div className="p-10">
-          <div className="flex space-x-4 border-b-2 pb-2">
-            {tabs.map((tab) => (
-              <button
-                key={tab}
-                className={`px-6 py-2 font-semibold transition-all duration-300 rounded-t-lg ${
-                  activeTab === tab ? "bg-green-800 text-white" : "bg-gray-300 text-gray-700 hover:bg-green-600 hover:text-white"
-                }`}
-                onClick={() => setActiveTab(tab)}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
-
-          <div className="mt-6 p-6 bg-white shadow-lg rounded-lg">
-            {activeTab === "Stream" && <StreamSection setSnackbar={setSnackbar} />}
-            {activeTab === "Classworks" && <ClassworksSection setSnackbar={setSnackbar} />}
+        <div className="p-6">
+          <div className="p-6 bg-white shadow-lg rounded-lg">
+            <StreamSection setSnackbar={setSnackbar} />
           </div>
         </div>
       </div>
@@ -280,7 +214,7 @@ function StreamSection({ setSnackbar }) {
           <Button
             onClick={() => setIsCreatingAnnouncement(true)}
             variant="contained"
-            color="primary"
+            sx={{ bgcolor: 'success.main', '&:hover': { bgcolor: 'success.dark' } }}
             startIcon={<span>+</span>}
           >
             New Announcement
@@ -319,7 +253,7 @@ function StreamSection({ setSnackbar }) {
           <Button
             onClick={() => setIsCreatingAnnouncement(true)}
             variant="contained"
-            color="primary"
+            sx={{ bgcolor: 'success.main', '&:hover': { bgcolor: 'success.dark' } }}
           >
             Create Announcement
           </Button>
@@ -331,15 +265,15 @@ function StreamSection({ setSnackbar }) {
           {filteredAnnouncements.map((announcement) => (
             <Paper key={announcement.id} elevation={3} sx={{ p: 0 }}>
               <Box sx={{ 
-                bgcolor: 'primary.main', 
+                bgcolor: 'success.main', 
                 color: 'white', 
                 p: 3,
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center'
               }}>
-                <Box>
-                  <Typography variant="h6">{announcement.title}</Typography>
+                <Box sx={{ overflow: 'hidden', pr: 2 }}>
+                  <Typography variant="h6" sx={{ wordBreak: 'break-word' }}>{announcement.title}</Typography>
                   <Typography variant="body2" sx={{ opacity: 0.8 }}>
                     Posted by {announcement.author} on {new Date(announcement.createdAt).toLocaleDateString()}
                   </Typography>
@@ -351,7 +285,7 @@ function StreamSection({ setSnackbar }) {
                 />
               </Box>
               <Box sx={{ p: 3 }}>
-                <Typography sx={{ whiteSpace: 'pre-line', mb: 2 }}>
+                <Typography sx={{ whiteSpace: 'pre-line', mb: 2, wordBreak: 'break-word' }}>
                   {announcement.message}
                 </Typography>
                 
@@ -364,12 +298,12 @@ function StreamSection({ setSnackbar }) {
                     alignItems: 'center'
                   }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
-                      <InsertDriveFileIcon color="primary" sx={{ mr: 1 }} />
+                      <InsertDriveFileIcon color="success" sx={{ mr: 1 }} />
                       <Typography>{announcement.attachmentName}</Typography>
                     </Box>
                     <Button
                       onClick={() => handleDownload(announcement.attachmentUrl, announcement.attachmentName)}
-                      color="primary"
+                      color="success"
                       size="small"
                       startIcon={<DownloadIcon />}
                     >
@@ -498,497 +432,5 @@ function StreamSection({ setSnackbar }) {
   );
 }
 
-function ClassworksSection({ setSnackbar }) {
-  const [categories, setCategories] = useState([]);
-  const [ageGroups, setAgeGroups] = useState([]);
-  const [selectedAgeGroup, setSelectedAgeGroup] = useState(null);
-  const [selectedCategory, setSelectedCategory] = useState(null);
-  const [files, setFiles] = useState([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [newFile, setNewFile] = useState({
-    category_id: '',
-    age_group_id: '',
-    file_name: '',
-    file_type: '',
-    file_data: null
-  });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [fileCounts, setFileCounts] = useState({});
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        
-        const [categoriesData, ageGroupsData] = await Promise.all([
-          apiRequest('/api/files/categories'),
-          apiRequest('/api/files/age-groups')
-        ]);
-        
-        setCategories(categoriesData.categories || []);
-        setAgeGroups(ageGroupsData.ageGroups || []);
-        
-        if (selectedAgeGroup) {
-          const countsData = await apiRequest(
-            `/api/files/counts?age_group_id=${selectedAgeGroup}`
-          );
-          setFileCounts(countsData.counts || {});
-        }
-        
-      } catch (err) {
-        console.error('Error fetching data:', err);
-        setError(err.message);
-        setSnackbar({
-          open: true,
-          message: 'Failed to fetch data',
-          severity: 'error'
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchData();
-  }, [selectedAgeGroup, setSnackbar]);
-
-  useEffect(() => {
-    if (selectedAgeGroup && !selectedCategory) {
-      const fetchFileCounts = async () => {
-        try {
-          const data = await apiRequest(
-            `/api/files/counts?age_group_id=${selectedAgeGroup}`
-          );
-          setFileCounts(data.counts || {});
-        } catch (err) {
-          console.error('Error fetching file counts:', err);
-        }
-      };
-      
-      fetchFileCounts();
-    }
-  }, [selectedAgeGroup, selectedCategory]);
-
-  useEffect(() => {
-    if (selectedCategory && selectedAgeGroup) {
-      const fetchFiles = async () => {
-        try {
-          setLoading(true);
-          const data = await apiRequest(
-            `/api/files?category_id=${selectedCategory}&age_group_id=${selectedAgeGroup}`
-          );
-          setFiles(data.files || []);
-        } catch (err) {
-          console.error('Error fetching files:', err);
-          setError(err.message);
-          setSnackbar({
-            open: true,
-            message: 'Failed to fetch files',
-            severity: 'error'
-          });
-        } finally {
-          setLoading(false);
-        }
-      };
-      
-      fetchFiles();
-    }
-  }, [selectedCategory, selectedAgeGroup, setSnackbar]);
-
-  const handleFileUpload = async (e) => {
-    e.preventDefault();
-    try {
-      setLoading(true);
-      
-      const formData = new FormData();
-      formData.append('category_id', newFile.category_id);
-      formData.append('age_group_id', newFile.age_group_id);
-      formData.append('file_name', newFile.file_name);
-      formData.append('file_data', newFile.file_data);
-      
-      await apiRequest('/api/files', 'POST', formData, true);
-      
-      if (selectedCategory && selectedAgeGroup) {
-        const filesData = await apiRequest(
-          `/api/files?category_id=${selectedCategory}&age_group_id=${selectedAgeGroup}`
-        );
-        setFiles(filesData.files || []);
-      }
-      
-      if (selectedAgeGroup) {
-        const countsData = await apiRequest(
-          `/api/files/counts?age_group_id=${selectedAgeGroup}`
-        );
-        setFileCounts(countsData.counts || {});
-      }
-      
-      setIsModalOpen(false);
-      setNewFile({
-        category_id: '',
-        age_group_id: '',
-        file_name: '',
-        file_type: '',
-        file_data: null
-      });
-      
-      setSnackbar({
-        open: true,
-        message: 'File uploaded successfully',
-        severity: 'success'
-      });
-    } catch (err) {
-      console.error('Error uploading file:', err);
-      setError(err.message);
-      setSnackbar({
-        open: true,
-        message: err.message || 'Failed to upload file',
-        severity: 'error'
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setNewFile({
-        ...newFile,
-        file_name: file.name,
-        file_type: file.type,
-        file_data: file
-      });
-    }
-  };
-
-  const handleDownload = async (fileId, fileName) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/files/download/${fileId}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to download file');
-      }
-      
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = fileName || 'download';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-      
-    } catch (err) {
-      console.error('Error downloading file:', err);
-      setError(err.message);
-      setSnackbar({
-        open: true,
-        message: 'Failed to download file',
-        severity: 'error'
-      });
-    }
-  };
-
-  const handleBackClick = () => {
-    if (selectedCategory) {
-      setSelectedCategory(null);
-    } else if (selectedAgeGroup) {
-      setSelectedAgeGroup(null);
-    }
-  };
-
-  const showBackButton = selectedAgeGroup || selectedCategory;
-  const backButtonLabel = selectedCategory ? "Back to Categories" : "Back to Age Groups";
-
-  if (loading && !selectedCategory) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
-
-  if (error) {
-    return (
-      <Alert severity="error" sx={{ mb: 2 }}>
-        {error}
-      </Alert>
-    );
-  }
-
-  return (
-    <div className="text-gray-800">
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          {showBackButton && (
-            <Button
-              onClick={handleBackClick}
-              startIcon={<ArrowBackIcon />}
-              sx={{ mr: 2 }}
-            >
-              {backButtonLabel}
-            </Button>
-          )}
-          <Typography variant="h5" component="h2">
-            Developmental Domains
-          </Typography>
-        </Box>
-
-        {!selectedCategory && (
-          <FormControl sx={{ minWidth: 200 }} size="small">
-            <InputLabel>Select Age Group</InputLabel>
-            <Select
-              value={selectedAgeGroup || ''}
-              label="Select Age Group"
-              onChange={(e) => setSelectedAgeGroup(e.target.value)}
-            >
-              <MenuItem value="">Select Age</MenuItem>
-              {ageGroups.map((ageGroup) => (
-                <MenuItem key={ageGroup.age_group_id} value={ageGroup.age_group_id}>
-                  {ageGroup.age_range.replace(/\?/g, '-')}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        )}
-      </Box>
-
-      {!selectedAgeGroup ? (
-        <Box sx={{ textAlign: 'center', py: 4 }}>
-          <Typography color="text.secondary">
-            Please select an age group to view categories
-          </Typography>
-        </Box>
-      ) : selectedCategory ? (
-        <Box>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-            <Typography variant="h6">
-              {categories.find(c => c.category_id == selectedCategory)?.category_name} - 
-              {ageGroups.find(a => a.age_group_id == selectedAgeGroup)?.age_range}
-            </Typography>
-            <Button
-              variant="contained"
-              startIcon={<UploadIcon />}
-              onClick={() => setIsModalOpen(true)}
-            >
-              Upload File
-            </Button>
-          </Box>
-
-          {files.length === 0 ? (
-            <Box sx={{ 
-              border: 2, 
-              borderColor: 'grey.300', 
-              borderStyle: 'dashed', 
-              borderRadius: 1, 
-              p: 6, 
-              textAlign: 'center',
-              my: 4
-            }}>
-              <Typography variant="h6" gutterBottom>
-                No files uploaded
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Get started by uploading a new file.
-              </Typography>
-              <Button
-                onClick={() => setIsModalOpen(true)}
-                variant="contained"
-                startIcon={<UploadIcon />}
-              >
-                Upload File
-              </Button>
-            </Box>
-          ) : (
-            <Grid container spacing={2}>
-              {files.map((file) => (
-                <Grid item xs={12} sm={6} md={4} key={file.file_id}>
-                  <Paper elevation={3} sx={{ p: 2, height: '100%' }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <Box>
-                        <Typography variant="subtitle1">{file.file_name}</Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          {file.file_type}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          Uploaded: {new Date(file.upload_date).toLocaleDateString()}
-                        </Typography>
-                      </Box>
-                      <IconButton
-                        onClick={() => handleDownload(file.file_id, file.file_name)}
-                        color="primary"
-                      >
-                        <DownloadIcon />
-                      </IconButton>
-                    </Box>
-                  </Paper>
-                </Grid>
-              ))}
-            </Grid>
-          )}
-        </Box>
-      ) : (
-        <Grid container spacing={3}>
-          {categories.map((category) => (
-            <Grid item xs={12} sm={6} md={4} lg={3} key={category.category_id}>
-              <Card 
-                sx={{ 
-                  height: '100%', 
-                  display: 'flex', 
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  p: 3,
-                  textAlign: 'center',
-                  cursor: 'pointer',
-                  '&:hover': {
-                    boxShadow: 4,
-                    bgcolor: 'success.light',
-                    color: 'primary.contrastText',
-                    '& .MuiSvgIcon-root': {
-                      color: 'primary.contrastText'
-                    }
-                  }
-                }}
-                onClick={() => setSelectedCategory(category.category_id)}
-              >
-                <FolderIcon sx={{ fontSize: 60, color: 'success.main', mb: 1 }} />
-                <Typography variant="h6" component="h3">
-                  {category.category_name}
-                </Typography>
-                <Typography variant="body2">
-                  {fileCounts[category.category_id] || 0} files
-                </Typography>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
-      )}
-
-      <Modal open={isModalOpen} onClose={() => setIsModalOpen(false)}>
-        <Box sx={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          width: '90%',
-          maxWidth: 600,
-          bgcolor: 'background.paper',
-          boxShadow: 24,
-          p: 4,
-          borderRadius: 2
-        }}>
-          <Typography variant="h6" component="h2" sx={{ mb: 3 }}>
-            Upload New File
-          </Typography>
-          
-          <form onSubmit={handleFileUpload}>
-            <FormControl fullWidth sx={{ mb: 2 }}>
-              <InputLabel>Category</InputLabel>
-              <Select
-                value={newFile.category_id}
-                label="Category"
-                onChange={(e) => setNewFile({...newFile, category_id: e.target.value})}
-                required
-              >
-                <MenuItem value="">Select Category</MenuItem>
-                {categories.map((category) => (
-                  <MenuItem key={category.category_id} value={category.category_id}>
-                    {category.category_name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            
-            <FormControl fullWidth sx={{ mb: 2 }}>
-              <InputLabel>Age Group</InputLabel>
-              <Select
-                value={newFile.age_group_id}
-                label="Age Group"
-                onChange={(e) => setNewFile({...newFile, age_group_id: e.target.value})}
-                required
-              >
-                <MenuItem value="">Select Age Group</MenuItem>
-                {ageGroups.map((ageGroup) => (
-                  <MenuItem key={ageGroup.age_group_id} value={ageGroup.age_group_id}>
-                    {ageGroup.age_range}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            
-            <TextField
-              label="File Name"
-              fullWidth
-              required
-              value={newFile.file_name}
-              onChange={(e) => setNewFile({...newFile, file_name: e.target.value})}
-              sx={{ mb: 2 }}
-            />
-            
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="body2" sx={{ mb: 1 }}>Select File</Typography>
-              <Box sx={{
-                border: 2,
-                borderColor: 'grey.300',
-                borderStyle: 'dashed',
-                borderRadius: 1,
-                p: 3,
-                textAlign: 'center'
-              }}>
-                {newFile.file_name ? (
-                  <Typography>{newFile.file_name}</Typography>
-                ) : (
-                  <>
-                    <CloudUploadIcon sx={{ fontSize: 40, color: 'grey.500', mb: 1 }} />
-                    <Typography variant="body2" sx={{ mb: 1 }}>
-                      Drag and drop file here or click to browse
-                    </Typography>
-                    <Button
-                      variant="outlined"
-                      component="label"
-                    >
-                      Select File
-                      <input
-                        type="file"
-                        hidden
-                        onChange={handleFileChange}
-                        required
-                      />
-                    </Button>
-                    <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-                      PDF, DOCX, XLSX up to 10MB
-                    </Typography>
-                  </>
-                )}
-              </Box>
-            </Box>
-            
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
-              <Button
-                onClick={() => setIsModalOpen(false)}
-                variant="outlined"
-                disabled={loading}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                variant="contained"
-                disabled={loading}
-              >
-                {loading ? <CircularProgress size={24} /> : 'Upload File'}
-              </Button>
-            </Box>
-          </form>
-        </Box>
-      </Modal>
-    </div>
-  );
-}
 

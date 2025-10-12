@@ -90,20 +90,23 @@ const Login = () => {
         withCredentials: true
       });
 
+      // Clear ALL data from the previous session before setting new data
+      localStorage.clear();
+
       if (response.data.success) {
         localStorage.setItem("token", response.data.token);
         localStorage.setItem("user", JSON.stringify(response.data.user));
         
-        setTimeout(() => {
-          switch(response.data.user.type.toLowerCase()) {
-            case 'admin': navigate("/admin-dashboard"); break;
-            case 'president': navigate("/president-dashboard"); break;
-            case 'worker': navigate("/dashboard"); break;
-            case 'parent': navigate("/parent-dashboard"); break;
-            case 'eccdc': navigate("/president-list"); break;
-            default: navigate("/");
-          }
-        }, 2000);
+        let path;
+        switch(response.data.user.type.toLowerCase()) {
+          case 'admin': path = "/admin-dashboard"; break;
+          case 'president': path = "/president-dashboard"; break;
+          case 'worker': path = "/dashboard"; break;
+          case 'parent': path = "/parent-dashboard"; break;
+          case 'eccdc': path = "/president-list"; break;
+          default: path = "/";
+        }
+        window.location.href = path;
       } else {
         setError(response.data.message || "Invalid username or password.");
       }

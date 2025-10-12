@@ -4,30 +4,7 @@ import Sidebar from "../../components/CDC/Sidebar";
 import bgImage from "../../assets/bg1.jpg";
 import { CheckSquare, CalendarPlus, X, Filter } from "lucide-react";
 
-// API Service Helper
-const apiRequest = async (endpoint, method = 'GET', body = null) => {
-  const token = localStorage.getItem('token');
-  const headers = {
-    'Content-Type': 'application/json',
-    ...(token && { 'Authorization': `Bearer ${token}` })
-  };
-
-  const config = {
-    method,
-    headers,
-    ...(body && { body: JSON.stringify(body) })
-  };
-
-  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
-  
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.message || 'Request failed');
-  }
-
-  return response.json();
-};
+import { apiRequest } from "../../utils/api";
 
 // Snackbar Component
 const Snackbar = ({ message, type, onClose }) => {

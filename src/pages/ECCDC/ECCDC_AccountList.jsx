@@ -24,30 +24,7 @@ import { Search } from "@mui/icons-material";
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
 
-// API Service Helper
-const apiRequest = async (endpoint, method = 'GET', body = null) => {
-  const token = localStorage.getItem('token');
-  const headers = {
-    'Content-Type': 'application/json',
-    ...(token && { 'Authorization': `Bearer ${token}` })
-  };
-
-  const config = {
-    method,
-    headers,
-    ...(body && { body: JSON.stringify(body) })
-  };
-
-  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
-  
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.message || 'Request failed');
-  }
-
-  return response.json();
-};
+import { apiRequest } from "../../utils/api";
 
 const CreateUserModal = ({ open, onClose, onUserCreated }) => {
   const [showPassword, setShowPassword] = useState(false);
@@ -57,41 +34,11 @@ const CreateUserModal = ({ open, onClose, onUserCreated }) => {
     type: "president"
   });
   const [loading, setLoading] = useState(false);
-  const [cdcLoading, setCdcLoading] = useState(false);
   const [error, setError] = useState("");
-  const [cdcOptions, setCdcOptions] = useState([]);
-  const [selectedCdc, setSelectedCdc] = useState(null);
-
-  const [searchTimeout, setSearchTimeout] = useState(null);
-
-  const fetchCdcOptions = async (query = "") => {
-    if (searchTimeout) clearTimeout(searchTimeout);
-    
-    setSearchTimeout(setTimeout(async () => {
-      if (!query.trim()) {
-        setCdcOptions([]);
-        return;
-      }
-      
-      setCdcLoading(true);
-      try {
-        const response = await apiRequest(`/api/cdc/search/name?name=${encodeURIComponent(query)}`);
-        const cdcs = response.data || response;
-        setCdcOptions(Array.isArray(cdcs) ? cdcs : []);
-      } catch (err) {
-        console.error("Error fetching CDC options:", err);
-        setCdcOptions([]);
-      } finally {
-        setCdcLoading(false);
-      }
-    }, 300));
-  };
 
   useEffect(() => {
     if (open) {
-      fetchCdcOptions();
       setFormData({ username: "", password: "", type: "president" });
-      setSelectedCdc(null);
       setError("");
     }
   }, [open]);
@@ -110,35 +57,19 @@ const CreateUserModal = ({ open, onClose, onUserCreated }) => {
       return;
     }
   
-    if (!selectedCdc) {
-      setError("Please select a CDC for the president");
-      return;
-    }
-  
     setLoading(true);
   
     try {
-      if (!selectedCdc.cdc_id) {
-        throw new Error('Invalid CDC selection - missing ID');
-      }
-  
-      const verifyResponse = await apiRequest(`/api/cdc/${selectedCdc.cdc_id}`);
-  
-      if (!verifyResponse.success || !verifyResponse.data) {
-        throw new Error('Selected CDC not found in database');
-      }
-  
-      const userData = await apiRequest('/api/cdc/presidents', 'POST', {
+      const userData = await apiRequest('/api/presidents', 'POST', {
         username: formData.username,
-        password: formData.password,
-        cdc_id: selectedCdc.cdc_id
+        password: formData.password
       });
       
       if (!userData.success) {
         throw new Error(userData.message || 'Failed to create president');
       }
       
-      onUserCreated(userData.userId);
+      onUserCreated(userData.data.id);
       onClose();
       
     } catch (err) {
@@ -214,36 +145,6 @@ const CreateUserModal = ({ open, onClose, onUserCreated }) => {
             helperText="All new users are created as Presidents"
           />
 
-          <Autocomplete
-            options={cdcOptions}
-            getOptionLabel={(option) => option.name}
-            value={selectedCdc}
-            onChange={(_, newValue) => setSelectedCdc(newValue)}
-            onInputChange={(_, newInputValue, reason) => {
-              if (reason === 'input') {
-                fetchCdcOptions(newInputValue);
-              }
-            }}
-            loading={cdcLoading}
-            filterOptions={(options) => options}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                label="Search CDC by Name"
-                required
-                helperText="Type at least 1 character to search"
-                InputProps={{
-                  ...params.InputProps,
-                  endAdornment: (
-                    <>
-                      {cdcLoading ? <CircularProgress size={20} /> : null}
-                      {params.InputProps.endAdornment}
-                    </>
-                  ),
-                }}
-              />
-            )}
-          />
           <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2, mt: 3 }}>
             <Button onClick={onClose} disabled={loading} variant="outlined">
               Cancel
@@ -251,7 +152,7 @@ const CreateUserModal = ({ open, onClose, onUserCreated }) => {
             <Button
               type="submit"
               variant="contained"
-              disabled={loading || !selectedCdc}
+              disabled={loading}
             >
               {loading ? <CircularProgress size={24} /> : "Create President"}
             </Button>

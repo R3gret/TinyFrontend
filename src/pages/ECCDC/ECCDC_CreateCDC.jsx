@@ -25,33 +25,9 @@ import {
   TablePagination
 } from "@mui/material";
 import { Search, Add, Save, Close, Edit, Delete } from "@mui/icons-material";
+import { apiRequest } from "../../utils/api";
 
 const API_URL = import.meta.env.VITE_API_URL;
-
-// API Service Helper
-const apiRequest = async (endpoint, method = 'GET', body = null) => {
-  const token = localStorage.getItem('token');
-  const headers = {
-    'Content-Type': 'application/json',
-    ...(token && { 'Authorization': `Bearer ${token}` })
-  };
-
-  const config = {
-    method,
-    headers,
-    credentials: 'include',
-    ...(body && { body: JSON.stringify(body) })
-  };
-
-  const response = await fetch(`${API_URL}${endpoint}`, config);
-  
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.message || 'Request failed');
-  }
-
-  return response.json();
-};
 
 const CDCPage = () => {
   const [cdcList, setCdcList] = useState([]);
@@ -74,12 +50,14 @@ const CDCPage = () => {
     region: "",
     province: "",
     municipality: "",
-    barangay: ""
+    barangay: "",
+    president_id: null
   });
   const [regions, setRegions] = useState([]);
   const [provinces, setProvinces] = useState([]);
   const [municipalities, setMunicipalities] = useState([]);
   const [barangays, setBarangays] = useState([]);
+  const [presidents, setPresidents] = useState([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
 
@@ -91,6 +69,25 @@ const CDCPage = () => {
     }));
     setRegions(regionsArray);
   }, []);
+
+  useEffect(() => {
+    const fetchPresidents = async () => {
+      if (openModal) {
+        try {
+          const data = await apiRequest('/api/cdc/admins');
+          setPresidents(data.data);
+        } catch (err) {
+          console.error('Failed to fetch presidents:', err);
+          setSnackbar({
+            open: true,
+            message: "Failed to load presidents list",
+            severity: "error"
+          });
+        }
+      }
+    };
+    fetchPresidents();
+  }, [openModal]);
 
   // Fetch CDCs with API helper
   const fetchCDCs = async () => {
@@ -564,6 +561,20 @@ const CDCPage = () => {
                       )}
                     />
                   </Box>
+
+                  {/* President Selection */}
+                  <Autocomplete
+                    options={presidents}
+                    getOptionLabel={(option) => option.username}
+                    onChange={(e, value) => setFormData({...formData, president_id: value ? value.id : null})}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="Assign President (Optional)"
+                        variant="outlined"
+                      />
+                    )}
+                  />
 
                   {/* Buttons */}
                   <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 2 }}>

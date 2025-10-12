@@ -18,11 +18,13 @@ import ECCDCCreateAcc from "./pages/ECCDC/ECCDC_CreateCDC";
 import ECCDCProfile from "./pages/ECCDC/ECCDC_Profile"
 import ECCDCAccount from "./pages/ECCDC/ECCDC_AccountList";
 
-import PresProfile from "./pages/President/President_Profile";
+
 import PresDashboard from "./pages/President/PresidentDashboard";
-import StudentList from "./pages/President/StudentList";
 import AccList from "./pages/President/AccountList";
 import PresVC from "./pages/President/PresVirtualC";
+import PresWeeklyPlans from "./pages/President/WeeklyPlans";
+import PresidentProfile from "./pages/President/President_Profile";
+import WorkerProfile from "./pages/President/WorkerProfile";
 
 import ParentVirtualC from "./pages/Parent/ParentVirtualC";
 import ParentDashboard from "./pages/Parent/ParentDashboard";
@@ -196,15 +198,6 @@ export default function App() {
           }
         />
 
-
-        <Route
-          path="/eccdc-manageacc"
-          element={
-            <ProtectedRoute allowedTypes={["eccdc"]}>
-              <ECCDCManageAcc />
-            </ProtectedRoute>
-          }
-        />
         <Route
           path="/eccdc-createacc"
           element={
@@ -229,14 +222,7 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/president-profile"
-          element={
-            <ProtectedRoute allowedTypes={["president"]}>
-              <PresProfile />
-            </ProtectedRoute>
-          }
-        />
+
         <Route
           path="/president-dashboard"
           element={
@@ -254,14 +240,6 @@ export default function App() {
           }
         />
         <Route
-          path="/pres-student-list"
-          element={
-            <ProtectedRoute allowedTypes={["president"]}>
-              <StudentList />
-            </ProtectedRoute>
-          }
-        />
-        <Route
           path="/pres-virtualc"
           element={
             <ProtectedRoute allowedTypes={["president"]}>
@@ -269,6 +247,32 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/pres-weekly-plans"
+          element={
+            <ProtectedRoute allowedTypes={["president"]}>
+              <PresWeeklyPlans />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/president-profile"
+          element={
+            <ProtectedRoute allowedTypes={["president"]}>
+              <PresidentProfile />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/worker-profile/:userId"
+          element={
+            <ProtectedRoute allowedTypes={["president"]}>
+              <WorkerProfile />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Parent Routes */}
         <Route
           path="/parent-dashboard"
           element={

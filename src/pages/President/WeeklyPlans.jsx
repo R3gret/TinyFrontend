@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import Navbar from "../../components/all/Navbar";
-import Sidebar from "../../components/CDC/Sidebar";
+import Sidebar from "../../components/President/PresidentSidebar";
 import { ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
 
 import { apiRequest } from "../../utils/api";
@@ -10,6 +10,7 @@ export default function WeeklyPlans() {
   const [showModal, setShowModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState("");
   const [activities, setActivities] = useState([]);
+  const [scheduledDates, setScheduledDates] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const [newActivity, setNewActivity] = useState({
@@ -18,15 +19,24 @@ export default function WeeklyPlans() {
     end_time: "",
   });
 
-  // Add this useEffect to clear state when the month changes
+  // Fetch scheduled dates for the current month
   useEffect(() => {
-    setSelectedDate("");
-    setActivities([]);
+    const fetchScheduledDates = async () => {
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth() + 1;
+      
+      try {
+        const data = await apiRequest(`/api/get_scheduled_dates?year=${year}&month=${month}`);
+        if (data.success) {
+          setScheduledDates(data.dates);
+        }
+      } catch (err) {
+        console.error("Failed to load scheduled dates:", err);
+      }
+    };
+    
+    fetchScheduledDates();
   }, [currentDate]);
-
-  // The endpoint for fetching all scheduled dates in a month has been removed
-  // as it's not present in the new backend code. The green dot indicator
-  // on the calendar will no longer be displayed.
 
   const handleMonthChange = (e) => {
     const [year, month] = e.target.value.split("-");
@@ -118,23 +128,24 @@ export default function WeeklyPlans() {
   };
 
   const handleDateClick = async (dateStr) => {
-    setSelectedDate(dateStr);
-    setIsLoading(true);
-    // setActivities([]); // Moved this to prevent race conditions
-    try {
-      const data = await apiRequest(`/api/weekly-plans?date=${dateStr}`);
-      if (data.success) {
-        setActivities(data.activities || []);
-      } else {
-        setActivities([]); // Clear activities if fetch is not successful
-        console.warn(data.message || "No activities found for selected date.");
-      }
-    } catch (err) {
-      console.error("Failed to load activities:", err);
-      alert("Error fetching activities.");
+    if (selectedDate === dateStr) {
+      setSelectedDate(null);
       setActivities([]);
-    } finally {
-      setIsLoading(false);
+    } else {
+      setSelectedDate(dateStr);
+  
+      try {
+        const data = await apiRequest(`/api/get_activities?date=${dateStr}`);
+        if (data.success) {
+          setActivities(data.activities);
+        } else {
+          setActivities([]);
+          alert("No activities found for selected date.");
+        }
+      } catch (err) {
+        console.error("Failed to load activities:", err);
+        alert("Error fetching activities.");
+      }
     }
   };
 
@@ -152,20 +163,26 @@ export default function WeeklyPlans() {
         end_time: activity.end_time
       }));
   
-      // The new backend endpoint for creating/updating plans
-      const response = await apiRequest('/api/weekly-plans', 'POST', {
+      const response = await apiRequest('/api/add_activity', 'POST', {
         date: selectedDate,
         activities: activitiesToSend
       });
   
       if (response.success) {
-        alert(response.message || `Success! Activities saved.`);
+        alert(`Success! ${response.insertedCount || activities.length} activities added.`);
+        setActivities([]);
         setShowModal(false);
   
-        // Refresh activities for the selected date
-        handleDateClick(selectedDate);
+        // Refresh activities and scheduled dates
+        const [activitiesData, scheduledData] = await Promise.all([
+          apiRequest(`/api/get_activities?date=${selectedDate}`),
+          apiRequest(`/api/get_scheduled_dates?year=${currentDate.getFullYear()}&month=${currentDate.getMonth() + 1}`)
+        ]);
+  
+        if (activitiesData.success) setActivities(activitiesData.activities);
+        if (scheduledData.success) setScheduledDates(scheduledData.dates);
       } else {
-        alert(response.error || "Failed to finalize schedule");
+        alert(response.message || "Failed to finalize schedule");
       }
     } catch (err) {
       console.error("Finalization error:", err);
@@ -196,11 +213,16 @@ export default function WeeklyPlans() {
         } else {
           const dateStr = formatDate(dayCounter);
           const isSelected = selectedDate === dateStr;
-          
-          // The hasSchedule logic is removed as the endpoint is no longer available
+          const hasSchedule = scheduledDates.includes(dateStr);
+  
           let cellClassName = "p-2 text-center font-medium cursor-pointer transition rounded-lg";
           if (isSelected) {
             cellClassName += " bg-blue-500 text-white";
+            if (hasSchedule) {
+              cellClassName += " border-2 border-green-300";
+            }
+          } else if (hasSchedule) {
+            cellClassName += " border-2 border-green-500 hover:bg-blue-200";
           } else {
             cellClassName += " hover:bg-blue-200";
           }
@@ -212,6 +234,9 @@ export default function WeeklyPlans() {
               className={cellClassName}
             >
               {dayCounter}
+              {hasSchedule && (
+                <div className="w-2 h-2 bg-green-500 rounded-full mx-auto mt-1"></div>
+              )}
             </td>
           );
           dayCounter++;
@@ -226,7 +251,7 @@ export default function WeeklyPlans() {
   return (
     <div className="w-screen h-screen flex overflow-hidden">
       <Sidebar />
-      <div className="flex flex-col flex-grow pl-64 pt-16 bg-gray-100 overflow-auto">
+      <div className="flex flex-col flex-grow pl-64 pt-16 bg-white overflow-auto">
         <Navbar />
         <div className="p-10 flex gap-8">
           {/* Calendar Section */}
@@ -286,27 +311,16 @@ export default function WeeklyPlans() {
 
             {/* Activities Section */}
             <div className="bg-white p-6 rounded-lg shadow-md">
-              <h2 className="text-xl font-bold text-gray-700 mb-4">
-                Activities for {selectedDate ? new Date(selectedDate + 'T00:00:00').toLocaleDateString() : '...'}
-              </h2>
+              <h2 className="text-xl font-bold text-gray-700 mb-4">Activities</h2>
               <div className="space-y-4">
-                {isLoading ? (
-                  <div className="text-center text-gray-500">Loading...</div>
-                ) : activities.length > 0 ? (
-                  activities.map((activity, index) => (
-                    <div key={index} className="flex items-center space-x-3 p-2 rounded-md bg-gray-50">
-                      <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                      <span className="text-sm font-medium flex-1">{activity.activity_name}</span>
-                      <span className="text-xs text-gray-600">
-                        {activity.start_time} - {activity.end_time}
-                      </span>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center text-gray-500">
-                    {selectedDate ? "No activities scheduled for this day." : "Select a date to see activities."}
+                {activities.map((activity, index) => (
+                  <div key={index} className="flex items-center space-x-3">
+                    <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                    <span className="text-sm font-medium">{activity.activity_name}</span>
+                    <span className="text-sm text-gray-600">Start: {activity.start_time}</span>
+                    <span className="text-sm text-gray-600">End: {activity.end_time}</span>
                   </div>
-                )}
+                ))}
               </div>
             </div>
           </div>

@@ -19,31 +19,7 @@ import {
   Button
 } from "@mui/material";
 
-// API Service Helper
-const apiRequest = async (endpoint, method = 'GET', body = null) => {
-  const token = localStorage.getItem('token');
-  const headers = {
-    'Content-Type': 'application/json',
-    ...(token && { 'Authorization': `Bearer ${token}` })
-  };
-
-  const config = {
-    method,
-    headers,
-    credentials: 'include',
-    ...(body && { body: JSON.stringify(body) })
-  };
-
-  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
-  
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.message || 'Request failed');
-  }
-
-  return response.json();
-};
+import { apiRequest } from "../../utils/api";
 
 const SearchBar = ({ searchTerm, setSearchTerm }) => {
   return (

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import Navbar from "../../components/all/Navbar";
 import Sidebar from "../../components/CDC/Sidebar";
 import bgImage from "../../assets/bg1.jpg";
-import { CheckSquare, CalendarPlus, X, Filter } from "lucide-react";
+import { CheckSquare, CalendarPlus, X, Filter, ChevronLeft, ChevronRight } from "lucide-react";
 
 import { apiRequest } from "../../utils/api";
 
@@ -40,10 +40,7 @@ export default function AttendancePage() {
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState("");
   const [attendance, setAttendance] = useState({});
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [selectedMonth, setSelectedMonth] = useState("");
-  const [startDay, setStartDay] = useState("");
-  const [endDay, setEndDay] = useState("");
+  const [currentDate, setCurrentDate] = useState(new Date()); // New state for week navigation
   const [filteredDates, setFilteredDates] = useState([]);
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -64,25 +61,27 @@ export default function AttendancePage() {
     Late: "bg-yellow-500 text-black"
   };
 
-  // Set default dates (yesterday, today, tomorrow) when component mounts
+  // Function to get week dates
+  const getWeekDates = (date) => {
+    const weekDates = [];
+    const startOfWeek = new Date(date);
+    const day = startOfWeek.getDay();
+    const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1); // Adjust for Sunday
+    startOfWeek.setDate(diff);
+
+    for (let i = 0; i < 7; i++) {
+      const weekDay = new Date(startOfWeek);
+      weekDay.setDate(startOfWeek.getDate() + i);
+      weekDates.push(weekDay.toISOString().split('T')[0]);
+    }
+    return weekDates;
+  };
+
+  // Set dates for the current week
   useEffect(() => {
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-  
-    const formatDate = (date) => {
-      const offset = date.getTimezoneOffset() * 60000;
-      return new Date(date.getTime() - offset).toISOString().split('T')[0];
-    };
-    
-    setFilteredDates([
-      formatDate(yesterday),
-      formatDate(today),
-      formatDate(tomorrow)
-    ]);
-  }, []);
+    setFilteredDates(getWeekDates(currentDate));
+  }, [currentDate]);
+
 
   // Set current date when modal opens
   useEffect(() => {
@@ -93,44 +92,54 @@ export default function AttendancePage() {
     }
   }, [showModal]);
 
+  const fetchAttendance = async () => {
+    try {
+      const attendanceData = await apiRequest('/api/attendance');
+      const attendanceMap = {};
+      attendanceData.attendance.forEach(record => {
+        if (!attendanceMap[record.student_id]) {
+          attendanceMap[record.student_id] = {};
+        }
+        const formattedDate = record.formatted_date || record.attendance_date.split('T')[0];
+        attendanceMap[record.student_id][formattedDate] = record.status;
+      });
+      setAttendance(attendanceMap);
+    } catch (err) {
+      console.error('Error fetching attendance:', err);
+      setSnackbar({
+        show: true,
+        message: 'Failed to fetch attendance data.',
+        type: 'error'
+      });
+    }
+  };
+
   // Fetch students and attendance from backend
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchStudents = async () => {
       try {
         setLoading(true);
-        
-        const [studentsData, attendanceData] = await Promise.all([
-          apiRequest('/api/att'),
-          apiRequest('/api/attendance')
-        ]);
-
+        const studentsData = await apiRequest('/api/students');
         const formattedStudents = studentsData.students.map(student => ({
           id: student.student_id,
           name: `${student.first_name}${student.middle_name ? ` ${student.middle_name}` : ''} ${student.last_name}`,
           ...student
         }));
         
-        const attendanceMap = {};
-        attendanceData.attendance.forEach(record => {
-          if (!attendanceMap[record.student_id]) {
-            attendanceMap[record.student_id] = {};
-          }
-          const formattedDate = record.formatted_date || record.attendance_date.split('T')[0];
-          attendanceMap[record.student_id][formattedDate] = record.status;
-        });
-        
+        // Sort students alphabetically by name
+        formattedStudents.sort((a, b) => a.name.localeCompare(b.name));
+
         setStudents(formattedStudents);
-        setAttendance(attendanceMap);
-        setLoading(false);
-        
       } catch (err) {
-        console.error('Error fetching data:', err);
+        console.error('Error fetching students:', err);
         setError(err.message);
+      } finally {
         setLoading(false);
       }
     };
 
-    fetchData();
+    fetchStudents();
+    fetchAttendance();
   }, []);
 
   const handleStatusChange = (studentId, date, status) => {
@@ -157,10 +166,11 @@ export default function AttendancePage() {
         throw new Error(response.message || 'Failed to save attendance');
       }
   
+      await fetchAttendance(); // Refetch attendance data
       setShowModal(false);
       setSnackbar({
         show: true,
-        message: "Attendance saved successfully!",
+        message: response.message || "Attendance saved successfully!",
         type: "success"
       });
     } catch (err) {
@@ -176,26 +186,22 @@ export default function AttendancePage() {
     }
   };
 
-  // Fixed applyFilter function to use selected year correctly
-  const applyFilter = () => {
-    if (!selectedMonth || !startDay || !endDay) return;
+  const handlePreviousWeek = () => {
+    const newDate = new Date(currentDate);
+    newDate.setDate(currentDate.getDate() - 7);
+    setCurrentDate(newDate);
+  };
 
-    const month = parseInt(selectedMonth);
-    const start = parseInt(startDay);
-    const end = parseInt(endDay);
-    const year = parseInt(selectedYear);
-    
-    // Get last day of the month
-    const lastDay = new Date(year, month, 0).getDate();
-    
-    const newDates = [];
-    for (let day = Math.max(1, start); day <= Math.min(lastDay, end); day++) {
-      const formattedDay = day < 10 ? `0${day}` : day;
-      const formattedMonth = month < 10 ? `0${month}` : month;
-      newDates.push(`${year}-${formattedMonth}-${formattedDay}`);
-    }
-    
-    setFilteredDates(newDates);
+  const handleNextWeek = () => {
+    const newDate = new Date(currentDate);
+    newDate.setDate(currentDate.getDate() + 7);
+    setCurrentDate(newDate);
+  };
+
+  const handleWeekChange = (e) => {
+    const [year, week] = e.target.value.split('-W');
+    const date = new Date(year, 0, 1 + (week - 1) * 7);
+    setCurrentDate(date);
     setShowFilterModal(false);
   };
 
@@ -230,22 +236,42 @@ export default function AttendancePage() {
         <div className="p-10">
           <h1 className="text-2xl font-bold text-gray-700 mb-4">Attendance</h1>
 
-          <div className="flex gap-4">
-            <button
-              className="flex items-center bg-green-700 text-white px-4 py-2 rounded-lg shadow-md hover:bg-green-800 transition"
-              onClick={() => setShowModal(true)}
-            >
-              <CalendarPlus size={20} className="mr-2" />
-              Add Attendance
-            </button>
+          <div className="flex justify-between items-center mb-4">
+            <div className="flex gap-4">
+              <button
+                className="flex items-center bg-green-700 text-white px-4 py-2 rounded-lg shadow-md hover:bg-green-800 transition"
+                onClick={() => setShowModal(true)}
+              >
+                <CalendarPlus size={20} className="mr-2" />
+                Add Attendance
+              </button>
 
-            <button
-              className="flex items-center bg-blue-700 text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-800 transition"
-              onClick={() => setShowFilterModal(true)}
-            >
-              <Filter size={20} className="mr-2" />
-              Filter
-            </button>
+              <button
+                className="flex items-center bg-blue-700 text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-800 transition"
+                onClick={() => setShowFilterModal(true)}
+              >
+                <Filter size={20} className="mr-2" />
+                Filter by Week
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handlePreviousWeek}
+                className="p-2 rounded-full hover:bg-gray-200 transition"
+              >
+                <ChevronLeft size={24} />
+              </button>
+              <span className="font-semibold text-gray-700">
+                {new Date(filteredDates[0]).toLocaleDateString()} - {new Date(filteredDates[6]).toLocaleDateString()}
+              </span>
+              <button
+                onClick={handleNextWeek}
+                className="p-2 rounded-full hover:bg-gray-200 transition"
+              >
+                <ChevronRight size={24} />
+              </button>
+            </div>
           </div>
 
           <div className="mt-6 overflow-x-auto bg-white shadow-lg rounded-lg p-6">
@@ -358,68 +384,18 @@ export default function AttendancePage() {
             <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/50">
               <div className="bg-white p-6 rounded-lg shadow-lg w-96">
                 <div className="flex justify-between items-center">
-                  <h2 className="text-lg font-bold text-gray-700">Filter Attendance</h2>
+                  <h2 className="text-lg font-bold text-gray-700">Filter by Week</h2>
                   <button onClick={() => setShowFilterModal(false)} className="text-gray-500 hover:text-red-500">
                     <X size={20} />
                   </button>
                 </div>
 
-                <label className="block text-gray-700 font-medium mt-4">Select Year:</label>
-                <select
-                  className="w-full p-2 border rounded"
-                  value={selectedYear}
-                  onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                >
-                  {Array.from({length: 10}, (_, i) => new Date().getFullYear() - 5 + i).map(year => (
-                    <option key={year} value={year}>{year}</option>
-                  ))}
-                </select>
-
-                <label className="block text-gray-700 font-medium mt-4">Select Month:</label>
-                <select
-                  className="w-full p-2 border rounded"
-                  value={selectedMonth}
-                  onChange={(e) => setSelectedMonth(e.target.value)}
-                >
-                  <option value="">Select Month</option>
-                  {Array.from({length: 12}, (_, i) => {
-                    const monthValue = i + 1;
-                    return (
-                      <option key={monthValue} value={monthValue}>
-                        {new Date(selectedYear, monthValue - 1, 1).toLocaleString('default', {month: 'long'})}
-                      </option>
-                    );
-                  })}
-                </select>
-
-                <div className="mt-4 flex gap-4">
-                  <div>
-                    <label className="block text-gray-700 font-medium">Start Day:</label>
-                    <input 
-                      type="number" 
-                      min="1" 
-                      max="31" 
-                      className="w-full p-2 border rounded" 
-                      value={startDay}
-                      onChange={(e) => setStartDay(e.target.value)} 
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-gray-700 font-medium">End Day:</label>
-                    <input 
-                      type="number" 
-                      min="1" 
-                      max="31" 
-                      className="w-full p-2 border rounded" 
-                      value={endDay}
-                      onChange={(e) => setEndDay(e.target.value)} 
-                    />
-                  </div>
-                </div>
-
-                <button className="mt-4 w-full bg-blue-700 text-white py-2 rounded-lg" onClick={applyFilter}>
-                  Apply Filter
-                </button>
+                <label className="block text-gray-700 font-medium mt-4">Select Week:</label>
+                <input
+                  type="week"
+                  className="w-full p-2 border rounded mt-1"
+                  onChange={handleWeekChange}
+                />
               </div>
             </div>
           )}

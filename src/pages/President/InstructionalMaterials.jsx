@@ -25,7 +25,8 @@ import {
   Grid,
   Card,
   InputAdornment,
-  IconButton 
+  IconButton,
+  Menu,
 } from "@mui/material";
 import {
   Upload as UploadIcon,
@@ -34,7 +35,10 @@ import {
   InsertDriveFile as InsertDriveFileIcon,
   ArrowBack as ArrowBackIcon,
   Search as SearchIcon,
-  CloudUpload as CloudUploadIcon
+  CloudUpload as CloudUploadIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  MoreVert as MoreVertIcon,
 } from "@mui/icons-material";
 import { jwtDecode } from "jwt-decode";
 
@@ -99,6 +103,29 @@ function ClassworksSection({ setSnackbar }) {
   const [error, setError] = useState(null);
   const [fileCounts, setFileCounts] = useState({});
   const [userRole, setUserRole] = useState(null);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [renameFile, setRenameFile] = useState(null); // For rename modal
+  const [editingCategory, setEditingCategory] = useState(null); // For editing a category
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [selectedCategoryForMenu, setSelectedCategoryForMenu] = useState(null);
+
+  const fetchCategories = async (ageGroupId) => {
+    if (!ageGroupId) {
+      setCategories([]);
+      return;
+    }
+    try {
+      const categoriesData = await apiRequest(`/api/files/get-categories?age_group_id=${ageGroupId}`);
+      setCategories(categoriesData.categories || []);
+    } catch (err) {
+      console.error('Error fetching categories:', err);
+      setSnackbar({
+        open: true,
+        message: 'Failed to fetch categories',
+        severity: 'error'
+      });
+    }
+  };
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -113,57 +140,42 @@ function ClassworksSection({ setSnackbar }) {
   }, []);
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchAgeGroups = async () => {
       try {
         setLoading(true);
-        
-        const [categoriesData, ageGroupsData] = await Promise.all([
-          apiRequest('/api/files/categories'),
-          apiRequest('/api/files/age-groups')
-        ]);
-        
-        setCategories(categoriesData.categories || []);
+        const ageGroupsData = await apiRequest('/api/files/get-age-groups');
         setAgeGroups(ageGroupsData.ageGroups || []);
-        
-        if (selectedAgeGroup) {
-          const countsData = await apiRequest(
-            `/api/files/counts?age_group_id=${selectedAgeGroup}`
-          );
-          setFileCounts(countsData.counts || {});
-        }
-        
       } catch (err) {
-        console.error('Error fetching data:', err);
+        console.error('Error fetching initial data:', err);
         setError(err.message);
         setSnackbar({
           open: true,
-          message: 'Failed to fetch data',
+          message: 'Failed to fetch initial data',
           severity: 'error'
         });
       } finally {
         setLoading(false);
       }
     };
-    
-    fetchData();
-  }, [selectedAgeGroup, setSnackbar]);
+    fetchAgeGroups();
+  }, [setSnackbar]);
 
   useEffect(() => {
-    if (selectedAgeGroup && !selectedCategory) {
-      const fetchFileCounts = async () => {
-        try {
-          const data = await apiRequest(
-            `/api/files/counts?age_group_id=${selectedAgeGroup}`
-          );
-          setFileCounts(data.counts || {});
-        } catch (err) {
-          console.error('Error fetching file counts:', err);
-        }
+    if (selectedAgeGroup) {
+      setLoading(true);
+      const fetchDependentData = async () => {
+        await Promise.all([
+          fetchCategories(selectedAgeGroup),
+          refetchFileCounts(selectedAgeGroup)
+        ]);
+        setLoading(false);
       };
-      
-      fetchFileCounts();
+      fetchDependentData();
+    } else {
+      setCategories([]);
+      setFileCounts({});
     }
-  }, [selectedAgeGroup, selectedCategory]);
+  }, [selectedAgeGroup, setSnackbar]);
 
   useEffect(() => {
     if (selectedCategory && selectedAgeGroup) {
@@ -190,6 +202,30 @@ setError(err.message);
       fetchFiles();
     }
   }, [selectedCategory, selectedAgeGroup, setSnackbar]);
+
+  const handleOpenUploadModal = () => {
+    setNewFile(prev => ({
+      ...prev,
+      category_id: selectedCategory || '',
+      age_group_id: selectedAgeGroup || '',
+      file_name: '',
+      file_data: null,
+    }));
+    setIsModalOpen(true);
+  };
+
+  const refetchFileCounts = async (ageGroupId) => {
+    if (ageGroupId) {
+      try {
+        const countsData = await apiRequest(
+          `/api/files/counts?age_group_id=${ageGroupId}`
+        );
+        setFileCounts(countsData.counts || {});
+      } catch (err) {
+        console.error('Error refetching file counts:', err);
+      }
+    }
+  };
 
   const handleFileUpload = async (e) => {
     e.preventDefault();
@@ -240,6 +276,58 @@ setError(err.message);
         message: err.message || 'Failed to upload file',
         severity: 'error'
       });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRenameFile = async () => {
+    if (!renameFile || !renameFile.name.trim()) {
+      setSnackbar({ open: true, message: 'File name cannot be empty', severity: 'warning' });
+      return;
+    }
+    setLoading(true);
+    try {
+      await apiRequest(`/api/files/${renameFile.id}`, 'PUT', { file_name: renameFile.name });
+      setFiles(files.map(f => f.file_id === renameFile.id ? { ...f, file_name: renameFile.name } : f));
+      setRenameFile(null);
+      setSnackbar({ open: true, message: 'File renamed successfully', severity: 'success' });
+    } catch (error) {
+      setSnackbar({ open: true, message: error.message || 'Failed to rename file', severity: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleMenuClick = (event, category) => {
+    setAnchorEl(event.currentTarget);
+    setSelectedCategoryForMenu(category);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+    setSelectedCategoryForMenu(null);
+  };
+
+  const handleOpenRenameCategory = () => {
+    setEditingCategory(selectedCategoryForMenu);
+    handleMenuClose();
+  };
+
+  const handleDeleteCategory = async () => {
+    const categoryId = selectedCategoryForMenu.category_id;
+    handleMenuClose();
+    if (!window.confirm('Are you sure you want to delete this category? This action cannot be undone.')) {
+      return;
+    }
+    setLoading(true);
+    try {
+      await apiRequest(`/api/files/categories/${categoryId}`, 'DELETE');
+      await fetchCategories(selectedAgeGroup); // Refetch categories for the current age group
+      await refetchFileCounts(selectedAgeGroup); // Refresh file counts
+      setSnackbar({ open: true, message: 'Category deleted successfully', severity: 'success' });
+    } catch (error) {
+      setSnackbar({ open: true, message: error.message || 'Failed to delete category', severity: 'error' });
     } finally {
       setLoading(false);
     }
@@ -320,29 +408,42 @@ setError(err.message);
               {backButtonLabel}
             </Button>
           )}
-          <Typography variant="h5" component="h2">
-            Developmental Domains
-          </Typography>
         </Box>
-
-        {!selectedCategory && (
-          <FormControl sx={{ minWidth: 200 }} size="small">
-            <InputLabel>Select Age Group</InputLabel>
-            <Select
-              value={selectedAgeGroup || ''}
-              label="Select Age Group"
-              onChange={(e) => setSelectedAgeGroup(e.target.value)}
-            >
-              <MenuItem value="">Select Age</MenuItem>
-              {ageGroups.map((ageGroup) => (
-                <MenuItem key={ageGroup.age_group_id} value={ageGroup.age_group_id}>
-                  {ageGroup.age_range.replace(/\?/g, '-')}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        )}
       </Box>
+
+      {!selectedCategory && (
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+          <Typography variant="h5" component="h2">
+            Instructional Materials
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+            {userRole !== 'President' && (
+              <Button
+                variant="contained"
+                onClick={() => setIsCategoryModalOpen(true)}
+                disabled={!selectedAgeGroup} // Disable if no age group is selected
+              >
+                Add Category
+              </Button>
+            )}
+            <FormControl sx={{ minWidth: 200 }} size="small">
+              <InputLabel>Select Age Group</InputLabel>
+              <Select
+                value={selectedAgeGroup || ''}
+                label="Select Age Group"
+                onChange={(e) => setSelectedAgeGroup(e.target.value)}
+              >
+                <MenuItem value="">Select Age</MenuItem>
+                {ageGroups.map((ageGroup) => (
+                  <MenuItem key={ageGroup.age_group_id} value={ageGroup.age_group_id}>
+                    {ageGroup.age_range.replace(/\?/g, '-')}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Box>
+        </Box>
+      )}
 
       {!selectedAgeGroup ? (
         <Box sx={{ textAlign: 'center', py: 4 }}>
@@ -361,7 +462,7 @@ setError(err.message);
               <Button
                 variant="contained"
                 startIcon={<UploadIcon />}
-                onClick={() => setIsModalOpen(true)}
+                onClick={handleOpenUploadModal}
               >
                 Upload File
               </Button>
@@ -386,7 +487,7 @@ setError(err.message);
               </Typography>
               {userRole !== 'President' && (
                 <Button
-                  onClick={() => setIsModalOpen(true)}
+                  onClick={handleOpenUploadModal}
                   variant="contained"
                   startIcon={<UploadIcon />}
                 >
@@ -415,9 +516,28 @@ setError(err.message);
                         <IconButton
                           onClick={() => handleDownload(file.file_id, file.file_name)}
                           color="primary"
+                          title="Download"
                         >
                           <DownloadIcon />
                         </IconButton>
+                        {userRole !== 'President' && (
+                          <>
+                            <IconButton
+                              onClick={() => setRenameFile({ id: file.file_id, name: file.file_name })}
+                              color="default"
+                              title="Rename"
+                            >
+                              <EditIcon />
+                            </IconButton>
+                            <IconButton
+                              onClick={() => handleDeleteFile(file.file_id)}
+                              color="error"
+                              title="Delete"
+                            >
+                              <DeleteIcon />
+                            </IconButton>
+                          </>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -432,7 +552,8 @@ setError(err.message);
             <TableHead>
               <TableRow>
                 <TableCell>Category Name</TableCell>
-                <TableCell align="right">Files</TableCell>
+                <TableCell align="center">Files</TableCell>
+                <TableCell align="right">Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -440,22 +561,103 @@ setError(err.message);
                 <TableRow
                   key={category.category_id}
                   hover
-                  onClick={() => setSelectedCategory(category.category_id)}
-                  sx={{ cursor: 'pointer' }}
+                  sx={{ '&:hover .action-button': { opacity: 1 } }}
                 >
-                  <TableCell component="th" scope="row">
+                  <TableCell 
+                    component="th" 
+                    scope="row"
+                    onClick={() => setSelectedCategory(category.category_id)}
+                    sx={{ cursor: 'pointer' }}
+                  >
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <FolderIcon sx={{ mr: 2, color: 'success.main' }} />
                       {category.category_name}
                     </Box>
                   </TableCell>
-                  <TableCell align="right">{fileCounts[category.category_id] || 0}</TableCell>
+                  <TableCell 
+                    align="center"
+                    onClick={() => setSelectedCategory(category.category_id)}
+                    sx={{ cursor: 'pointer' }}
+                  >
+                    {fileCounts[category.category_id] || 0}
+                  </TableCell>
+                  <TableCell align="right">
+                    {userRole !== 'President' && (
+                      <IconButton
+                        className="action-button"
+                        sx={{ opacity: 0 }}
+                        onClick={(e) => handleMenuClick(e, category)}
+                      >
+                        <MoreVertIcon />
+                      </IconButton>
+                    )}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </TableContainer>
       )}
+
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={handleMenuClose}
+      >
+        <MenuItem onClick={handleOpenRenameCategory}>Rename</MenuItem>
+        <MenuItem onClick={handleDeleteCategory}>Delete</MenuItem>
+      </Menu>
+
+      <CategoryModal
+        open={isCategoryModalOpen || !!editingCategory}
+        onClose={() => {
+          setIsCategoryModalOpen(false);
+          setEditingCategory(null);
+        }}
+        category={editingCategory}
+        ageGroupId={selectedAgeGroup}
+        onSave={() => {
+          fetchCategories(selectedAgeGroup);
+          refetchFileCounts(selectedAgeGroup);
+        }}
+        setSnackbar={setSnackbar}
+      />
+
+      {/* Rename File Modal */}
+      <Modal open={!!renameFile} onClose={() => setRenameFile(null)}>
+        <Box sx={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: '90%',
+          maxWidth: 500,
+          bgcolor: 'background.paper',
+          boxShadow: 24,
+          p: 4,
+          borderRadius: 2
+        }}>
+          <Typography variant="h6" component="h2" sx={{ mb: 3 }}>
+            Rename File
+          </Typography>
+          <TextField
+            label="New File Name"
+            fullWidth
+            value={renameFile?.name || ''}
+            onChange={(e) => setRenameFile({ ...renameFile, name: e.target.value })}
+            sx={{ mb: 3 }}
+            autoFocus
+          />
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+            <Button onClick={() => setRenameFile(null)} variant="outlined" disabled={loading}>
+              Cancel
+            </Button>
+            <Button onClick={handleRenameFile} variant="contained" disabled={loading}>
+              {loading ? <CircularProgress size={24} /> : 'Save'}
+            </Button>
+          </Box>
+        </Box>
+      </Modal>
 
       <Modal open={isModalOpen} onClose={() => setIsModalOpen(false)}>
         <Box sx={{
@@ -576,5 +778,78 @@ setError(err.message);
         </Box>
       </Modal>
     </div>
+  );
+}
+
+function CategoryModal({ open, onClose, category, ageGroupId, onSave, setSnackbar }) {
+  const [categoryName, setCategoryName] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (category) {
+      setCategoryName(category.category_name);
+    } else {
+      setCategoryName('');
+    }
+  }, [category, open]);
+
+  const handleSubmit = async () => {
+    if (!categoryName.trim()) {
+      setSnackbar({ open: true, message: 'Category name cannot be empty', severity: 'warning' });
+      return;
+    }
+    setLoading(true);
+    try {
+      if (category) { // Update existing category
+        await apiRequest(`/api/files/categories/${category.category_id}`, 'PUT', { category_name: categoryName });
+        setSnackbar({ open: true, message: 'Category updated successfully', severity: 'success' });
+      } else { // Add new category
+        await apiRequest('/api/files/categories', 'POST', { category_name: categoryName, age_group_id: ageGroupId });
+        setSnackbar({ open: true, message: 'Category added successfully', severity: 'success' });
+      }
+      await onSave(); // Refetch categories and counts
+      onClose();
+    } catch (error) {
+      setSnackbar({ open: true, message: error.message || 'Failed to save category', severity: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Modal open={open} onClose={onClose}>
+      <Box sx={{
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        width: '90%',
+        maxWidth: 500,
+        bgcolor: 'background.paper',
+        boxShadow: 24,
+        p: 4,
+        borderRadius: 2
+      }}>
+        <Typography variant="h6" component="h2" sx={{ mb: 3 }}>
+          {category ? 'Rename Category' : 'Add New Category'}
+        </Typography>
+        <TextField
+          label="Category Name"
+          fullWidth
+          value={categoryName}
+          onChange={(e) => setCategoryName(e.target.value)}
+          sx={{ mb: 3 }}
+          autoFocus
+        />
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+          <Button onClick={onClose} variant="outlined" disabled={loading}>
+            Cancel
+          </Button>
+          <Button onClick={handleSubmit} variant="contained" disabled={loading}>
+            {loading ? <CircularProgress size={24} /> : 'Save'}
+          </Button>
+        </Box>
+      </Box>
+    </Modal>
   );
 }

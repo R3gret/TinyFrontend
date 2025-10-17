@@ -120,13 +120,14 @@ export default function WeeklyPlans() {
   const handleDateClick = async (dateStr) => {
     setSelectedDate(dateStr);
     setIsLoading(true);
-    // setActivities([]); // Moved this to prevent race conditions
+    setActivities([]); // Immediately clear old activities from the UI
     try {
+      // The new backend endpoint requires the date in the query
       const data = await apiRequest(`/api/weekly-plans?date=${dateStr}`);
       if (data.success) {
         setActivities(data.activities || []);
       } else {
-        setActivities([]); // Clear activities if fetch is not successful
+        setActivities([]);
         console.warn(data.message || "No activities found for selected date.");
       }
     } catch (err) {
@@ -286,27 +287,16 @@ export default function WeeklyPlans() {
 
             {/* Activities Section */}
             <div className="bg-white p-6 rounded-lg shadow-md">
-              <h2 className="text-xl font-bold text-gray-700 mb-4">
-                Activities for {selectedDate ? new Date(selectedDate + 'T00:00:00').toLocaleDateString() : '...'}
-              </h2>
+              <h2 className="text-xl font-bold text-gray-700 mb-4">Activities</h2>
               <div className="space-y-4">
-                {isLoading ? (
-                  <div className="text-center text-gray-500">Loading...</div>
-                ) : activities.length > 0 ? (
-                  activities.map((activity, index) => (
-                    <div key={index} className="flex items-center space-x-3 p-2 rounded-md bg-gray-50">
-                      <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                      <span className="text-sm font-medium flex-1">{activity.activity_name}</span>
-                      <span className="text-xs text-gray-600">
-                        {activity.start_time} - {activity.end_time}
-                      </span>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center text-gray-500">
-                    {selectedDate ? "No activities scheduled for this day." : "Select a date to see activities."}
+                {activities.map((activity, index) => (
+                  <div key={index} className="flex items-center space-x-3">
+                    <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                    <span className="text-sm font-medium">{activity.activity_name}</span>
+                    <span className="text-sm text-gray-600">Start: {activity.start_time}</span>
+                    <span className="text-sm text-gray-600">End: {activity.end_time}</span>
                   </div>
-                )}
+                ))}
               </div>
             </div>
           </div>

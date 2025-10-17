@@ -262,10 +262,9 @@ export default function Dashboard() {
               
               {dashboardData.announcements.length > 0 ? (
                 <div className="relative h-24">
-                  {/* Announcement Content */}
                   <div className="overflow-hidden h-full">
                     <div className="h-full transition-all duration-300 ease-in-out">
-                      <div className="h-full flex flex-col justify-between">
+                      <div className="h-full flex flex-col justify-center text-center">
                         <div>
                           <h4 className="font-medium text-gray-800 text-sm line-clamp-1">
                             {dashboardData.announcements[activeAnnouncementIndex].title}
@@ -273,18 +272,18 @@ export default function Dashboard() {
                           <p className="text-gray-600 text-xs mt-1 line-clamp-2">
                             {dashboardData.announcements[activeAnnouncementIndex].message}
                           </p>
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          <p>
-                            {new Date(dashboardData.announcements[activeAnnouncementIndex].createdAt)
-                              .toLocaleDateString('en-US', { 
-                                month: 'short', 
-                                day: 'numeric',
-                                year: 'numeric'
-                              })}
-                            {' • '}
-                            {dashboardData.announcements[activeAnnouncementIndex].author}
-                          </p>
+                          <div className="text-xs text-gray-500 mt-2">
+                            <p>
+                              {new Date(dashboardData.announcements[activeAnnouncementIndex].createdAt)
+                                .toLocaleDateString('en-US', { 
+                                  month: 'short', 
+                                  day: 'numeric',
+                                  year: 'numeric'
+                                })}
+                              {' • '}
+                              {dashboardData.announcements[activeAnnouncementIndex].author}
+                            </p>
+                          </div>
                         </div>
                       </div>
                     </div>

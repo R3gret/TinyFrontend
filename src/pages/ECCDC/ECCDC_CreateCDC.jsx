@@ -71,7 +71,7 @@ const CDCPage = () => {
   }, []);
 
   useEffect(() => {
-    const fetchPresidents = async () => {
+    const fetchPresidents = async () => { 
       if (openModal) {
         try {
           const data = await apiRequest('/api/cdc/admins');

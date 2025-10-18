@@ -7,6 +7,7 @@ import VirtualC from "./pages/CDC/VirtualC";
 import Profile from "./pages/CDC/Profile";
 import Attendance from "./pages/CDC/Attendance";
 import WeeklyPlans from "./pages/CDC/WeeklyPlans";
+import StudentWeeklyPlans from "./pages/CDC/StudentWeeklyPlans";
 import ChildrenProgress from "./pages/CDC/ChildrenProgress";
 import Login from "./pages/CDC/Login";
 import RegistrationForm from "./pages/CDC/RegistrationForm";
@@ -102,6 +103,14 @@ export default function App() {
           element={
             <ProtectedRoute allowedTypes={["worker", "admin"]}>
               <WeeklyPlans />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/student-weekly-plans"
+          element={
+            <ProtectedRoute allowedTypes={["worker", "admin"]}>
+              <StudentWeeklyPlans />
             </ProtectedRoute>
           }
         />

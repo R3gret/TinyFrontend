@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
 
 import { apiRequest } from "../../utils/api";
 
-export default function WeeklyPlans() {
+export default function StudentWeeklyPlans() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [showModal, setShowModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState("");
@@ -26,7 +26,7 @@ export default function WeeklyPlans() {
       const month = currentDate.getMonth() + 1;
       
       try {
-        const data = await apiRequest(`/api/get_scheduled_dates?year=${year}&month=${month}`);
+        const data = await apiRequest(`/api/student-plans/dates?year=${year}&month=${month}`);
         if (data.success) {
           setScheduledDates(data.dates);
         }
@@ -135,7 +135,7 @@ export default function WeeklyPlans() {
       setSelectedDate(dateStr);
   
       try {
-        const data = await apiRequest(`/api/get_activities?date=${dateStr}`);
+        const data = await apiRequest(`/api/student-plans/activities?date=${dateStr}`);
         if (data.success) {
           setActivities(data.activities);
         } else {
@@ -163,8 +163,8 @@ export default function WeeklyPlans() {
         end_time: activity.end_time
       }));
   
-      const response = await apiRequest('/api/add_activity', 'POST', {
-        date: selectedDate,
+      const response = await apiRequest('/api/student-plans', 'POST', {
+        plan_date: selectedDate,
         activities: activitiesToSend
       });
   
@@ -175,8 +175,8 @@ export default function WeeklyPlans() {
   
         // Refresh activities and scheduled dates
         const [activitiesData, scheduledData] = await Promise.all([
-          apiRequest(`/api/get_activities?date=${selectedDate}`),
-          apiRequest(`/api/get_scheduled_dates?year=${currentDate.getFullYear()}&month=${currentDate.getMonth() + 1}`)
+          apiRequest(`/api/student-plans/activities?date=${selectedDate}`),
+          apiRequest(`/api/student-plans/dates?year=${currentDate.getFullYear()}&month=${currentDate.getMonth() + 1}`)
         ]);
   
         if (activitiesData.success) setActivities(activitiesData.activities);
@@ -251,12 +251,12 @@ export default function WeeklyPlans() {
   return (
     <div className="w-screen h-screen flex overflow-hidden">
       <Sidebar />
-      <div className="flex flex-col flex-grow pl-64 pt-16 bg-white overflow-auto">
+      <div className="flex flex-col flex-grow pl-64 pt-16 bg-gray-100 overflow-auto">
         <Navbar />
         <div className="p-10 flex gap-8">
           {/* Calendar Section */}
           <div className="w-2/3">
-            <h1 className="text-3xl font-bold text-gray-700 mb-6">Weekly Plans</h1>
+            <h1 className="text-3xl font-bold text-gray-700 mb-6">Students Weekly Plans</h1>
 
             {/* Month and Year Selector */}
             <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-md">

@@ -23,7 +23,15 @@ export default function Sidebar() {
           ]}
         />
 
-        <SidebarItem to="/weekly-plans" icon={CalendarDays} label="Weekly Plans" currentPath={location.pathname} />
+        <SidebarItemWithSubmenu 
+          mainIcon={CalendarDays} 
+          mainLabel="Weekly Plans"
+          currentPath={location.pathname}
+          submenuItems={[
+            { to: "/weekly-plans", icon: User, label: "Faculty" },
+            { to: "/student-weekly-plans", icon: School, label: "Students" }
+          ]}
+        />
         
         <SidebarItemWithSubmenu 
           mainIcon={BarChart3} 

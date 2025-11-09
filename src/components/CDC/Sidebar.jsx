@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { 
   ClipboardEdit, FileText, CreditCard, Video, User, FilePlus, 
-  School, List, CalendarDays, CheckSquare, BarChart3, ChevronDown
+  School, List, CalendarDays, CheckSquare, BarChart3, ChevronDown, UserPlus
 } from "lucide-react";
 
 export default function Sidebar() {
@@ -12,6 +12,8 @@ export default function Sidebar() {
       <div className="mt-16 flex flex-col space-y-2 px-4">
         <SidebarItem to="/dashboard" icon={List} label="Dashboard" currentPath={location.pathname} />
         <SidebarItem to="/registration" icon={ClipboardEdit} label="Registration" currentPath={location.pathname} />
+        <SidebarItem to="/student-list" icon={User} label="Student List" currentPath={location.pathname} />
+        <SidebarItem to="/create-parent" icon={UserPlus} label="Parent Accounts" currentPath={location.pathname} />
 
         <SidebarItemWithSubmenu 
           mainIcon={FileText} 

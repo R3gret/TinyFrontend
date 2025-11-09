@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import Navbar from "../../components/all/Navbar";
 import Sidebar from "../../components/Parent/ParentSidebar";
-import bgImage from "../../assets/bg1.jpg";
 import {
   Table,
   TableBody,
@@ -36,15 +36,12 @@ import {
 
 import { apiRequest } from "../../utils/api";
 
-export default function Dashboard() {
-  const [activeTab, setActiveTab] = useState("Stream");
+export default function ParentVirtualC() {
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
     severity: "success"
   });
-
-  const tabs = ["Stream", "Classworks"];
 
   const handleSnackbarClose = () => {
     setSnackbar({...snackbar, open: false});
@@ -52,28 +49,13 @@ export default function Dashboard() {
 
   return (
     <div className="w-screen h-screen flex overflow-hidden">
-      <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${bgImage})`, zIndex: -1 }}></div>
       <Sidebar />
+
       <div className="flex flex-col flex-grow pl-64 pt-16 bg-white/50 overflow-auto">
         <Navbar />
         <div className="p-10">
-          <div className="flex space-x-4 border-b-2 pb-2">
-            {tabs.map((tab) => (
-              <button
-                key={tab}
-                className={`px-6 py-2 font-semibold transition-all duration-300 rounded-t-lg ${
-                  activeTab === tab ? "bg-green-800 text-white" : "bg-gray-300 text-gray-700 hover:bg-green-600 hover:text-white"
-                }`}
-                onClick={() => setActiveTab(tab)}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
-
           <div className="mt-6 p-6 bg-white shadow-lg rounded-lg">
-            {activeTab === "Stream" && <StreamSection setSnackbar={setSnackbar} />}
-            {activeTab === "Classworks" && <ClassworksSection setSnackbar={setSnackbar} />}
+            <StreamSection setSnackbar={setSnackbar} />
           </div>
         </div>
       </div>
@@ -100,26 +82,14 @@ function StreamSection({ setSnackbar }) {
   const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedAnnouncement, setSelectedAnnouncement] = useState(null);
-  const [submissionText, setSubmissionText] = useState('');
-  const [submissionFile, setSubmissionFile] = useState(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submissions, setSubmissions] = useState({});
-  const [fileInputKey, setFileInputKey] = useState(Date.now());
-  const [studentInfo, setStudentInfo] = useState(null);
 
   useEffect(() => {
     const fetchAnnouncements = async () => {
       try {
         setLoading(true);
-        const data = await apiRequest('/api/parentannouncements/announcements');
+        const data = await apiRequest('/api/announcements');
         
         setAnnouncements(data.announcements || []);
-        setStudentInfo({
-          age: data.age,
-          ageGroup: data.ageGroup,
-          cdc_id: data.cdc_id
-        });
         setError(null);
       } catch (err) {
         console.error('Error fetching announcements:', err);
@@ -137,111 +107,13 @@ function StreamSection({ setSnackbar }) {
     fetchAnnouncements();
   }, [setSnackbar]);
 
-  const fetchSubmissions = async (announcementId) => {
-    try {
-      const data = await apiRequest(`/api/submissions/${announcementId}/submissions`);
-      setSubmissions(prev => ({
-        ...prev,
-        [announcementId]: data.submissions || []
-      }));
-    } catch (err) {
-      console.error('Error fetching submissions:', err);
-      setSnackbar({
-        open: true,
-        message: 'Failed to fetch submissions',
-        severity: 'error'
-      });
-    }
-  };
-
-  const handleDownload = async (filePath, fileName) => {
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/submissions/submissions/${filePath}/download`,
-        {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          },
-          credentials: 'include'
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to download file');
-      }
-
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = fileName || 'download';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error('Error downloading file:', err);
-      setSnackbar({
-        open: true,
-        message: 'Failed to download file',
-        severity: 'error'
-      });
-    }
-  };
-
-  const handleFileChange = (e) => {
-    setSubmissionFile(e.target.files[0]);
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!selectedAnnouncement) return;
-    if (!submissionText && !submissionFile) {
-      setSnackbar({
-        open: true,
-        message: 'Please provide either text or a file',
-        severity: 'warning'
-      });
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      const formData = new FormData();
-      formData.append('announcement_id', selectedAnnouncement.id);
-      if (submissionText) formData.append('remarks', submissionText);
-      if (submissionFile) formData.append('file', submissionFile);
-
-      await apiRequest(
-        `/api/submissions/${selectedAnnouncement.id}/submissions`,
-        'POST',
-        formData,
-        true
-      );
-
-      setSnackbar({
-        open: true,
-        message: 'Submission successful!',
-        severity: 'success'
-      });
-
-      await fetchSubmissions(selectedAnnouncement.id);
-      
-      // Reset form
-      setSubmissionText('');
-      setSubmissionFile(null);
-      setFileInputKey(Date.now());
-      setSelectedAnnouncement(null);
-    } catch (err) {
-      console.error('Error submitting:', err);
-      setSnackbar({
-        open: true,
-        message: err.message || 'Submission failed',
-        severity: 'error'
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
+  const handleDownload = (url, fileName) => {
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName || 'download';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (
@@ -249,13 +121,6 @@ function StreamSection({ setSnackbar }) {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <h2 className="text-2xl font-bold">Announcements</h2>
         
-        {studentInfo && (
-          <div className="flex items-center space-x-2">
-            <Typography variant="body2">
-              Showing announcements for: {studentInfo.ageGroup} years
-            </Typography>
-          </div>
-        )}
       </div>
 
       {error && (
@@ -281,7 +146,7 @@ function StreamSection({ setSnackbar }) {
           my: 4
         }}>
           <Typography variant="h6" gutterBottom>
-            No announcements available for your child's age group
+            No announcements available.
           </Typography>
         </Box>
       )}
@@ -291,7 +156,7 @@ function StreamSection({ setSnackbar }) {
           {announcements.map((announcement) => (
             <Paper key={announcement.id} elevation={3} sx={{ p: 0 }}>
               <Box sx={{ 
-                bgcolor: 'primary.main', 
+                bgcolor: 'success.main', 
                 color: 'white', 
                 p: 3,
                 display: 'flex',
@@ -301,11 +166,11 @@ function StreamSection({ setSnackbar }) {
                 <Box>
                   <Typography variant="h6">{announcement.title}</Typography>
                   <Typography variant="body2" sx={{ opacity: 0.8 }}>
-                    Posted by {announcement.author_name} on {new Date(announcement.created_at).toLocaleDateString()}
+                    Posted by {announcement.author} on {new Date(announcement.createdAt).toLocaleDateString()}
                   </Typography>
                 </Box>
                 <Chip 
-                  label={announcement.age_filter === 'all' ? 'All Ages' : `${announcement.age_filter} years`}
+                  label={announcement.ageFilter === 'all' ? 'All Ages' : `${announcement.ageFilter} years`}
                   color="secondary"
                   size="small"
                 />
@@ -315,7 +180,7 @@ function StreamSection({ setSnackbar }) {
                   {announcement.message}
                 </Typography>
                 
-                {announcement.attachment_path && (
+                {announcement.attachmentUrl && (
                   <Box sx={{ 
                     borderTop: 1, 
                     borderColor: 'divider', 
@@ -324,12 +189,12 @@ function StreamSection({ setSnackbar }) {
                     alignItems: 'center'
                   }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
-                      <InsertDriveFileIcon color="primary" sx={{ mr: 1 }} />
-                      <Typography>{announcement.attachment_name}</Typography>
+                      <InsertDriveFileIcon color="success" sx={{ mr: 1 }} />
+                      <Typography>{announcement.attachmentName}</Typography>
                     </Box>
                     <Button
-                      onClick={() => handleDownload(announcement.attachment_path, announcement.attachment_name)}
-                      color="primary"
+                      onClick={() => handleDownload(announcement.attachmentUrl, announcement.attachmentName)}
+                      color="success"
                       size="small"
                       startIcon={<DownloadIcon />}
                     >
@@ -337,136 +202,6 @@ function StreamSection({ setSnackbar }) {
                     </Button>
                   </Box>
                 )}
-
-                {/* Submission section */}
-                <Box sx={{ mt: 3, borderTop: 1, borderColor: 'divider', pt: 2 }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                    <Typography variant="subtitle1">Submissions</Typography>
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      onClick={() => {
-                        setSelectedAnnouncement(selectedAnnouncement?.id === announcement.id ? null : announcement);
-                        if (!submissions[announcement.id]) {
-                          fetchSubmissions(announcement.id);
-                        }
-                      }}
-                    >
-                      {selectedAnnouncement?.id === announcement.id ? 'Cancel' : 'Submit Response'}
-                    </Button>
-                  </Box>
-
-                  {/* Submission form */}
-                  {selectedAnnouncement?.id === announcement.id && (
-                    <Paper elevation={2} sx={{ p: 2, mb: 2 }}>
-                      <form onSubmit={handleSubmit}>
-                        <TextField
-                          fullWidth
-                          multiline
-                          rows={3}
-                          variant="outlined"
-                          label="Your response"
-                          value={submissionText}
-                          onChange={(e) => setSubmissionText(e.target.value)}
-                          sx={{ mb: 2 }}
-                        />
-                        
-                        <Box sx={{ mb: 2 }}>
-                          <input
-                            key={fileInputKey}
-                            accept="*/*"
-                            style={{ display: 'none' }}
-                            id={`file-upload-${announcement.id}`}
-                            type="file"
-                            onChange={handleFileChange}
-                          />
-                          <label htmlFor={`file-upload-${announcement.id}`}>
-                            <Button
-                              variant="outlined"
-                              component="span"
-                              startIcon={<InsertDriveFileIcon />}
-                              sx={{ mr: 2 }}
-                            >
-                              Attach File
-                            </Button>
-                          </label>
-                          {submissionFile && (
-                            <Typography variant="body2" display="inline">
-                              {submissionFile.name}
-                              <IconButton 
-                                size="small" 
-                                onClick={() => {
-                                  setSubmissionFile(null);
-                                  setFileInputKey(Date.now());
-                                }}
-                                sx={{ ml: 1 }}
-                              >
-                                <CloseIcon fontSize="small" />
-                              </IconButton>
-                            </Typography>
-                          )}
-                        </Box>
-                        
-                        <Button
-                          type="submit"
-                          variant="contained"
-                          color="primary"
-                          disabled={isSubmitting}
-                          startIcon={isSubmitting ? <CircularProgress size={20} /> : null}
-                        >
-                          {isSubmitting ? 'Submitting...' : 'Submit'}
-                        </Button>
-                      </form>
-                    </Paper>
-                  )}
-
-                  {/* Display existing submissions */}
-                  {submissions[announcement.id]?.length > 0 && (
-                    <Box sx={{ mt: 2 }}>
-                      <Typography variant="subtitle2" sx={{ mb: 1 }}>Previous Submissions:</Typography>
-                      {submissions[announcement.id].map((submission) => (
-                        <Paper key={submission.submission_id} elevation={1} sx={{ p: 2, mb: 1 }}>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                            <Typography variant="body2">
-                              Submitted on {new Date(submission.submission_date).toLocaleString()}
-                            </Typography>
-                            <Chip 
-                              label={submission.status || 'Submitted'} 
-                              size="small"
-                              color={
-                                submission.status === 'approved' ? 'success' : 
-                                submission.status === 'rejected' ? 'error' : 'default'
-                              }
-                            />
-                          </Box>
-                          {submission.remarks && (
-                            <Typography sx={{ whiteSpace: 'pre-line', mb: 1 }}>
-                              {submission.remarks}
-                            </Typography>
-                          )}
-                          {submission.files?.length > 0 && (
-                            <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                              <InsertDriveFileIcon color="primary" sx={{ mr: 1 }} />
-                              <Typography variant="body2" sx={{ mr: 2 }}>
-                                {submission.files[0].file_name}
-                              </Typography>
-                              <Button
-                                size="small"
-                                onClick={() => handleDownload(
-                                  submission.files[0].file_id,
-                                  submission.files[0].file_name
-                                )}
-                                startIcon={<DownloadIcon />}
-                              >
-                                Download
-                              </Button>
-                            </Box>
-                          )}
-                        </Paper>
-                      ))}
-                    </Box>
-                  )}
-                </Box>
               </Box>
             </Paper>
           ))}

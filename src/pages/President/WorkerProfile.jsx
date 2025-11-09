@@ -30,7 +30,7 @@ const useFormState = (initialState) => {
 };
 
 export default function WorkerProfile() {
-  const { userId } = useParams();
+  const { id: userId } = useParams();
   const [fadeIn, setFadeIn] = useState(false);
   const [activeTab, setActiveTab] = useState("profile");
   const [userData, setUserData] = useState(null);

@@ -48,16 +48,18 @@ export default function AssessmentTable() {
 
   // Helper function to calculate age from birthdate
   function calculateAge(birthdate) {
+    if (!birthdate) return "N/A";
     const birthDate = new Date(birthdate);
     const today = new Date();
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const monthDiff = today.getMonth() - birthDate.getMonth();
+    let years = today.getFullYear() - birthDate.getFullYear();
+    let months = today.getMonth() - birthDate.getMonth();
     
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-      age--;
+    if (months < 0 || (months === 0 && today.getDate() < birthDate.getDate())) {
+      years--;
+      months += 12;
     }
     
-    return age;
+    return `${years} taon, ${months} buwan`;
   }
 
   // Fetch initial student and domain data
@@ -67,7 +69,7 @@ export default function AssessmentTable() {
         setLoading(true);
         
         const [studentsData, domainsData] = await Promise.all([
-          apiRequest('/api/att'),
+          apiRequest('/api/dom/att'),
           apiRequest('/api/domains')
         ]);
         
@@ -541,7 +543,7 @@ export default function AssessmentTable() {
                             position: 'sticky',
                             left: 0,
                             zIndex: 9,
-                            backgroundColor: '#f9f9f9',
+                            backgroundColor: 'inherit', // Use inherit to allow hover effect
                             borderRight: '1px solid rgba(224, 224, 224, 1)'
                           }}
                         >
@@ -578,7 +580,7 @@ export default function AssessmentTable() {
                             position: 'sticky',
                             right: 0,
                             zIndex: 9,
-                            backgroundColor: '#f9f9f9',
+                            backgroundColor: 'inherit', // Use inherit to allow hover effect
                             borderLeft: '1px solid rgba(224, 224, 224, 1)'
                           }}
                         >

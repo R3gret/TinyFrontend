@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Navbar from "../../components/all/Navbar";
-import Sidebar from "../../components/CDC/Sidebar";
+import ParentSidebar from "../../components/Parent/ParentSidebar";
 import { 
   TextField, 
   InputAdornment, 
@@ -286,32 +286,63 @@ const TableComponent = () => {
     return 'Above Average';
   };
 
-//Fetching of datasss
+//Fetching of data
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem('user'));
-    console.log('Logged in user from localStorage:', user);
-    
-    const fetchStudents = async () => {
+    const fetchChildData = async () => {
+      console.log("Attempting to fetch child data...");
       try {
         setLoading(true);
-        const data = await apiRequest('/api/dom/att');
-        setChildOptions(
-          (data.students || []).map(student => ({
-            id: student.student_id,
-            name: `${student.first_name || ''} ${student.last_name || ''}`.trim(),
-            birthdate: student.birthdate,
-            gender: (student.gender || '').toLowerCase(),
-            age: calculateAgeWithMonths(student.birthdate)
-          }))
-        );
+        setError(null);
+
+        // 1. Get the student_id for the logged-in parent
+        const idResponse = await apiRequest('/api/parent/student');
+        console.log("Parent's child ID Response:", idResponse);
+
+        if (idResponse && idResponse.student_id) {
+          const targetStudentId = idResponse.student_id;
+
+          // 2. Fetch the list of all students
+          const allStudentsResponse = await apiRequest('/api/dom/att');
+          console.log("All Students Response:", allStudentsResponse);
+
+          if (allStudentsResponse && allStudentsResponse.students) {
+            // 3. Find the specific student in the list
+            const foundStudent = allStudentsResponse.students.find(
+              (student) => student.student_id === targetStudentId
+            );
+
+            if (foundStudent) {
+              console.log("Found matching student:", foundStudent);
+              const childData = {
+                id: foundStudent.student_id,
+                name: `${foundStudent.first_name || ''} ${foundStudent.last_name || ''}`.trim(),
+                birthdate: foundStudent.birthdate,
+                gender: (foundStudent.gender || '').toLowerCase(),
+                age: calculateAgeWithMonths(foundStudent.birthdate),
+              };
+              setSelectedChild(childData);
+            } else {
+              setError('Your child was not found in the list.');
+              console.error('Child with ID', targetStudentId, 'not found in the list from /api/dom/att');
+            }
+          } else {
+            setError('Failed to fetch the list of all students.');
+            console.error('Failed to fetch student list from /api/dom/att');
+          }
+        } else {
+          setError('Failed to get your child\'s ID from the server.');
+          console.error('Failed to get child ID from /api/parent/student');
+        }
       } catch (err) {
-        setError('Failed to fetch student list');
-        console.error('Error:', err);
+        console.error('An error occurred while fetching child data:', err);
+        setError('An error occurred while fetching data. Please check the console.');
       } finally {
         setLoading(false);
+        console.log("Finished fetching child data process.");
       }
     };
-    fetchStudents();
+
+    fetchChildData();
   }, []);
 
   useEffect(() => {
@@ -453,36 +484,18 @@ const TableComponent = () => {
 
   return (
     <div className="flex h-screen">
-      <Sidebar />
+      <ParentSidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Navbar />
         <div className="flex-1 overflow-y-auto p-4 ml-64 mt-16">
           <div className="max-w-6xl mx-auto">
             {/* Search Section */}
             <Box component={Paper} elevation={3} sx={{ p: 2, mb: 3, display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center' }}>
-              <Autocomplete
-                sx={{ minWidth: 300, flexGrow: 1 }}
-                options={childOptions}
-                getOptionLabel={(option) => option.name}
-                renderInput={(params) => (
-                  <TextField 
-                    {...params} 
-                    label="Search Child" 
-                    variant="outlined"
-                    InputProps={{
-                      ...params.InputProps,
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <SearchIcon />
-                        </InputAdornment>
-                      ),
-                    }}
-                  />
-                )}
-                onChange={(event, value) => setSelectedChild(value)}
-                isOptionEqualToValue={(option, value) => option.id === value.id}
-                noOptionsText="No children found"
-                loading={loading}
+              <TextField
+                label="Child's Name"
+                value={selectedChild ? selectedChild.name : ''}
+                InputProps={{ readOnly: true }}
+                sx={{ minWidth: 250 }}
               />
 
               <TextField
@@ -498,25 +511,20 @@ const TableComponent = () => {
                 InputProps={{ readOnly: true }}
                 sx={{ minWidth: 120 }}
               />
-
               <TextField
-                select
                 label="Gender"
-                value={selectedChild?.gender || ''}
+                value={selectedChild?.gender ? selectedChild.gender.charAt(0).toUpperCase() + selectedChild.gender.slice(1) : ''}
                 InputProps={{ readOnly: true }}
                 sx={{ minWidth: 120 }}
-              >
-                <MenuItem value="">Not specified</MenuItem>
-                <MenuItem value="male">Male</MenuItem>
-                <MenuItem value="female">Female</MenuItem>
-              </TextField>
+              />
             </Box>
 
-            {loading && <Box display="flex" justifyContent="center" p={4}><CircularProgress /></Box>}
-            {error && <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>{error}</Alert>}
+            {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+            
+            {loading && !selectedChild && <CircularProgress sx={{ display: 'block', margin: 'auto' }} />}
 
-            {/* Results Table */}
-            <div className="overflow-x-auto">
+            {selectedChild && (
+              <div className="overflow-x-auto">
               <table className="min-w-full border">
                 <thead>
                   <tr>
@@ -632,6 +640,7 @@ const TableComponent = () => {
                 </tfoot>
               </table>
             </div>
+            )}
           </div>
         </div>
       </div>

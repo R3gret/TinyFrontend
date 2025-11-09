@@ -1,7 +1,10 @@
 import { Link, useLocation } from "react-router-dom";
 import {
-  List,
-  UserCog,
+  LayoutDashboard,
+  Megaphone,
+  BarChart3,
+  User,
+  BookCopy,
 } from "lucide-react";
 
 export default function Sidebar() {
@@ -11,19 +14,31 @@ export default function Sidebar() {
       <div className="mt-16 flex flex-col space-y-2 px-4">
         <SidebarItem 
           to="/parent-dashboard" 
-          icon={List} 
+          icon={LayoutDashboard} 
           label="Dashboard" 
           currentPath={location.pathname} 
         />
         <SidebarItem 
           to="/parent-announcement" 
-          icon={UserCog} 
-          label="Activities/Announcement" 
+          icon={Megaphone} 
+          label="Announcement" 
+          currentPath={location.pathname} 
+        />
+        <SidebarItem 
+          to="/parent-classworks" 
+          icon={BookCopy} 
+          label="Classworks" 
+          currentPath={location.pathname} 
+        />
+        <SidebarItem 
+          to="/child-progress" 
+          icon={BarChart3} 
+          label="Child Progress" 
           currentPath={location.pathname} 
         />
         <SidebarItem 
           to="/parent-profile" 
-          icon={UserCog} 
+          icon={User} 
           label="My Profile" 
           currentPath={location.pathname} 
         />

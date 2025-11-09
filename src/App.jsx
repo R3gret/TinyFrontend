@@ -13,6 +13,9 @@ import Login from "./pages/CDC/Login";
 import RegistrationForm from "./pages/CDC/RegistrationForm";
 import CDCProfileForm from "./pages/CDC/CDProfile";
 import DomainForm from "./pages/CDC/Domain";
+import CDCStudentList from "./pages/CDC/StudentList";
+import CreateParent from "./pages/CDC/CreateParent";
+import StudentProfile from "./pages/CDC/StudentProfile";
 
 
 import ECCDCCreateAcc from "./pages/ECCDC/ECCDC_CreateCDC";
@@ -31,6 +34,8 @@ import InstructionalMaterials from "./pages/President/InstructionalMaterials";
 import ParentVirtualC from "./pages/Parent/ParentVirtualC";
 import ParentDashboard from "./pages/Parent/ParentDashboard";
 import ParentProfile from "./pages/Parent/ParentProfile";
+import ChildProgress from "./pages/Parent/ChildProgress";
+import ParentClassworks from "./pages/Parent/ParentClassworks";
 
 import AdminDashboard from "./pages/Admin/AdminDasboard";
 import AccountList from "./pages/Admin/AccountList";
@@ -122,16 +127,37 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/domain-form"
-          element={
-            <ProtectedRoute allowedTypes={["worker", "admin"]}>
-              <DomainForm />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
+                <Route
+                  path="/domain-form"
+                  element={            <ProtectedRoute allowedTypes={["worker", "admin"]}>
+                      <DomainForm />
+                    </ProtectedRoute>
+                  }
+                />
+        
+                        <Route
+                          path="/student-list"
+                          element={            <ProtectedRoute allowedTypes={["worker"]}>
+                              <CDCStudentList />
+                            </ProtectedRoute>
+                          }
+                        />
+                
+                                <Route
+                                  path="/create-parent"
+                                  element={            <ProtectedRoute allowedTypes={["worker"]}>
+                                      <CreateParent />
+                                    </ProtectedRoute>
+                                  }
+                                />
+                        
+                                <Route
+                                  path="/student-profile/:studentId"
+                                  element={            <ProtectedRoute allowedTypes={["worker"]}>
+                                      <StudentProfile />
+                                    </ProtectedRoute>
+                                  }
+                                />        <Route
           path="/forms/registration"
           element={
             <ProtectedRoute allowedTypes={["worker"]}>
@@ -257,32 +283,39 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/pres-weekly-plans"
-          element={
-            <ProtectedRoute allowedTypes={["president"]}>
-              <PresWeeklyPlans />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/instructional-materials"
-          element={
-            <ProtectedRoute allowedTypes={["president"]}>
-              <InstructionalMaterials />
-            </ProtectedRoute>
-          }
-        />
-
-        {/* Parent Routes */}
-        <Route
-          path="/parent-dashboard"
-          element={
-            <ProtectedRoute allowedTypes={["parent"]}>
-              <ParentDashboard />
-            </ProtectedRoute>
-          }
-        />
+                <Route
+                  path="/pres-weekly-plans"
+                  element={            <ProtectedRoute allowedTypes={["president"]}>
+                      <PresWeeklyPlans />
+                    </ProtectedRoute>
+                  }
+                />
+        
+                <Route
+                  path="/president-profile"
+                  element={            <ProtectedRoute allowedTypes={["president"]}>
+                      <PresidentProfile />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/instructional-materials"
+                  element={            <ProtectedRoute allowedTypes={["president"]}>
+                      <InstructionalMaterials />
+                    </ProtectedRoute>
+                  }
+                />
+        
+                <Route
+                  path="/worker-profile/:id"
+                  element={
+                    <ProtectedRoute allowedTypes={["president"]}>
+                      <WorkerProfile />
+                    </ProtectedRoute>
+                  }
+                />
+        
+                {/* Parent Routes */}
         <Route
           path="/parent-announcement"
           element={
@@ -292,10 +325,216 @@ export default function App() {
           }
         />
         <Route
+          path="/parent-classworks"
+          element={
+            <ProtectedRoute allowedTypes={["parent"]}>
+              <ParentClassworks />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/parent-dashboard"
+          element={
+            <ProtectedRoute allowedTypes={["parent"]}>
+              <ParentDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/parent-profile"
           element={
             <ProtectedRoute allowedTypes={["parent"]}>
               <ParentProfile />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/child-progress"
+          element={
+            <ProtectedRoute allowedTypes={["parent"]}>
+              <ChildProgress />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Admin Routes */}
+        <Route
+          path="/admin-dashboard"
+          element={
+            <ProtectedRoute allowedTypes={["admin"]}>
+              <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/accounts"
+          element={
+            <ProtectedRoute allowedTypes={["admin"]}>
+              <AccountList />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/accounts/:id"
+          element={
+            <ProtectedRoute allowedTypes={["admin"]}>
+              <AccProfiles />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/account-list"
+          element={
+            <ProtectedRoute allowedTypes={["admin"]}>
+              <AccountList />
+            </ProtectedRoute>
+          }
+        />
+        {/* Updated route for individual profiles */}
+        <Route
+          path="/account-profile/:id"
+          element={
+            <ProtectedRoute allowedTypes={["admin", "eccdc", "president","parent"]}>
+              <AccProfiles />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/manage-account"
+          element={
+            <ProtectedRoute allowedTypes={["admin"]}>
+              <ManageAcc />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin-profile"
+          element={
+            <ProtectedRoute allowedTypes={["admin"]}>
+              <AdminProfile />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/eccdc-createacc"
+          element={
+            <ProtectedRoute allowedTypes={["eccdc"]}>
+              <ECCDCCreateAcc />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/eccdc-profile"
+          element={
+            <ProtectedRoute allowedTypes={["eccdc"]}>
+              <ECCDCProfile />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/president-list"
+          element={
+            <ProtectedRoute allowedTypes={["eccdc"]}>
+              <ECCDCAccount />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/president-dashboard"
+          element={
+            <ProtectedRoute allowedTypes={["president"]}>
+              <PresDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/pres-account-list"
+          element={
+            <ProtectedRoute allowedTypes={["president"]}>
+              <AccList />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/pres-virtualc"
+          element={
+            <ProtectedRoute allowedTypes={["president"]}>
+              <PresVC />
+            </ProtectedRoute>
+          }
+        />
+                <Route
+                  path="/pres-weekly-plans"
+                  element={            <ProtectedRoute allowedTypes={["president"]}>
+                      <PresWeeklyPlans />
+                    </ProtectedRoute>
+                  }
+                />
+        
+                <Route
+                  path="/president-profile"
+                  element={            <ProtectedRoute allowedTypes={["president"]}>
+                      <PresidentProfile />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/instructional-materials"
+                  element={            <ProtectedRoute allowedTypes={["president"]}>
+                      <InstructionalMaterials />
+                    </ProtectedRoute>
+                  }
+                />
+        
+                <Route
+                  path="/worker-profile/:id"
+                  element={
+                    <ProtectedRoute allowedTypes={["president"]}>
+                      <WorkerProfile />
+                    </ProtectedRoute>
+                  }
+                />
+        
+                {/* Parent Routes */}
+        <Route
+          path="/parent-announcement"
+          element={
+            <ProtectedRoute allowedTypes={["parent"]}>
+              <ParentVirtualC />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/parent-classworks"
+          element={
+            <ProtectedRoute allowedTypes={["parent"]}>
+              <ParentClassworks />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/parent-dashboard"
+          element={
+            <ProtectedRoute allowedTypes={["parent"]}>
+              <ParentDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/parent-profile"
+          element={
+            <ProtectedRoute allowedTypes={["parent"]}>
+              <ParentProfile />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/child-progress"
+          element={
+            <ProtectedRoute allowedTypes={["parent"]}>
+              <ChildProgress />
             </ProtectedRoute>
           }
         />

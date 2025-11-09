@@ -87,12 +87,32 @@ function StreamSection({ setSnackbar }) {
     title: '',
     message: '',
     ageFilter: 'all',
+    roleFilter: [],
     attachment: null,
     attachmentName: ''
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [ageFilter, setAgeFilter] = useState('all');
+  const [userRole, setUserRole] = useState('');
+
+  useEffect(() => {
+    const userString = localStorage.getItem('user');
+    console.log('user string from localStorage:', userString);
+    if (userString) {
+        const loggedInUser = JSON.parse(userString);
+        console.log('Parsed user object from localStorage:', loggedInUser);
+        if (loggedInUser && (loggedInUser.role || loggedInUser.type)) {
+          const role = loggedInUser.role || loggedInUser.type;
+          console.log('User role found:', role);
+          setUserRole(role);
+        } else {
+            console.log('User role not found in user object:', loggedInUser);
+        }
+    } else {
+        console.log('No user object found in localStorage');
+    }
+  }, []);
 
   useEffect(() => {
     const fetchAnnouncements = async () => {
@@ -117,6 +137,19 @@ function StreamSection({ setSnackbar }) {
     fetchAnnouncements();
   }, [setSnackbar]);
 
+  const handleOpenCreateModal = () => {
+    console.log('Opening create modal, current user role:', userRole);
+    setNewAnnouncement({
+      title: '',
+      message: '',
+      ageFilter: 'all',
+      roleFilter: userRole ? [userRole] : [],
+      attachment: null,
+      attachmentName: ''
+    });
+    setIsCreatingAnnouncement(true);
+  };
+
   const handleCreateAnnouncement = async (e) => {
     e.preventDefault();
     try {
@@ -126,6 +159,7 @@ function StreamSection({ setSnackbar }) {
       formData.append('title', newAnnouncement.title);
       formData.append('message', newAnnouncement.message);
       formData.append('ageFilter', newAnnouncement.ageFilter);
+      formData.append('roleFilter', newAnnouncement.roleFilter.join(','));
       if (newAnnouncement.attachment) {
         formData.append('attachment', newAnnouncement.attachment);
       }
@@ -138,6 +172,7 @@ function StreamSection({ setSnackbar }) {
         title: '',
         message: '',
         ageFilter: 'all',
+        roleFilter: [],
         attachment: null,
         attachmentName: ''
       });
@@ -212,7 +247,7 @@ function StreamSection({ setSnackbar }) {
           </div>
           
           <Button
-            onClick={() => setIsCreatingAnnouncement(true)}
+            onClick={handleOpenCreateModal}
             variant="contained"
             sx={{ bgcolor: 'success.main', '&:hover': { bgcolor: 'success.dark' } }}
             startIcon={<span>+</span>}
@@ -251,7 +286,7 @@ function StreamSection({ setSnackbar }) {
             Get started by creating a new announcement.
           </Typography>
           <Button
-            onClick={() => setIsCreatingAnnouncement(true)}
+            onClick={handleOpenCreateModal}
             variant="contained"
             sx={{ bgcolor: 'success.main', '&:hover': { bgcolor: 'success.dark' } }}
           >
@@ -370,6 +405,66 @@ function StreamSection({ setSnackbar }) {
                 <MenuItem value="4-5">4.1 - 5.0 years</MenuItem>
                 <MenuItem value="5-6">5.1 - 5.11 years</MenuItem>
               </Select>
+            </FormControl>
+
+            <FormControl component="fieldset" sx={{ mb: 2 }}>
+              <Typography variant="subtitle1" sx={{ mb: 1 }}>Target Roles</Typography>
+              <Box sx={{ display: 'flex', gap: 2 }}>
+                <Chip
+                  label="CD Workers"
+                  color={newAnnouncement.roleFilter.includes('worker') ? 'primary' : 'default'}
+                  clickable={userRole !== 'worker'}
+                  onClick={() => {
+                    if (userRole !== 'worker') {
+                      setNewAnnouncement((prev) => {
+                        const exists = prev.roleFilter.includes('worker');
+                        return {
+                          ...prev,
+                          roleFilter: exists
+                            ? prev.roleFilter.filter((r) => r !== 'worker')
+                            : [...prev.roleFilter, 'worker']
+                        };
+                      });
+                    }
+                  }}
+                />
+                <Chip
+                  label="President"
+                  color={newAnnouncement.roleFilter.includes('president') ? 'primary' : 'default'}
+                  clickable={userRole !== 'president'}
+                  onClick={() => {
+                    if (userRole !== 'president') {
+                      setNewAnnouncement((prev) => {
+                        const exists = prev.roleFilter.includes('president');
+                        return {
+                          ...prev,
+                          roleFilter: exists
+                            ? prev.roleFilter.filter((r) => r !== 'president')
+                            : [...prev.roleFilter, 'president']
+                        };
+                      });
+                    }
+                  }}
+                />
+                <Chip
+                  label="Parents"
+                  color={newAnnouncement.roleFilter.includes('parent') ? 'primary' : 'default'}
+                  clickable={userRole !== 'parent'}
+                  onClick={() => {
+                    if (userRole !== 'parent') {
+                      setNewAnnouncement((prev) => {
+                        const exists = prev.roleFilter.includes('parent');
+                        return {
+                          ...prev,
+                          roleFilter: exists
+                            ? prev.roleFilter.filter((r) => r !== 'parent')
+                            : [...prev.roleFilter, 'parent']
+                        };
+                      });
+                    }
+                  }}
+                />
+              </Box>
             </FormControl>
             
             <Box sx={{ mb: 3 }}>

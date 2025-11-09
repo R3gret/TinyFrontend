@@ -60,6 +60,8 @@ const CDCPage = () => {
   const [presidents, setPresidents] = useState([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
+  const [openDeleteConfirm, setOpenDeleteConfirm] = useState(false);
+  const [openCreateConfirm, setOpenCreateConfirm] = useState(false);
 
   // Load regions from imported JSON
   useEffect(() => {
@@ -99,7 +101,16 @@ const CDCPage = () => {
       if (filter.barangay) params.append('barangay', filter.barangay);
       
       const data = await apiRequest(`/api/cdc?${params.toString()}`);
-      setCdcList(data.data);
+      
+      // Perform sorting asynchronously to prevent UI blocking
+      setTimeout(() => {
+        if (data && data.data) {
+          const sortedData = [...data.data].sort((a, b) => a.name.localeCompare(b.name));
+          setCdcList(sortedData);
+        }
+        setLoading(false);
+      }, 0);
+
     } catch (err) {
       console.error('Failed to fetch CDCs:', err);
       setSnackbar({
@@ -107,8 +118,7 @@ const CDCPage = () => {
         message: "Failed to load CDC data",
         severity: "error"
       });
-    } finally {
-      setLoading(false);
+      setLoading(false); // Also set loading to false in case of an error
     }
   };
 
@@ -174,12 +184,18 @@ const CDCPage = () => {
   };
 
   // Create CDC with API helper
+  const handleCreateConfirm = (e) => {
+    e.preventDefault();
+    setOpenCreateConfirm(true);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setOpenCreateConfirm(false);
     setLoading(true);
     
     try {
-      const data = await apiRequest('/api/cdc', 'POST', formData);
+      await apiRequest('/api/cdc', 'POST', formData);
       setSnackbar({
         open: true,
         message: "CDC created successfully!",
@@ -204,7 +220,7 @@ const CDCPage = () => {
     setLoading(true);
     
     try {
-      const data = await apiRequest(`/api/cdc/${selectedCDC.cdcId}`, 'PUT', formData);
+      await apiRequest(`/api/cdc/${selectedCDC.cdcId}`, 'PUT', formData);
       setSnackbar({
         open: true,
         message: "CDC updated successfully!",
@@ -225,12 +241,18 @@ const CDCPage = () => {
   };
 
   // Delete CDC with API helper
+  const handleDeleteConfirm = () => {
+    if (!selectedCDC) return;
+    setOpenDeleteConfirm(true);
+  };
+
   const handleDelete = async () => {
     if (!selectedCDC) return;
     
+    setOpenDeleteConfirm(false);
     setLoading(true);
     try {
-      const data = await apiRequest(`/api/cdc/${selectedCDC.cdcId}`, 'DELETE');
+      await apiRequest(`/api/cdc/${selectedCDC.cdcId}`, 'DELETE');
       setSnackbar({
         open: true,
         message: "CDC deleted successfully!",
@@ -358,7 +380,7 @@ const CDCPage = () => {
               <Button 
                 variant="contained" 
                 startIcon={<Delete />}
-                onClick={handleDelete}
+                onClick={handleDeleteConfirm}
                 disabled={!selectedCDC}
                 sx={{ 
                   ...buttonStyle,
@@ -471,7 +493,7 @@ const CDCPage = () => {
                 </Alert>
               )}
 
-              <form onSubmit={handleSubmit}>
+              <form onSubmit={handleCreateConfirm}>
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                   {/* CDC Name */}
                   <TextField
@@ -613,6 +635,47 @@ const CDCPage = () => {
             </Box>
           </Modal>
 
+          {/* Create Confirmation Modal */}
+          <Modal open={openCreateConfirm} onClose={() => setOpenCreateConfirm(false)}>
+            <Box sx={modalStyle}>
+              <Typography variant="h6" component="h2" sx={{ mb: 3, textAlign: "center" }}>
+                Confirm Creation
+              </Typography>
+              <Typography sx={{ mb: 3, textAlign: "center" }}>
+                Are you sure you want to create this CDC?
+              </Typography>
+              <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, mt: 2 }}>
+                <Button
+                  onClick={() => setOpenCreateConfirm(false)}
+                  variant="outlined"
+                  startIcon={<Close />}
+                  sx={{
+                    ...buttonStyle,
+                    color: "#2e7d32",
+                    borderColor: "#2e7d32",
+                    '&:hover': {
+                      borderColor: "#1b5e20"
+                    }
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSubmit}
+                  variant="contained"
+                  startIcon={<Save />}
+                  sx={{
+                    ...buttonStyle,
+                    backgroundColor: "#2e7d32",
+                    "&:hover": { backgroundColor: "#1b5e20" }
+                  }}
+                >
+                  {loading ? <CircularProgress size={24} /> : "Create"}
+                </Button>
+              </Box>
+            </Box>
+          </Modal>
+
           {/* Edit CDC Modal */}
           <Modal open={openEditModal} onClose={() => setOpenEditModal(false)}>
             <Box sx={modalStyle}>
@@ -751,6 +814,47 @@ const CDCPage = () => {
                   </Box>
                 </Box>
               </form>
+            </Box>
+          </Modal>
+
+          {/* Delete Confirmation Modal */}
+          <Modal open={openDeleteConfirm} onClose={() => setOpenDeleteConfirm(false)}>
+            <Box sx={modalStyle}>
+              <Typography variant="h6" component="h2" sx={{ mb: 3, textAlign: "center" }}>
+                Confirm Deletion
+              </Typography>
+              <Typography sx={{ mb: 3, textAlign: "center" }}>
+                Are you sure you want to delete this CDC? This action cannot be undone.
+              </Typography>
+              <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, mt: 2 }}>
+                <Button
+                  onClick={() => setOpenDeleteConfirm(false)}
+                  variant="outlined"
+                  startIcon={<Close />}
+                  sx={{
+                    ...buttonStyle,
+                    color: "#2e7d32",
+                    borderColor: "#2e7d32",
+                    '&:hover': {
+                      borderColor: "#1b5e20"
+                    }
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleDelete}
+                  variant="contained"
+                  startIcon={<Delete />}
+                  sx={{
+                    ...buttonStyle,
+                    backgroundColor: "#d32f2f",
+                    "&:hover": { backgroundColor: "#b71c1c" }
+                  }}
+                >
+                  {loading ? <CircularProgress size={24} /> : "Delete"}
+                </Button>
+              </Box>
             </Box>
           </Modal>
 

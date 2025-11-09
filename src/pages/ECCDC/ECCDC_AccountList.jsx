@@ -60,7 +60,7 @@ const CreateUserModal = ({ open, onClose, onUserCreated }) => {
     setLoading(true);
   
     try {
-      const userData = await apiRequest('/api/presidents', 'POST', {
+      const userData = await apiRequest('/api/cdc/presidents', 'POST', {
         username: formData.username,
         password: formData.password
       });
@@ -111,10 +111,10 @@ const CreateUserModal = ({ open, onClose, onUserCreated }) => {
             required
             fullWidth
             sx={{ mb: 2 }}
-            helperText="Only letters, numbers and underscores allowed"
+            helperText="Only letters, numbers, underscores, and periods allowed"
             inputProps={{
-              pattern: "[a-zA-Z0-9_]+",
-              title: "Only letters, numbers and underscores allowed",
+              pattern: "[a-zA-Z0-9_.]+",
+              title: "Only letters, numbers, underscores, and periods allowed",
             }}
           />
 

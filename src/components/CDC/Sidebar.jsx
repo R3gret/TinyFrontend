@@ -12,8 +12,15 @@ export default function Sidebar() {
       <div className="mt-16 flex flex-col space-y-2 px-4">
         <SidebarItem to="/dashboard" icon={List} label="Dashboard" currentPath={location.pathname} />
         <SidebarItem to="/registration" icon={ClipboardEdit} label="Registration" currentPath={location.pathname} />
-        <SidebarItem to="/student-list" icon={User} label="Student List" currentPath={location.pathname} />
-        <SidebarItem to="/create-parent" icon={UserPlus} label="Parent Accounts" currentPath={location.pathname} />
+                <SidebarItemWithSubmenu 
+          mainIcon={User} 
+          mainLabel="Accounts"
+          currentPath={location.pathname}
+          submenuItems={[
+            { to: "/student-list", icon: User, label: "Student List" },
+            { to: "/create-parent", icon: UserPlus, label: "Parent Accounts" }
+          ]}
+        />
 
         <SidebarItemWithSubmenu 
           mainIcon={FileText} 
@@ -47,6 +54,7 @@ export default function Sidebar() {
 
         <SidebarItem to="/attendance" icon={CheckSquare} label="Attendance" currentPath={location.pathname} />
         <SidebarItem to="/virtual-classroom" icon={Video} label="Virtual Classroom" currentPath={location.pathname} />
+        <SidebarItem to="/cdc-instructional-materials" icon={FileText} label="Learning Materials" currentPath={location.pathname} />
       </div>
     </aside>
   );

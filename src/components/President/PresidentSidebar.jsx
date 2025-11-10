@@ -41,7 +41,7 @@ export default function PresidentSidebar() {
         <SidebarItem 
           to="/instructional-materials" 
           icon={BookOpen} 
-          label="Instructional Materials"
+          label="Learning Materials"
           currentPath={location.pathname}
         />
       </div>

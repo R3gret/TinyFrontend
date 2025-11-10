@@ -16,7 +16,7 @@ import DomainForm from "./pages/CDC/Domain";
 import CDCStudentList from "./pages/CDC/StudentList";
 import CreateParent from "./pages/CDC/CreateParent";
 import StudentProfile from "./pages/CDC/StudentProfile";
-
+import CDCInstructionalMaterials from "./pages/CDC/InstructionalMaterials";
 
 import ECCDCCreateAcc from "./pages/ECCDC/ECCDC_CreateCDC";
 import ECCDCProfile from "./pages/ECCDC/ECCDC_Profile"
@@ -155,6 +155,13 @@ export default function App() {
                                   path="/student-profile/:studentId"
                                   element={            <ProtectedRoute allowedTypes={["worker"]}>
                                       <StudentProfile />
+                                    </ProtectedRoute>
+                                  }
+                                />
+                                <Route
+                                  path="/cdc-instructional-materials"
+                                  element={            <ProtectedRoute allowedTypes={["worker"]}>
+                                      <CDCInstructionalMaterials />
                                     </ProtectedRoute>
                                   }
                                 />        <Route

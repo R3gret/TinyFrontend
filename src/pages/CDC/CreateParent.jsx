@@ -156,16 +156,16 @@ export default function CreateParent() {
             <Table sx={{ minWidth: 650 }} aria-label="parent table">
               <TableHead>
                 <TableRow>
-                  <TableCell>ID</TableCell>
-                  <TableCell>Username</TableCell>
+                  <TableCell>Guardian Name</TableCell>
+                  <TableCell>Relationship</TableCell>
                   <TableCell align="center">Action</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {paginatedParents.map((parent) => (
                   <TableRow key={parent.id} hover>
-                    <TableCell>{parent.id}</TableCell>
-                    <TableCell>{parent.username}</TableCell>
+                    <TableCell>{parent.guardian_name}</TableCell>
+                    <TableCell>{parent.relationship}</TableCell>
                     <TableCell align="center">
                       <Button variant="contained" size="small" onClick={() => navigate(`/parent-profile/${parent.id}`)} sx={{ mr: 1 }}>
                         View Profile

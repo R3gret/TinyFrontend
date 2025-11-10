@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import Navbar from "../../components/all/Navbar";
-import Sidebar from "../../components/President/PresidentSidebar";
+import Sidebar from "../../components/CDC/Sidebar";
 import {
   Table,
   TableBody,

@@ -48,7 +48,7 @@ export default function Dashboard() {
     severity: "success"
   });
 
-  const tabs = ["Stream", "Classworks", "Students"];
+  const tabs = ["Stream", "Classworks"];
 
   const handleSnackbarClose = () => {
     setSnackbar({...snackbar, open: false});
@@ -78,7 +78,6 @@ export default function Dashboard() {
           <div className="mt-6 p-6 bg-white shadow-lg rounded-lg">
             {activeTab === "Stream" && <StreamSection setSnackbar={setSnackbar} />}
             {activeTab === "Classworks" && <ClassworksSection setSnackbar={setSnackbar} />}
-            {activeTab === "Students" && <StudentsSection setSnackbar={setSnackbar} />}
           </div>
         </div>
       </div>
@@ -541,213 +540,127 @@ function StreamSection({ setSnackbar }) {
 }
 
 function ClassworksSection({ setSnackbar }) {
-  const [categories, setCategories] = useState([]);
-  const [ageGroups, setAgeGroups] = useState([]);
-  const [selectedAgeGroup, setSelectedAgeGroup] = useState(null);
-  const [selectedCategory, setSelectedCategory] = useState(null);
-  const [files, setFiles] = useState([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [newFile, setNewFile] = useState({
-    category_id: '',
-    age_group_id: '',
-    file_name: '',
-    file_type: '',
-    file_data: null
-  });
+  const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [fileCounts, setFileCounts] = useState({});
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [currentActivity, setCurrentActivity] = useState(null); // For editing
+  const [activityData, setActivityData] = useState({
+    title: '',
+    description: '',
+    due_date: '',
+    activityFile: null,
+    activityFileName: ''
+  });
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        
-        const [categoriesData, ageGroupsData] = await Promise.all([
-          apiRequest('/api/files/categories'),
-          apiRequest('/api/files/age-groups')
-        ]);
-        
-        setCategories(categoriesData.categories || []);
-        setAgeGroups(ageGroupsData.ageGroups || []);
-        
-        if (selectedAgeGroup) {
-          const countsData = await apiRequest(
-            `/api/files/counts?age_group_id=${selectedAgeGroup}`
-          );
-          setFileCounts(countsData.counts || {});
-        }
-        
-      } catch (err) {
-        console.error('Error fetching data:', err);
-        setError(err.message);
-        setSnackbar({
-          open: true,
-          message: 'Failed to fetch data',
-          severity: 'error'
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchData();
-  }, [selectedAgeGroup, setSnackbar]);
-
-  useEffect(() => {
-    if (selectedAgeGroup && !selectedCategory) {
-      const fetchFileCounts = async () => {
-        try {
-          const data = await apiRequest(
-            `/api/files/counts?age_group_id=${selectedAgeGroup}`
-          );
-          setFileCounts(data.counts || {});
-        } catch (err) {
-          console.error('Error fetching file counts:', err);
-        }
-      };
-      
-      fetchFileCounts();
-    }
-  }, [selectedAgeGroup, selectedCategory]);
-
-  useEffect(() => {
-    if (selectedCategory && selectedAgeGroup) {
-      const fetchFiles = async () => {
-        try {
-          setLoading(true);
-          const data = await apiRequest(
-            `/api/files?category_id=${selectedCategory}&age_group_id=${selectedAgeGroup}`
-          );
-          setFiles(data.files || []);
-        } catch (err) {
-          console.error('Error fetching files:', err);
-          setError(err.message);
-          setSnackbar({
-            open: true,
-            message: 'Failed to fetch files',
-            severity: 'error'
-          });
-        } finally {
-          setLoading(false);
-        }
-      };
-      
-      fetchFiles();
-    }
-  }, [selectedCategory, selectedAgeGroup, setSnackbar]);
-
-  const handleFileUpload = async (e) => {
-    e.preventDefault();
+  const fetchActivities = async () => {
     try {
       setLoading(true);
-      
-      const formData = new FormData();
-      formData.append('category_id', newFile.category_id);
-      formData.append('age_group_id', newFile.age_group_id);
-      formData.append('file_name', newFile.file_name);
-      formData.append('file_data', newFile.file_data);
-      
-      await apiRequest('/api/files', 'POST', formData, true);
-      
-      if (selectedCategory && selectedAgeGroup) {
-        const filesData = await apiRequest(
-          `/api/files?category_id=${selectedCategory}&age_group_id=${selectedAgeGroup}`
-        );
-        setFiles(filesData.files || []);
-      }
-      
-      if (selectedAgeGroup) {
-        const countsData = await apiRequest(
-          `/api/files/counts?age_group_id=${selectedAgeGroup}`
-        );
-        setFileCounts(countsData.counts || {});
-      }
-      
-      setIsModalOpen(false);
-      setNewFile({
-        category_id: '',
-        age_group_id: '',
-        file_name: '',
-        file_type: '',
-        file_data: null
-      });
-      
-      setSnackbar({
-        open: true,
-        message: 'File uploaded successfully',
-        severity: 'success'
-      });
+      const data = await apiRequest('/api/activities');
+      setActivities(data || []);
     } catch (err) {
-      console.error('Error uploading file:', err);
       setError(err.message);
-      setSnackbar({
-        open: true,
-        message: err.message || 'Failed to upload file',
-        severity: 'error'
-      });
+      setSnackbar({ open: true, message: 'Failed to fetch classworks.', severity: 'error' });
     } finally {
       setLoading(false);
     }
   };
 
+  useEffect(() => {
+    fetchActivities();
+  }, [setSnackbar]);
+
+  const handleOpenModal = (activity = null) => {
+    setCurrentActivity(activity);
+    if (activity) {
+      setActivityData({
+        title: activity.title,
+        description: activity.description,
+        due_date: activity.due_date ? new Date(activity.due_date).toISOString().split('T')[0] : '',
+        activityFile: null,
+        activityFileName: activity.file_path ? path.basename(activity.file_path) : ''
+      });
+    } else {
+      setActivityData({ title: '', description: '', due_date: '', activityFile: null, activityFileName: '' });
+    }
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setCurrentActivity(null);
+    setActivityData({ title: '', description: '', due_date: '', activityFile: null, activityFileName: '' });
+  };
+
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      setNewFile({
-        ...newFile,
-        file_name: file.name,
-        file_type: file.type,
-        file_data: file
+      setActivityData({
+        ...activityData,
+        activityFile: file,
+        activityFileName: file.name
       });
     }
   };
 
-  const handleDownload = async (fileId, fileName) => {
+  const handleSave = async () => {
+    if (!activityData.title) {
+      setSnackbar({ open: true, message: 'Title is required.', severity: 'warning' });
+      return;
+    }
+
+    const apiPath = currentActivity ? `/api/activities/${currentActivity.activity_id}` : '/api/activities';
+    const method = currentActivity ? 'PUT' : 'POST';
+
     try {
-      const response = await fetch(`${API_BASE_URL}/api/files/download/${fileId}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+      // For new activities, we use FormData for file upload
+      if (method === 'POST') {
+        const formData = new FormData();
+        formData.append('title', activityData.title);
+        formData.append('description', activityData.description);
+        formData.append('due_date', activityData.due_date);
+        if (activityData.activityFile) {
+          formData.append('activityFile', activityData.activityFile);
         }
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to download file');
+        await apiRequest(apiPath, method, formData, true); // isFormData = true
+      } else {
+        // For updating, we send JSON as the backend doesn't handle file updates
+        await apiRequest(apiPath, method, {
+          title: activityData.title,
+          description: activityData.description,
+          due_date: activityData.due_date,
+        });
       }
-      
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = fileName || 'download';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-      
-    } catch (err) {
-      console.error('Error downloading file:', err);
-      setError(err.message);
+
       setSnackbar({
         open: true,
-        message: 'Failed to download file',
+        message: `Classwork ${currentActivity ? 'updated' : 'created'} successfully.`,
+        severity: 'success'
+      });
+      handleCloseModal();
+      fetchActivities(); // Refresh list
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        message: `Failed to ${currentActivity ? 'update' : 'create'} classwork.`,
         severity: 'error'
       });
     }
   };
 
-  const handleBackClick = () => {
-    if (selectedCategory) {
-      setSelectedCategory(null);
-    } else if (selectedAgeGroup) {
-      setSelectedAgeGroup(null);
+  const handleDelete = async (activityId) => {
+    if (window.confirm('Are you sure you want to delete this classwork?')) {
+      try {
+        await apiRequest(`/api/activities/${activityId}`, 'DELETE');
+        setSnackbar({ open: true, message: 'Classwork deleted successfully.', severity: 'success' });
+        fetchActivities(); // Refresh list
+      } catch (err) {
+        setSnackbar({ open: true, message: 'Failed to delete classwork.', severity: 'error' });
+      }
     }
   };
 
-  const showBackButton = selectedAgeGroup || selectedCategory;
-  const backButtonLabel = selectedCategory ? "Back to Categories" : "Back to Age Groups";
-
-  if (loading && !selectedCategory) {
+  if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
         <CircularProgress />
@@ -766,215 +679,96 @@ function ClassworksSection({ setSnackbar }) {
   return (
     <div className="text-gray-800">
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          {showBackButton && (
-            <Button
-              onClick={handleBackClick}
-              startIcon={<ArrowBackIcon />}
-              sx={{ mr: 2 }}
-            >
-              {backButtonLabel}
-            </Button>
-          )}
-          <Typography variant="h5" component="h2">
-            Developmental Domains
-          </Typography>
-        </Box>
-
-        {!selectedCategory && (
-          <FormControl sx={{ minWidth: 200 }} size="small">
-            <InputLabel>Select Age Group</InputLabel>
-            <Select
-              value={selectedAgeGroup || ''}
-              label="Select Age Group"
-              onChange={(e) => setSelectedAgeGroup(e.target.value)}
-            >
-              <MenuItem value="">Select Age</MenuItem>
-              {ageGroups.map((ageGroup) => (
-                <MenuItem key={ageGroup.age_group_id} value={ageGroup.age_group_id}>
-                  {ageGroup.age_range.replace(/\?/g, '-')}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        )}
+        <Typography variant="h5" component="h2">
+          Classworks
+        </Typography>
+        <Button variant="contained" onClick={() => handleOpenModal()}>
+          Add Classwork
+        </Button>
       </Box>
 
-      {!selectedAgeGroup ? (
+      {activities.length === 0 ? (
         <Box sx={{ textAlign: 'center', py: 4 }}>
-          <Typography color="text.secondary">
-            Please select an age group to view categories
-          </Typography>
-        </Box>
-      ) : selectedCategory ? (
-        <Box>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-            <Typography variant="h6">
-              {categories.find(c => c.category_id == selectedCategory)?.category_name} - 
-              {ageGroups.find(a => a.age_group_id == selectedAgeGroup)?.age_range}
-            </Typography>
-            <Button
-              variant="contained"
-              startIcon={<UploadIcon />}
-              onClick={() => setIsModalOpen(true)}
-            >
-              Upload File
-            </Button>
-          </Box>
-
-          {files.length === 0 ? (
-            <Box sx={{ 
-              border: 2, 
-              borderColor: 'grey.300', 
-              borderStyle: 'dashed', 
-              borderRadius: 1, 
-              p: 6, 
-              textAlign: 'center',
-              my: 4
-            }}>
-              <Typography variant="h6" gutterBottom>
-                No files uploaded
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Get started by uploading a new file.
-              </Typography>
-              <Button
-                onClick={() => setIsModalOpen(true)}
-                variant="contained"
-                startIcon={<UploadIcon />}
-              >
-                Upload File
-              </Button>
-            </Box>
-          ) : (
-            <Grid container spacing={2}>
-              {files.map((file) => (
-                <Grid item xs={12} sm={6} md={4} key={file.file_id}>
-                  <Paper elevation={3} sx={{ p: 2, height: '100%' }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <Box>
-                        <Typography variant="subtitle1">{file.file_name}</Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          {file.file_type}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          Uploaded: {new Date(file.upload_date).toLocaleDateString()}
-                        </Typography>
-                      </Box>
-                      <IconButton
-                        onClick={() => handleDownload(file.file_id, file.file_name)}
-                        color="primary"
-                      >
-                        <DownloadIcon />
-                      </IconButton>
-                    </Box>
-                  </Paper>
-                </Grid>
-              ))}
-            </Grid>
-          )}
+          <Typography color="text.secondary">No classworks found.</Typography>
         </Box>
       ) : (
-        <Grid container spacing={3}>
-          {categories.map((category) => (
-            <Grid item xs={12} sm={6} md={4} lg={3} key={category.category_id}>
-              <Card 
-                sx={{ 
-                  height: '100%', 
-                  display: 'flex', 
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  p: 3,
-                  textAlign: 'center',
-                  cursor: 'pointer',
-                  '&:hover': {
-                    boxShadow: 4,
-                    bgcolor: 'success.light',
-                    color: 'primary.contrastText',
-                    '& .MuiSvgIcon-root': {
-                      color: 'primary.contrastText'
-                    }
-                  }
-                }}
-                onClick={() => setSelectedCategory(category.category_id)}
-              >
-                <FolderIcon sx={{ fontSize: 60, color: 'success.main', mb: 1 }} />
-                <Typography variant="h6" component="h3">
-                  {category.category_name}
-                </Typography>
-                <Typography variant="body2">
-                  {fileCounts[category.category_id] || 0} files
-                </Typography>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Title</TableCell>
+                <TableCell>Description</TableCell>
+                <TableCell>Due Date</TableCell>
+                <TableCell>Attachment</TableCell>
+                <TableCell align="right">Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {activities.map((activity) => (
+                <TableRow key={activity.activity_id}>
+                  <TableCell>{activity.title}</TableCell>
+                  <TableCell>{activity.description}</TableCell>
+                  <TableCell>{activity.due_date ? new Date(activity.due_date).toLocaleDateString() : 'N/A'}</TableCell>
+                  <TableCell>{activity.file_path ? activity.file_path.split('-').slice(1).join('-') : 'None'}</TableCell>
+                  <TableCell align="right">
+                    <IconButton onClick={() => handleOpenModal(activity)}><EditIcon /></IconButton>
+                    <IconButton onClick={() => handleDelete(activity.activity_id)}><DeleteIcon /></IconButton>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
       )}
 
-      <Modal open={isModalOpen} onClose={() => setIsModalOpen(false)}>
+      <Modal open={isModalOpen} onClose={handleCloseModal}>
         <Box sx={{
           position: 'absolute',
           top: '50%',
           left: '50%',
           transform: 'translate(-50%, -50%)',
           width: '90%',
-          maxWidth: 600,
+          maxWidth: 500,
           bgcolor: 'background.paper',
           boxShadow: 24,
           p: 4,
-          borderRadius: 2
+          borderRadius: 2,
+          maxHeight: '90vh',
+          overflowY: 'auto'
         }}>
           <Typography variant="h6" component="h2" sx={{ mb: 3 }}>
-            Upload New File
+            {currentActivity ? 'Edit Classwork' : 'Add Classwork'}
           </Typography>
+          <TextField
+            label="Title"
+            fullWidth
+            required
+            value={activityData.title}
+            onChange={(e) => setActivityData({ ...activityData, title: e.target.value })}
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            label="Description"
+            fullWidth
+            multiline
+            rows={3}
+            value={activityData.description}
+            onChange={(e) => setActivityData({ ...activityData, description: e.target.value })}
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            label="Due Date"
+            type="date"
+            fullWidth
+            value={activityData.due_date}
+            onChange={(e) => setActivityData({ ...activityData, due_date: e.target.value })}
+            sx={{ mb: 2 }}
+            InputLabelProps={{ shrink: true }}
+          />
           
-          <form onSubmit={handleFileUpload}>
-            <FormControl fullWidth sx={{ mb: 2 }}>
-              <InputLabel>Category</InputLabel>
-              <Select
-                value={newFile.category_id}
-                label="Category"
-                onChange={(e) => setNewFile({...newFile, category_id: e.target.value})}
-                required
-              >
-                <MenuItem value="">Select Category</MenuItem>
-                {categories.map((category) => (
-                  <MenuItem key={category.category_id} value={category.category_id}>
-                    {category.category_name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            
-            <FormControl fullWidth sx={{ mb: 2 }}>
-              <InputLabel>Age Group</InputLabel>
-              <Select
-                value={newFile.age_group_id}
-                label="Age Group"
-                onChange={(e) => setNewFile({...newFile, age_group_id: e.target.value})}
-                required
-              >
-                <MenuItem value="">Select Age Group</MenuItem>
-                {ageGroups.map((ageGroup) => (
-                  <MenuItem key={ageGroup.age_group_id} value={ageGroup.age_group_id}>
-                    {ageGroup.age_range}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            
-            <TextField
-              label="File Name"
-              fullWidth
-              required
-              value={newFile.file_name}
-              onChange={(e) => setNewFile({...newFile, file_name: e.target.value})}
-              sx={{ mb: 2 }}
-            />
-            
+          {!currentActivity && (
             <Box sx={{ mb: 3 }}>
-              <Typography variant="body2" sx={{ mb: 1 }}>Select File</Typography>
+              <Typography variant="body2" sx={{ mb: 1 }}>Attachment (Optional)</Typography>
               <Box sx={{
                 border: 2,
                 borderColor: 'grey.300',
@@ -983,13 +777,13 @@ function ClassworksSection({ setSnackbar }) {
                 p: 3,
                 textAlign: 'center'
               }}>
-                {newFile.file_name ? (
-                  <Typography>{newFile.file_name}</Typography>
+                {activityData.activityFileName ? (
+                  <Typography>{activityData.activityFileName}</Typography>
                 ) : (
                   <>
                     <CloudUploadIcon sx={{ fontSize: 40, color: 'grey.500', mb: 1 }} />
                     <Typography variant="body2" sx={{ mb: 1 }}>
-                      Drag and drop file here or click to browse
+                      Click to browse for a file
                     </Typography>
                     <Button
                       variant="outlined"
@@ -1000,189 +794,21 @@ function ClassworksSection({ setSnackbar }) {
                         type="file"
                         hidden
                         onChange={handleFileChange}
-                        required
                       />
                     </Button>
-                    <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-                      PDF, DOCX, XLSX up to 10MB
-                    </Typography>
                   </>
                 )}
               </Box>
             </Box>
-            
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
-              <Button
-                onClick={() => setIsModalOpen(false)}
-                variant="outlined"
-                disabled={loading}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                variant="contained"
-                disabled={loading}
-              >
-                {loading ? <CircularProgress size={24} /> : 'Upload File'}
-              </Button>
-            </Box>
-          </form>
+          )}
+
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+            <Button onClick={handleCloseModal} variant="outlined">Cancel</Button>
+            <Button onClick={handleSave} variant="contained">Save</Button>
+          </Box>
         </Box>
       </Modal>
     </div>
   );
 }
 
-function StudentsSection({ setSnackbar }) {
-  const [students, setStudents] = useState([]);
-  const [filteredStudents, setFilteredStudents] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [ageFilter, setAgeFilter] = useState('all');
-  const [searchQuery, setSearchQuery] = useState('');
-
-  useEffect(() => {
-    const fetchStudents = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        const endpoint = ageFilter !== 'all' 
-          ? `/api/att?ageFilter=${ageFilter}`
-          : '/api/att';
-        
-        const data = await apiRequest(endpoint);
-        
-        if (!data.success) {
-          throw new Error(data.message || 'Failed to fetch students');
-        }
-        
-        setStudents(data.students);
-        setFilteredStudents(data.students);
-      } catch (error) {
-        console.error('Error fetching students:', error);
-        setError(error.message);
-        setSnackbar({
-          open: true,
-          message: 'Failed to fetch students',
-          severity: 'error'
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchStudents();
-  }, [ageFilter, setSnackbar]);
-
-  useEffect(() => {
-    if (searchQuery.trim() === '') {
-      setFilteredStudents(students);
-    } else {
-      const filtered = students.filter(student => {
-        const fullName = `${student.first_name} ${student.middle_name || ''} ${student.last_name}`.toLowerCase();
-        return fullName.includes(searchQuery.toLowerCase());
-      });
-      setFilteredStudents(filtered);
-    }
-  }, [searchQuery, students]);
-
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString();
-  };
-
-  const getFullName = (student) => {
-    return `${student.first_name} ${student.middle_name ? student.middle_name + ' ' : ''}${student.last_name}`;
-  };
-
-  return (
-    <div className="text-gray-800">
-      <Box sx={{ 
-        display: 'flex', 
-        flexDirection: { xs: 'column', md: 'row' }, 
-        justifyContent: 'space-between', 
-        alignItems: { xs: 'flex-start', md: 'center' }, 
-        gap: 2,
-        mb: 3 
-      }}>
-        <Typography variant="h5" component="h2">
-          Student List
-        </Typography>
-        
-        <TextField
-          label="Search students"
-          variant="outlined"
-          size="small"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          sx={{ width: { xs: '100%', md: 300 } }}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon />
-              </InputAdornment>
-            ),
-          }}
-        />
-        
-        <FormControl sx={{ minWidth: 200 }} size="small">
-          <InputLabel>Filter by Age</InputLabel>
-          <Select
-            value={ageFilter}
-            label="Filter by Age"
-            onChange={(e) => setAgeFilter(e.target.value)}
-          >
-            <MenuItem value="all">All Ages</MenuItem>
-            <MenuItem value="3-4">3.0 - 4.0 years</MenuItem>
-            <MenuItem value="4-5">4.1 - 5.0 years</MenuItem>
-            <MenuItem value="5-6">5.1 - 5.11 years</MenuItem>
-          </Select>
-        </FormControl>
-      </Box>
-
-      {error ? (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      ) : loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
-          <CircularProgress />
-        </Box>
-      ) : filteredStudents.length === 0 ? (
-        <Box sx={{ textAlign: 'center', py: 4 }}>
-          <Typography color="text.secondary">
-            {searchQuery ? 'No students match your search' : 'No students found'}
-          </Typography>
-        </Box>
-      ) : (
-        <Paper sx={{ width: '100%', overflow: 'hidden' }}>
-          <TableContainer sx={{ maxHeight: 440 }}>
-            <Table stickyHeader>
-              <TableHead>
-                <TableRow>
-                  <TableCell>ID</TableCell>
-                  <TableCell>Name</TableCell>
-                  <TableCell>Age</TableCell>
-                  <TableCell>Gender</TableCell>
-                  <TableCell>Birthdate</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {filteredStudents.map((student) => (
-                  <TableRow hover key={student.student_id}>
-                    <TableCell>{student.student_id}</TableCell>
-                    <TableCell>{getFullName(student)}</TableCell>
-                    <TableCell>{student.age}</TableCell>
-                    <TableCell>{student.gender}</TableCell>
-                    <TableCell>{formatDate(student.birthdate)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Paper>
-      )}
-    </div>
-  );
-}

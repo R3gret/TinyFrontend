@@ -35,7 +35,9 @@ import {
   InsertDriveFile as InsertDriveFileIcon,
   ArrowBack as ArrowBackIcon,
   Search as SearchIcon,
-  CloudUpload as CloudUploadIcon
+  CloudUpload as CloudUploadIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon
 } from "@mui/icons-material";
 
 import { apiRequest } from "../../utils/api";
@@ -55,10 +57,9 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="w-screen h-screen flex overflow-hidden">
-      <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${bgImage})`, zIndex: -1 }}></div>
+    <div className="w-screen h-screen flex overflow-hidden bg-white">
       <Sidebar />
-      <div className="flex flex-col flex-grow pl-64 pt-16 bg-white/50 overflow-auto">
+      <div className="flex flex-col flex-grow pl-64 pt-16 bg-white overflow-auto">
         <Navbar />
         <div className="p-10">
           <div className="flex space-x-4 border-b-2 pb-2">
@@ -541,26 +542,36 @@ function StreamSection({ setSnackbar }) {
 
 function ClassworksSection({ setSnackbar }) {
   const [activities, setActivities] = useState([]);
+  const [ageGroups, setAgeGroups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentActivity, setCurrentActivity] = useState(null); // For editing
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [activityToDelete, setActivityToDelete] = useState(null);
   const [activityData, setActivityData] = useState({
     title: '',
     description: '',
     due_date: '',
     activityFile: null,
-    activityFileName: ''
+    activityFileName: '',
+    age_group_id: ''
   });
 
   const fetchActivities = async () => {
     try {
       setLoading(true);
-      const data = await apiRequest('/api/activities');
-      setActivities(data || []);
+      const [activitiesData, ageGroupsData] = await Promise.all([
+        apiRequest('/api/activities'),
+        apiRequest('/api/files/get-age-groups')
+      ]);
+      setActivities(activitiesData || []);
+      setAgeGroups(ageGroupsData.ageGroups || []);
     } catch (err) {
       setError(err.message);
-      setSnackbar({ open: true, message: 'Failed to fetch classworks.', severity: 'error' });
+      setSnackbar({ open: true, message: 'Failed to fetch classworks data.', severity: 'error' });
     } finally {
       setLoading(false);
     }
@@ -578,10 +589,11 @@ function ClassworksSection({ setSnackbar }) {
         description: activity.description,
         due_date: activity.due_date ? new Date(activity.due_date).toISOString().split('T')[0] : '',
         activityFile: null,
-        activityFileName: activity.file_path ? path.basename(activity.file_path) : ''
+        activityFileName: activity.file_path ? activity.file_path.split('-').slice(1).join('-') : '',
+        age_group_id: activity.age_group_id || ''
       });
     } else {
-      setActivityData({ title: '', description: '', due_date: '', activityFile: null, activityFileName: '' });
+      setActivityData({ title: '', description: '', due_date: '', activityFile: null, activityFileName: '', age_group_id: '' });
     }
     setIsModalOpen(true);
   };
@@ -589,7 +601,7 @@ function ClassworksSection({ setSnackbar }) {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setCurrentActivity(null);
-    setActivityData({ title: '', description: '', due_date: '', activityFile: null, activityFileName: '' });
+    setActivityData({ title: '', description: '', due_date: '', activityFile: null, activityFileName: '', age_group_id: '' });
   };
 
   const handleFileChange = (e) => {
@@ -612,6 +624,7 @@ function ClassworksSection({ setSnackbar }) {
     const apiPath = currentActivity ? `/api/activities/${currentActivity.activity_id}` : '/api/activities';
     const method = currentActivity ? 'PUT' : 'POST';
 
+    setIsSaving(true);
     try {
       // For new activities, we use FormData for file upload
       if (method === 'POST') {
@@ -619,13 +632,14 @@ function ClassworksSection({ setSnackbar }) {
         formData.append('title', activityData.title);
         formData.append('description', activityData.description);
         formData.append('due_date', activityData.due_date);
+        formData.append('age_group_id', activityData.age_group_id);
         if (activityData.activityFile) {
           formData.append('activityFile', activityData.activityFile);
         }
         await apiRequest(apiPath, method, formData, true); // isFormData = true
       } else {
         // For updating, we send JSON as the backend doesn't handle file updates
-        await apiRequest(apiPath, method, {
+        await apiRequest(apiPath, 'PUT', {
           title: activityData.title,
           description: activityData.description,
           due_date: activityData.due_date,
@@ -645,6 +659,33 @@ function ClassworksSection({ setSnackbar }) {
         message: `Failed to ${currentActivity ? 'update' : 'create'} classwork.`,
         severity: 'error'
       });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeleteClick = (activity) => {
+    setActivityToDelete(activity);
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleCloseDeleteConfirm = () => {
+    setActivityToDelete(null);
+    setDeleteConfirmOpen(false);
+  };
+
+  const confirmDelete = async () => {
+    if (!activityToDelete) return;
+    setIsDeleting(true);
+    try {
+      await apiRequest(`/api/activities/${activityToDelete.activity_id}`, 'DELETE');
+      setSnackbar({ open: true, message: 'Classwork deleted successfully.', severity: 'success' });
+      fetchActivities(); // Refresh list
+    } catch (err) {
+      setSnackbar({ open: true, message: 'Failed to delete classwork.', severity: 'error' });
+    } finally {
+      setIsDeleting(false);
+      handleCloseDeleteConfirm();
     }
   };
 
@@ -697,22 +738,27 @@ function ClassworksSection({ setSnackbar }) {
             <TableHead>
               <TableRow>
                 <TableCell>Title</TableCell>
-                <TableCell>Description</TableCell>
                 <TableCell>Due Date</TableCell>
+                <TableCell>Age Group</TableCell>
                 <TableCell>Attachment</TableCell>
                 <TableCell align="right">Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {activities.map((activity) => (
-                <TableRow key={activity.activity_id}>
+                <TableRow 
+                  key={activity.activity_id}
+                  hover
+                  sx={{ cursor: 'pointer' }}
+                  onClick={() => window.location.href = `/cdc/activity/${activity.activity_id}`}
+                >
                   <TableCell>{activity.title}</TableCell>
-                  <TableCell>{activity.description}</TableCell>
                   <TableCell>{activity.due_date ? new Date(activity.due_date).toLocaleDateString() : 'N/A'}</TableCell>
+                  <TableCell>{activity.age_range ? activity.age_range.replace(/[?–—]/g, '-'): 'N/A'}</TableCell>
                   <TableCell>{activity.file_path ? activity.file_path.split('-').slice(1).join('-') : 'None'}</TableCell>
                   <TableCell align="right">
-                    <IconButton onClick={() => handleOpenModal(activity)}><EditIcon /></IconButton>
-                    <IconButton onClick={() => handleDelete(activity.activity_id)}><DeleteIcon /></IconButton>
+                    <IconButton onClick={e => {e.stopPropagation(); handleOpenModal(activity);}}><EditIcon /></IconButton>
+                    <IconButton onClick={e => {e.stopPropagation(); handleDeleteClick(activity);}}><DeleteIcon /></IconButton>
                   </TableCell>
                 </TableRow>
               ))}
@@ -766,6 +812,22 @@ function ClassworksSection({ setSnackbar }) {
             InputLabelProps={{ shrink: true }}
           />
           
+          <FormControl fullWidth sx={{ mb: 2 }}>
+            <InputLabel>Target Age Group</InputLabel>
+            <Select
+              value={activityData.age_group_id}
+              label="Target Age Group"
+              onChange={(e) => setActivityData({ ...activityData, age_group_id: e.target.value })}
+              required
+            >
+              {ageGroups.map((group) => (
+                <MenuItem key={group.age_group_id} value={group.age_group_id}>
+                  {group.age_range.replace('?', '-')}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
           {!currentActivity && (
             <Box sx={{ mb: 3 }}>
               <Typography variant="body2" sx={{ mb: 1 }}>Attachment (Optional)</Typography>
@@ -803,8 +865,40 @@ function ClassworksSection({ setSnackbar }) {
           )}
 
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
-            <Button onClick={handleCloseModal} variant="outlined">Cancel</Button>
-            <Button onClick={handleSave} variant="contained">Save</Button>
+            <Button onClick={handleCloseModal} variant="outlined" disabled={isSaving}>Cancel</Button>
+            <Button onClick={handleSave} variant="contained" disabled={isSaving}>
+              {isSaving ? <CircularProgress size={24} /> : 'Save'}
+            </Button>
+          </Box>
+        </Box>
+      </Modal>
+
+      <Modal open={deleteConfirmOpen} onClose={handleCloseDeleteConfirm}>
+        <Box sx={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: '90%',
+          maxWidth: 400,
+          bgcolor: 'background.paper',
+          boxShadow: 24,
+          p: 4,
+          borderRadius: 2,
+        }}>
+          <Typography variant="h6" component="h2" sx={{ mb: 2 }}>
+            Confirm Deletion
+          </Typography>
+          <Typography sx={{ mb: 3 }}>
+            Are you sure you want to delete the classwork "{activityToDelete?.title}"? This action cannot be undone.
+          </Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+            <Button onClick={handleCloseDeleteConfirm} variant="outlined" disabled={isDeleting}>
+              Cancel
+            </Button>
+            <Button onClick={confirmDelete} variant="contained" color="error" disabled={isDeleting}>
+              {isDeleting ? <CircularProgress size={24} /> : 'Delete'}
+            </Button>
           </Box>
         </Box>
       </Modal>

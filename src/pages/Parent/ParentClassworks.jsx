@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import Navbar from "../../components/all/Navbar";
 import Sidebar from "../../components/Parent/ParentSidebar";
 import {
@@ -9,30 +9,14 @@ import {
   TableHead,
   TableRow,
   Paper,
-  TextField,
   TableContainer,
   CircularProgress,
-  Button,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
   Typography,
   Snackbar,
   Alert,
-  Chip,
-  Grid,
-  Card,
-  IconButton,
-  Box
+  Box,
+  Chip
 } from "@mui/material";
-import {
-  Download as DownloadIcon,
-  Folder as FolderIcon,
-  InsertDriveFile as InsertDriveFileIcon,
-  ArrowBack as ArrowBackIcon,
-  Search as SearchIcon
-} from "@mui/icons-material";
 
 import { apiRequest } from "../../utils/api";
 
@@ -79,42 +63,38 @@ export default function ParentClassworks() {
 }
 
 function ClassworksSection({ setSnackbar }) {
-  const [classworks, setClassworks] = useState([]);
+  const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedCategory, setSelectedCategory] = useState(null);
-  const [studentInfo, setStudentInfo] = useState(null);
-  const [categories, setCategories] = useState([]);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchActivities = async () => {
       try {
         setLoading(true);
+        const activitiesData = await apiRequest('/api/student/activities');
         
-        // First fetch student info and filtered classworks
-        const classworksData = await apiRequest('/api/parentannouncements/filtered-classworks');
+        // For each activity, check if a submission exists
+        const activitiesWithSubmissionStatus = await Promise.all(
+          (activitiesData || []).map(async (activity) => {
+            try {
+              const submissionStatus = await apiRequest(`/api/submissions/exists/${activity.activity_id}`);
+              return { ...activity, hasSubmitted: submissionStatus.hasSubmitted };
+            } catch (err) {
+              console.error(`Failed to check submission status for activity ${activity.activity_id}`, err);
+              return { ...activity, hasSubmitted: false }; // Assume not submitted on error
+            }
+          })
+        );
         
-        if (!classworksData.success) {
-          throw new Error(classworksData.message || 'Failed to fetch classworks');
-        }
-
-        // Then fetch categories
-        const categoriesData = await apiRequest('/api/files/categories');
-        
-        setClassworks(classworksData.classworks || []);
-        setStudentInfo({
-          age: classworksData.age,
-          ageGroup: classworksData.ageGroup,
-          cdc_id: classworksData.cdc_id
-        });
-        setCategories(categoriesData.categories || []);
+        setActivities(activitiesWithSubmissionStatus);
         setError(null);
       } catch (err) {
-        console.error('Error fetching data:', err);
+        console.error('Error fetching activities:', err);
         setError(err.message);
         setSnackbar({
           open: true,
-          message: 'Failed to fetch data',
+          message: 'Failed to fetch classworks.',
           severity: 'error'
         });
       } finally {
@@ -122,68 +102,17 @@ function ClassworksSection({ setSnackbar }) {
       }
     };
     
-    fetchData();
+    fetchActivities();
   }, [setSnackbar]);
 
-  const handleDownload = async (filePath, fileName) => {
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/files/download/${filePath}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to download file');
-      }
-
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = fileName || 'download';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error('Error downloading file:', err);
-      setSnackbar({
-        open: true,
-        message: 'Failed to download file',
-        severity: 'error'
-      });
-    }
+  const handleRowClick = (activity) => {
+    navigate(`/parent/activity/${activity.activity_id}`, { state: { activity } });
   };
-
-  const filteredClassworks = selectedCategory
-    ? classworks.filter(cw => cw.category_id === selectedCategory)
-    : classworks;
 
   return (
     <div className="text-gray-800">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <h2 className="text-2xl font-bold">Classworks</h2>
-        <FormControl variant="outlined" sx={{ minWidth: 200 }}>
-          <InputLabel>Filter by Category</InputLabel>
-          <Select
-            value={selectedCategory || ''}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            label="Filter by Category"
-          >
-            <MenuItem value="">
-              <em>All Categories</em>
-            </MenuItem>
-            {categories.map((cat) => (
-              <MenuItem key={cat.category_id} value={cat.category_id}>
-                {cat.category_name}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
       </div>
 
       {error && (
@@ -198,7 +127,7 @@ function ClassworksSection({ setSnackbar }) {
         </Box>
       )}
 
-      {!loading && filteredClassworks.length === 0 && (
+      {!loading && activities.length === 0 && (
         <Box sx={{ 
           border: 2, 
           borderColor: 'grey.300', 
@@ -209,38 +138,39 @@ function ClassworksSection({ setSnackbar }) {
           my: 4
         }}>
           <Typography variant="h6" gutterBottom>
-            No classworks available for the selected category.
+            No classworks available.
           </Typography>
         </Box>
       )}
 
-      {!loading && filteredClassworks.length > 0 && (
+      {!loading && activities.length > 0 && (
         <TableContainer component={Paper} elevation={3}>
           <Table>
-            <TableHead sx={{ backgroundColor: 'primary.main' }}>
+            <TableHead sx={{ backgroundColor: '#388e3c' }}>
               <TableRow>
-                <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>File Name</TableCell>
-                <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Category</TableCell>
-                <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Date Uploaded</TableCell>
-                <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Actions</TableCell>
+                <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Title</TableCell>
+                <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Creation Date</TableCell>
+                <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Due Date</TableCell>
+                <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>Status</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {filteredClassworks.map((item) => (
-                <TableRow key={item.file_id} hover>
-                  <TableCell>{item.file_name}</TableCell>
-                  <TableCell>{item.category_name}</TableCell>
-                  <TableCell>{new Date(item.upload_date).toLocaleDateString()}</TableCell>
+              {activities.map((activity) => (
+                <TableRow 
+                  key={activity.activity_id} 
+                  hover
+                  onClick={() => handleRowClick(activity)}
+                  sx={{ cursor: 'pointer' }}
+                >
+                  <TableCell>{activity.title}</TableCell>
+                  <TableCell>{activity.creation_date ? new Date(activity.creation_date).toLocaleDateString() : 'N/A'}</TableCell>
+                  <TableCell>{activity.due_date ? new Date(activity.due_date).toLocaleDateString() : 'N/A'}</TableCell>
                   <TableCell>
-                    <Button
-                      variant="contained"
-                      color="primary"
-                      size="small"
-                      startIcon={<DownloadIcon />}
-                      onClick={() => handleDownload(item.file_path, item.file_name)}
-                    >
-                      Download
-                    </Button>
+                    {activity.hasSubmitted ? (
+                      <Chip label="Submitted" color="success" size="small" />
+                    ) : (
+                      <Chip label="Pending" color="warning" size="small" />
+                    )}
                   </TableCell>
                 </TableRow>
               ))}

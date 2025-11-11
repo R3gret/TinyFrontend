@@ -36,12 +36,6 @@ export default function Sidebar() {
           label="Child Progress" 
           currentPath={location.pathname} 
         />
-        <SidebarItem 
-          to="/parent-profile" 
-          icon={User} 
-          label="My Profile" 
-          currentPath={location.pathname} 
-        />
       </div>
     </aside>
   );

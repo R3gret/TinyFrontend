@@ -95,8 +95,18 @@ const FieldLast = ({ label, value }) => (
 );
 
 export default function RegistrationPDF({ data }) {
-  // Combine child name parts
-  const fullName = `${data.childLastName}, ${data.childFirstName} ${data.childMiddleName}`.trim();
+  // Combine child name parts, only add comma if last name is present
+  let fullName = '';
+  if (data.childLastName && data.childFirstName) {
+    fullName = `${data.childLastName}, ${data.childFirstName}`;
+  } else if (data.childLastName) {
+    fullName = data.childLastName;
+  } else if (data.childFirstName) {
+    fullName = data.childFirstName;
+  }
+  if (data.childMiddleName) {
+    fullName = fullName ? `${fullName} ${data.childMiddleName}` : data.childMiddleName;
+  }
   
   return (
     <Document>

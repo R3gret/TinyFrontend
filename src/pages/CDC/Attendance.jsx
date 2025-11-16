@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import Navbar from "../../components/all/Navbar";
 import Sidebar from "../../components/CDC/Sidebar";
-import bgImage from "../../assets/bg1.jpg";
 import { CheckSquare, CalendarPlus, X, Filter, ChevronLeft, ChevronRight } from "lucide-react";
 
 import { apiRequest } from "../../utils/api";
@@ -223,14 +222,11 @@ export default function AttendancePage() {
 
   return (
     <div className="w-screen h-screen flex overflow-hidden">
-      <div
-        className="absolute inset-0 bg-cover bg-center"
-        style={{ backgroundImage: `url(${bgImage})`, zIndex: -1 }}
-      ></div>
+      {/* background removed in favor of solid white */}
 
       <Sidebar />
 
-      <div className="flex flex-col flex-grow pl-64 pt-16 bg-white/50 overflow-auto">
+      <div className="flex flex-col flex-grow pl-64 pt-16 bg-white overflow-auto">
         <Navbar />
 
         <div className="p-10">
@@ -247,8 +243,11 @@ export default function AttendancePage() {
               </button>
 
               <button
-                className="flex items-center bg-blue-700 text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-800 transition"
+                className="flex items-center px-4 py-2 rounded-lg shadow-md text-white transition"
                 onClick={() => setShowFilterModal(true)}
+                style={{ backgroundColor: '#2e7d32' }}
+                onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#256b2a'}
+                onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#2e7d32'}
               >
                 <Filter size={20} className="mr-2" />
                 Filter by Week

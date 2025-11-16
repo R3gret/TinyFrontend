@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   TextField, Button, Box, Typography, CircularProgress, Snackbar, Alert,
   FormControl, InputLabel, Select, MenuItem, Paper, IconButton, InputAdornment,
-  TableContainer, Table, TableHead, TableRow, TableCell, TableBody, TablePagination
+  TableContainer, Table, TableHead, TableRow, TableCell, TableBody, TablePagination, Modal
 } from "@mui/material";
 import {
     Visibility, VisibilityOff
@@ -46,6 +46,8 @@ export default function CreateParent() {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [showPassword, setShowPassword] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [editingParent, setEditingParent] = useState(null);
+  const [changePassword, setChangePassword] = useState(true);
 
   useEffect(() => {
     const fetchGuardians = async () => {
@@ -94,14 +96,57 @@ export default function CreateParent() {
     setLoading(true);
     setError(null);
     try {
-      await apiRequest('/api/parent', 'POST', formData);
-      setSnackbar({ open: true, message: 'Parent account created successfully!', severity: 'success' });
+      if (editingParent) {
+        // Update existing parent - include type (backend validation requires it)
+        // Only include password if the user opted to change it
+        const payload = { username: formData.username, type: 'parent' };
+        if (changePassword && formData.password && formData.password.trim() !== '') {
+          payload.password = formData.password;
+        }
+        // include student_id if present (server may ignore it but we send it)
+        if (formData.student_id) payload.student_id = formData.student_id;
+
+        await apiRequest(`/api/parent/${editingParent.id}`, 'PUT', payload);
+        setSnackbar({ open: true, message: 'Parent account updated successfully!', severity: 'success' });
+      } else {
+        // Create new parent
+        await apiRequest('/api/parent', 'POST', formData);
+        setSnackbar({ open: true, message: 'Parent account created successfully!', severity: 'success' });
+      }
       setFormData({ username: '', password: '', student_id: '' });
-      setShowCreateForm(false); // Hide the form after successful creation
+      setShowCreateForm(false); // Hide the form after successful creation/update
+      setEditingParent(null);
       fetchParents(); // Refresh the list of parents
     } catch (err) {
       setError(err.message);
       setSnackbar({ open: true, message: err.message || 'Failed to create parent account.', severity: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Edit and Delete handlers (moved to component scope so buttons can access them)
+  const handleEditParent = (parent) => {
+    // Prefill the form with parent data and open the modal in edit mode
+    setEditingParent(parent);
+    setFormData({
+      username: parent.username || '',
+      password: '', // leave blank unless changing
+      student_id: parent.student_id || ''
+    });
+    setChangePassword(false);
+    setShowCreateForm(true);
+  };
+
+  const handleDeleteParent = async (parent) => {
+    if (!window.confirm(`Are you sure you want to delete parent '${parent.username}'? This action cannot be undone.`)) return;
+    setLoading(true);
+    try {
+      await apiRequest(`/api/parent/${parent.id}`, 'DELETE');
+      setSnackbar({ open: true, message: 'Parent deleted successfully!', severity: 'success' });
+      fetchParents();
+    } catch (err) {
+      setSnackbar({ open: true, message: err.message || 'Failed to delete parent.', severity: 'error' });
     } finally {
       setLoading(false);
     }
@@ -117,7 +162,6 @@ export default function CreateParent() {
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
   };
-
   const renderParentTable = () => {
     if (loading) {
       return (
@@ -193,25 +237,6 @@ export default function CreateParent() {
         </Paper>
       </div>
     );
-  // Edit and Delete handlers
-  const handleEditParent = (parent) => {
-    // Placeholder for edit logic/modal
-    alert(`Edit parent: ${parent.username}`);
-  };
-
-  const handleDeleteParent = async (parent) => {
-    if (!window.confirm(`Are you sure you want to delete parent '${parent.username}'? This action cannot be undone.`)) return;
-    setLoading(true);
-    try {
-      await apiRequest(`/api/parent/${parent.id}`, 'DELETE');
-      setSnackbar({ open: true, message: 'Parent deleted successfully!', severity: 'success' });
-      fetchParents();
-    } catch (err) {
-      setSnackbar({ open: true, message: err.message || 'Failed to delete parent.', severity: 'error' });
-    } finally {
-      setLoading(false);
-    }
-  };
   };
 
   return (
@@ -222,7 +247,7 @@ export default function CreateParent() {
         <div className="p-6 pt-20">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-2xl font-bold text-gray-800">Parent Accounts</h2>
-            <Button variant="contained" onClick={() => setShowCreateForm(true)}>
+            <Button variant="contained" onClick={() => { setEditingParent(null); setFormData({ username: '', password: '', student_id: '' }); setShowCreateForm(true); }}>
               Add Parent Account
             </Button>
           </div>
@@ -231,13 +256,18 @@ export default function CreateParent() {
           </div>
           {renderParentTable()}
 
-          {showCreateForm && (
-            <div className="max-w-lg mx-auto mt-8"> {/* Added mt-8 for spacing */}
-              <Typography variant="h4" component="h1" gutterBottom>
-                Create Parent Account
-              </Typography>
-              <Paper sx={{ p: 3, mt: 3 }}>
-                <Box component="form" onSubmit={handleSubmit}>
+          <Modal
+            open={showCreateForm}
+            onClose={() => setShowCreateForm(false)}
+            aria-labelledby="create-parent-modal-title"
+            aria-describedby="create-parent-modal-description"
+          >
+            <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '90%', maxWidth: 600, outline: 'none' }}>
+              <Paper sx={{ p: 3 }}>
+                <Typography id="create-parent-modal-title" variant="h5" component="h2" gutterBottom>
+                  {editingParent ? 'Edit Parent Account' : 'Create Parent Account'}
+                </Typography>
+                <Box component="form" onSubmit={handleSubmit} id="create-parent-modal-description">
                   <TextField
                     margin="normal"
                     required
@@ -248,15 +278,27 @@ export default function CreateParent() {
                     onChange={handleChange}
                     autoFocus
                   />
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 1 }}>
+                    {editingParent && (
+                      <FormControl sx={{ display: 'flex', alignItems: 'center' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <input type="checkbox" checked={changePassword} onChange={(e) => setChangePassword(e.target.checked)} />
+                          <span style={{ fontSize: 14 }}>Change password</span>
+                        </label>
+                      </FormControl>
+                    )}
+                  </Box>
                   <TextField
                     margin="normal"
-                    required
+                    required={!editingParent ? true : changePassword}
                     fullWidth
                     name="password"
                     label="Password"
                     type={showPassword ? "text" : "password"}
                     value={formData.password}
                     onChange={handleChange}
+                    disabled={editingParent ? !changePassword : false}
+                    helperText={editingParent ? (changePassword ? 'Enter a new password to update it' : 'Leave blank to keep current password') : ''}
                     InputProps={{
                       endAdornment: (
                         <InputAdornment position="end">
@@ -272,7 +314,7 @@ export default function CreateParent() {
                     }}
                   />
                   <FormControl fullWidth margin="normal" required>
-                    <InputLabel id="student-select-label">Select Student</InputLabel>
+                    <InputLabel id="student-select-label">Select Parent</InputLabel>
                     <Select
                       labelId="student-select-label"
                       id="student-select"
@@ -294,13 +336,13 @@ export default function CreateParent() {
                       Cancel
                     </Button>
                     <Button type="submit" disabled={loading} variant="contained">
-                      {loading ? <CircularProgress size={24} /> : 'Create Parent'}
+                      {loading ? <CircularProgress size={24} /> : (editingParent ? 'Save Changes' : 'Create Parent')}
                     </Button>
                   </Box>
                 </Box>
               </Paper>
-            </div>
-          )}
+            </Box>
+          </Modal>
         </div> {/* Closing div for "p-6 pt-20" */}
       </div>
       <Snackbar open={snackbar.open} autoHideDuration={6000} onClose={handleSnackbarClose}>

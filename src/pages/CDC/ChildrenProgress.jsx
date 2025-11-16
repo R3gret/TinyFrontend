@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import Navbar from "../../components/all/Navbar";
 import Sidebar from "../../components/CDC/Sidebar";
-import bgImage from "../../assets/bg1.jpg";
 import { useNavigate } from 'react-router-dom';
 import { 
   Table, 
@@ -404,7 +403,7 @@ export default function AssessmentTable() {
                       position: 'sticky',
                       left: 0,
                       zIndex: 12,
-                      backgroundColor: '#4caf50',
+                      backgroundColor: '#2e7d32',
                       color: 'white',
                       borderRight: '1px solid rgba(224, 224, 224, 1)',
                       fontWeight: 'bold',
@@ -422,7 +421,7 @@ export default function AssessmentTable() {
                       position: 'sticky',
                       top: 0,
                       zIndex: 11,
-                      backgroundColor: '#4caf50',
+                      backgroundColor: '#2e7d32',
                       color: 'white',
                       fontWeight: 'bold',
                       fontSize: '1rem',
@@ -439,7 +438,7 @@ export default function AssessmentTable() {
                       position: 'sticky',
                       right: 0,
                       zIndex: 12,
-                      backgroundColor: '#4caf50',
+                      backgroundColor: '#2e7d32',
                       color: 'white',
                       borderLeft: '1px solid rgba(224, 224, 224, 1)',
                       fontWeight: 'bold',
@@ -456,7 +455,7 @@ export default function AssessmentTable() {
                   position: 'sticky', 
                   top: 40,
                   zIndex: 11, 
-                  backgroundColor: '#4caf50',
+                  backgroundColor: '#2e7d32',
                   height: '20px'
                 }}>
                   <TableCell 
@@ -465,7 +464,7 @@ export default function AssessmentTable() {
                       position: 'sticky',
                       top: 40,
                       zIndex: 11,
-                      backgroundColor: '#4caf50',
+                      backgroundColor: '#2e7d32',
                       color: 'white',
                       fontWeight: 'bold',
                       height: '20px',
@@ -480,7 +479,7 @@ export default function AssessmentTable() {
                       position: 'sticky',
                       top: 40,
                       zIndex: 11,
-                      backgroundColor: '#4caf50',
+                      backgroundColor: '#2e7d32',
                       color: 'white',
                       fontWeight: 'bold',
                       height: '20px',
@@ -495,7 +494,7 @@ export default function AssessmentTable() {
                       position: 'sticky',
                       top: 40,
                       zIndex: 11,
-                      backgroundColor: '#4caf50',
+                      backgroundColor: '#2e7d32',
                       color: 'white',
                       fontWeight: 'bold',
                       height: '20px',
@@ -515,7 +514,7 @@ export default function AssessmentTable() {
                         colSpan={5} 
                         sx={{ 
                           fontWeight: 'bold',
-                          backgroundColor: '#81c784',
+                          backgroundColor: '#2e7d32',
                           position: 'sticky',
                           left: 0,
                           zIndex: 10,
@@ -607,9 +606,9 @@ export default function AssessmentTable() {
 
   return (
     <div className="w-screen h-screen flex overflow-hidden">
-      <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${bgImage})`, zIndex: -1 }}></div>
+  {/* background removed: using solid white background instead */}
       <Sidebar />
-      <div className="flex flex-col flex-grow pl-64 pt-16 bg-white/50 overflow-auto">
+  <div className="flex flex-col flex-grow pl-64 pt-16 bg-white overflow-auto">
         <Navbar />
         <div className="p-6">
           <div className="flex justify-between items-center mb-4">

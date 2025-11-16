@@ -91,6 +91,46 @@ export default function WeeklyPlans() {
     }
   };
 
+  // Format time to 12-hour standard with AM/PM
+  const formatTime12 = (time) => {
+    if (!time) return '';
+    // If ISO datetime or contains T
+    if (typeof time === 'string' && time.includes('T')) {
+      const d = new Date(time);
+      if (isNaN(d)) return time;
+      let h = d.getHours();
+      const m = d.getMinutes().toString().padStart(2, '0');
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      h = h % 12 || 12;
+      return `${h}:${m} ${ampm}`;
+    }
+
+    // If simple HH:MM or HH:MM:SS
+    const match = typeof time === 'string' && time.match(/^(\d{1,2}):(\d{2})(:\d{2})?$/);
+    if (match) {
+      let hh = parseInt(match[1], 10);
+      const mm = match[2];
+      const ampm = hh >= 12 ? 'PM' : 'AM';
+      hh = hh % 12 || 12;
+      return `${hh}:${mm} ${ampm}`;
+    }
+
+    // Fallback: try Date parse
+    try {
+      const d = new Date(time);
+      if (!isNaN(d)) {
+        let h = d.getHours();
+        const m = d.getMinutes().toString().padStart(2, '0');
+        const ampm = h >= 12 ? 'PM' : 'AM';
+        h = h % 12 || 12;
+        return `${h}:${m} ${ampm}`;
+      }
+    } catch (e) {
+      // ignore
+    }
+    return time;
+  };
+
   const handleAddActivity = () => {
     const { activity_name, start_time, end_time } = newActivity;
   
@@ -317,8 +357,8 @@ export default function WeeklyPlans() {
                   <div key={index} className="flex items-center space-x-3">
                     <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
                     <span className="text-sm font-medium">{activity.activity_name}</span>
-                    <span className="text-sm text-gray-600">Start: {activity.start_time}</span>
-                    <span className="text-sm text-gray-600">End: {activity.end_time}</span>
+                    <span className="text-sm text-gray-600">Start: {formatTime12(activity.start_time)}</span>
+                    <span className="text-sm text-gray-600">End: {formatTime12(activity.end_time)}</span>
                   </div>
                 ))}
               </div>
@@ -355,8 +395,8 @@ export default function WeeklyPlans() {
                     {activities.map((activity, index) => (
                       <tr key={index} className="border-t hover:bg-gray-200">
                         <td className="p-3 border-b">{activity.activity_name}</td>
-                        <td className="p-3 border-b">{activity.start_time}</td>
-                        <td className="p-3 border-b">{activity.end_time}</td>
+                        <td className="p-3 border-b">{formatTime12(activity.start_time)}</td>
+                        <td className="p-3 border-b">{formatTime12(activity.end_time)}</td>
                         <td className="p-3 border-b">{calculateDuration(activity.start_time, activity.end_time)}</td>
                       </tr>
                     ))}

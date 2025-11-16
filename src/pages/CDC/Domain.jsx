@@ -214,12 +214,29 @@ const TableComponent = () => {
   });
 
   // Age range calculation
+  // Age range calculation (interprets ranges like '3.1' as 3 years 1 month)
   const getAgeRange = (years, months) => {
     if (years === 'N/A' || months === 'N/A') return null;
-    const ageDecimal = years + (months / 12);
-    if (ageDecimal >= 3.1 && ageDecimal <= 4.0) return '3.1-4.0';
-    if (ageDecimal >= 4.1 && ageDecimal <= 5.0) return '4.1-5.0';
-    if (ageDecimal >= 5.1 && ageDecimal <= 5.11) return '5.1-5.11';
+    // Convert age to total months
+    const totalMonths = (Number(years) * 12) + Number(months);
+
+    const parseRange = (rangeStr) => {
+      // rangeStr example: '3.1' -> 3 years 1 month, or '5.11' -> 5 years 11 months
+      const [yStr, mStr] = rangeStr.split('.');
+      const y = Number(yStr || 0);
+      const m = Number(mStr || 0);
+      return y * 12 + m;
+    };
+
+    const ranges = [
+      { key: '3.1-4.0', min: parseRange('3.1'), max: parseRange('4.0') },
+      { key: '4.1-5.0', min: parseRange('4.1'), max: parseRange('5.0') },
+      { key: '5.1-5.11', min: parseRange('5.1'), max: parseRange('5.11') }
+    ];
+
+    for (const r of ranges) {
+      if (totalMonths >= r.min && totalMonths <= r.max) return r.key;
+    }
     return null;
   };
 

@@ -35,6 +35,7 @@ import InstructionalMaterials from "./pages/President/InstructionalMaterials";
 import ParentVirtualC from "./pages/Parent/ParentVirtualC";
 import ParentDashboard from "./pages/Parent/ParentDashboard";
 import ParentProfile from "./pages/Parent/ParentProfile";
+import CDCUserProfile from "./pages/CDC/UserProfile";
 import ChildProgress from "./pages/Parent/ChildProgress";
 import ParentClassworks from "./pages/Parent/ParentClassworks";
 import ActivityDetail from "./pages/Parent/ActivityDetail";
@@ -107,7 +108,8 @@ export default function App() {
         <Route path="/parent-announcement" element={<ProtectedRoute allowedTypes={["parent"]}><ParentVirtualC /></ProtectedRoute>} />
         <Route path="/parent-classworks" element={<ProtectedRoute allowedTypes={["parent"]}><ParentClassworks /></ProtectedRoute>} />
         <Route path="/parent-dashboard" element={<ProtectedRoute allowedTypes={["parent"]}><ParentDashboard /></ProtectedRoute>} />
-        <Route path="/parent-profile" element={<ProtectedRoute allowedTypes={["parent"]}><ParentProfile /></ProtectedRoute>} />
+  <Route path="/parent-profile" element={<ProtectedRoute allowedTypes={["parent"]}><ParentProfile /></ProtectedRoute>} />
+  <Route path="/parent-profile/:id" element={<ProtectedRoute allowedTypes={["worker","admin"]}><CDCUserProfile /></ProtectedRoute>} />
         <Route path="/child-progress" element={<ProtectedRoute allowedTypes={["parent"]}><ChildProgress /></ProtectedRoute>} />
         <Route path="/parent/activity/:activityId" element={<ProtectedRoute allowedTypes={["parent"]}><ActivityDetail /></ProtectedRoute>} />
 

@@ -91,6 +91,41 @@ export default function StudentWeeklyPlans() {
     }
   };
 
+  // Format time to 12-hour standard with AM/PM
+  const formatTime12 = (time) => {
+    if (!time) return '';
+    if (typeof time === 'string' && time.includes('T')) {
+      const d = new Date(time);
+      if (isNaN(d)) return time;
+      let h = d.getHours();
+      const m = d.getMinutes().toString().padStart(2, '0');
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      h = h % 12 || 12;
+      return `${h}:${m} ${ampm}`;
+    }
+    const match = typeof time === 'string' && time.match(/^(\d{1,2}):(\d{2})(:\d{2})?$/);
+    if (match) {
+      let hh = parseInt(match[1], 10);
+      const mm = match[2];
+      const ampm = hh >= 12 ? 'PM' : 'AM';
+      hh = hh % 12 || 12;
+      return `${hh}:${mm} ${ampm}`;
+    }
+    try {
+      const d = new Date(time);
+      if (!isNaN(d)) {
+        let h = d.getHours();
+        const m = d.getMinutes().toString().padStart(2, '0');
+        const ampm = h >= 12 ? 'PM' : 'AM';
+        h = h % 12 || 12;
+        return `${h}:${m} ${ampm}`;
+      }
+    } catch (e) {
+      // ignore
+    }
+    return time;
+  };
+
   const handleAddActivity = () => {
     const { activity_name, start_time, end_time } = newActivity;
   
@@ -355,9 +390,9 @@ export default function StudentWeeklyPlans() {
                     {activities.map((activity, index) => (
                       <tr key={index} className="border-t hover:bg-gray-200">
                         <td className="p-3 border-b">{activity.activity_name}</td>
-                        <td className="p-3 border-b">{activity.start_time}</td>
-                        <td className="p-3 border-b">{activity.end_time}</td>
-                        <td className="p-3 border-b">{calculateDuration(activity.start_time, activity.end_time)}</td>
+                            <td className="p-3 border-b">{formatTime12(activity.start_time)}</td>
+                            <td className="p-3 border-b">{formatTime12(activity.end_time)}</td>
+                            <td className="p-3 border-b">{calculateDuration(activity.start_time, activity.end_time)}</td>
                       </tr>
                     ))}
                   </tbody>

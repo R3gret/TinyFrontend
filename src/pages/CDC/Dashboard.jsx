@@ -27,7 +27,7 @@ export default function Dashboard() {
       currentMonthEnrollments: 0,
       enrollmentDifference: 0,
       attendanceRate: 0,
-      ageGroups: { '3-4': 0, '4-5': 0, '5-6': 0 },
+      ageGroups: { '0-3': 0, '3-4': 0, '4-5': 0, '5-6': 0 },
       genderDistribution: { Male: 0, Female: 0, Other: 0 },
       domainProgress: []
     },
@@ -41,6 +41,14 @@ export default function Dashboard() {
   });
 
   const [activeAnnouncementIndex, setActiveAnnouncementIndex] = useState(0);
+
+  const [pieChartData, setPieChartData] = useState({
+    loading: false,
+    error: null,
+    distribution: { Male: 0, Female: 0, Other: 0 }
+  });
+
+  const [genderAgeFilter, setGenderAgeFilter] = useState('');
 
   // Generate mock attendance data for fallback
   const generateMockAttendanceData = () => {
@@ -101,17 +109,47 @@ export default function Dashboard() {
     const fetchDashboardData = async () => {
       try {
         setDashboardData(prev => ({ ...prev, loading: true, error: null }));
-        
-        const [genderRes, enrollmentRes, ageRes, domainProgressRes, attendanceRes, announcementsRes] = await Promise.all([
+
+        // Updated API endpoints. Fetch attendance stats separately so we can use the
+        // new backend response shape: { success: true, stats: { totalRecords, presentRecords, attendanceRate } }
+        const [genderRes, enrollmentRes, ageRes, domainProgressRes, announcementsRes] = await Promise.all([
           apiRequest('/api/dash/gender-distribution'),
           apiRequest('/api/dash/enrollment-stats'),
           apiRequest('/api/dash/age-distribution'),
           apiRequest('/api/domains/progress-summary'),
-          apiRequest('/api/attendance/stats'),
           apiRequest('/api/announcements')
         ]);
 
-        const attendanceStats = attendanceRes.success ? attendanceRes.stats : {
+        // Fetch attendance stats using the dedicated endpoint and map into the dashboard stats
+        let attendanceRes;
+        try {
+          // Try to include the current user's CDC id from localStorage if available
+          const userJson = localStorage.getItem('user');
+          let cdcQuery = '';
+          if (userJson) {
+            try {
+              const userObj = JSON.parse(userJson);
+              if (userObj && userObj.cdc_id !== undefined && userObj.cdc_id !== null) {
+                cdcQuery = `?cdc_id=${encodeURIComponent(userObj.cdc_id)}`;
+              }
+            } catch (e) {
+              console.warn('Could not parse user from localStorage for cdc_id:', e);
+            }
+          }
+
+          if (!cdcQuery) {
+            console.warn('No cdc_id found in localStorage user; attendance stats endpoint requires cdc_id and will return 400 from the server.');
+          }
+
+          // Use today's attendance endpoint (requires cdc_id) per backend change
+          attendanceRes = await apiRequest(`/api/attendance/today${cdcQuery}`);
+        } catch (err) {
+          // ensure attendanceRes is set to a safe default shape when the request fails
+          console.error('Attendance stats fetch error:', err);
+          attendanceRes = { success: false };
+        }
+
+        const attendanceStats = attendanceRes && attendanceRes.success ? attendanceRes.stats : {
           attendanceRate: 0,
           presentRecords: 0,
           totalRecords: 0
@@ -125,7 +163,7 @@ export default function Dashboard() {
         };
 
         const genderDistribution = genderRes.success ? genderRes.distribution : { Male: 0, Female: 0, Other: 0 };
-        const ageGroups = ageRes.success ? ageRes.distribution : { '3-4': 0, '4-5': 0, '5-6': 0 };
+        const ageGroups = ageRes.success ? ageRes.distribution : { '0-3': 0, '3-4': 0, '4-5': 0, '5-6': 0 };
         const announcements = announcementsRes.success ? announcementsRes.announcements : [];
 
         const domainProgress = domainProgressRes.success 
@@ -166,6 +204,46 @@ export default function Dashboard() {
 
     fetchDashboardData();
   }, []);
+
+  useEffect(() => {
+    const fetchGenderData = async () => {
+      // Initially set the pie chart data from the main dashboard data
+      if (!genderAgeFilter) {
+        setPieChartData({
+          loading: false,
+          error: null,
+          distribution: dashboardData.stats.genderDistribution
+        });
+        return;
+      }
+
+      setPieChartData(prev => ({ ...prev, loading: true }));
+      try {
+        const endpoint = `/api/dash/gender-distribution?age_group=${genderAgeFilter}`;
+        const genderRes = await apiRequest(endpoint);
+        
+        if (genderRes.success) {
+          setPieChartData({
+            loading: false,
+            error: null,
+            distribution: genderRes.distribution
+          });
+        } else {
+          throw new Error(genderRes.message || 'Failed to load gender data');
+        }
+      } catch (err) {
+        setPieChartData({
+          loading: false,
+          error: err.message,
+          distribution: { Male: 0, Female: 0, Other: 0 }
+        });
+      }
+    };
+
+    if (!dashboardData.loading) {
+        fetchGenderData();
+    }
+  }, [genderAgeFilter, dashboardData.stats.genderDistribution, dashboardData.loading]);
 
   // Set up carousel auto-rotation
   useEffect(() => {
@@ -336,20 +414,42 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Gender Distribution */}
             <div className="bg-white rounded-xl p-6 shadow-sm">
-              <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                <FiPieChart className="text-pink-500" /> Gender Distribution
-              </h3>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-semibold flex items-center gap-2">
+                  <FiPieChart className="text-pink-500" /> Gender Distribution
+                </h3>
+                <select
+                  value={genderAgeFilter}
+                  onChange={(e) => setGenderAgeFilter(e.target.value)}
+                  className="text-sm border-gray-300 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                >
+                  <option value="">All Ages</option>
+                  <option value="3-4">3-4 years</option>
+                  <option value="4-5">4-5 years</option>
+                  <option value="5-6">5-6 years</option>
+                </select>
+              </div>
               <div className="h-64">
-                <PieChart
-                  data={Object.entries(dashboardData.stats.genderDistribution).map(([gender, count]) => ({
-                    name: gender,
-                    value: count,
-                    color: 
-                      gender === 'Male' ? '#3b82f6' : 
-                      gender === 'Female' ? '#ec4899' : 
-                      '#8b5cf6'
-                  }))}
-                />
+                {pieChartData.loading ? (
+                  <div className="h-full flex items-center justify-center">
+                    <CircularProgress size={40} />
+                  </div>
+                ) : pieChartData.error ? (
+                  <div className="h-full flex items-center justify-center text-red-500">
+                    Error: {pieChartData.error}
+                  </div>
+                ) : (
+                  <PieChart
+                    data={Object.entries(pieChartData.distribution).map(([gender, count]) => ({
+                      name: gender,
+                      value: count,
+                      color: 
+                        gender === 'Male' ? '#3b82f6' : 
+                        gender === 'Female' ? '#ec4899' : 
+                        '#8b5cf6'
+                    }))}
+                  />
+                )}
               </div>
             </div>
 
@@ -361,11 +461,12 @@ export default function Dashboard() {
               <div className="h-64">
                 <BarChart
                   data={[
+                    { name: '0-3 yrs', value: dashboardData.stats.ageGroups['0-3'] },
                     { name: '3.1-4.0 yrs', value: dashboardData.stats.ageGroups['3-4'] },
                     { name: '4.1-5.0 yrs', value: dashboardData.stats.ageGroups['4-5'] },
                     { name: '5.1-5.11 yrs', value: dashboardData.stats.ageGroups['5-6'] }
                   ]}
-                  colors={['#10b981', '#f59e0b', '#ef4444']}
+                  colors={['#3b82f6', '#10b981', '#f59e0b', '#ef4444']}
                 />
               </div>
             </div>

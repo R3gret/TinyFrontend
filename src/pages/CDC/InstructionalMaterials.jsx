@@ -167,6 +167,11 @@ function ClassworksSection({ setSnackbar }) {
 
   useEffect(() => {
     if (selectedAgeGroup) {
+      // when an age group is selected, reset category and files to avoid showing
+      // files that belong to a previously-selected category from another age group
+      setSelectedCategory(null);
+      setFiles([]);
+
       setLoading(true);
       const fetchDependentData = async () => {
         await Promise.all([
@@ -179,6 +184,8 @@ function ClassworksSection({ setSnackbar }) {
     } else {
       setCategories([]);
       setFileCounts({});
+      setSelectedCategory(null);
+      setFiles([]);
     }
   }, [selectedAgeGroup, setSnackbar]);
 
@@ -186,14 +193,23 @@ function ClassworksSection({ setSnackbar }) {
     if (selectedCategory && selectedAgeGroup) {
       const fetchFiles = async () => {
         try {
+          // Clear current files immediately to avoid showing files from the
+          // previously-opened category while the next category's files load.
+          setFiles([]);
           setLoading(true);
+
           const data = await apiRequest(
             `/api/files?category_id=${selectedCategory}&age_group_id=${selectedAgeGroup}`
           );
-          setFiles(data.files || []);
+          // Defensive: only show files that match the currently-selected
+          // category and age group. This prevents files returned by the
+          // backend for other folders from leaking into the UI.
+          const returnedFiles = data.files || [];
+          const filtered = returnedFiles.filter(f => String(f.category_id) === String(selectedCategory) && String(f.age_group_id) === String(selectedAgeGroup));
+          setFiles(filtered);
         } catch (err) {
           console.error('Error fetching files:', err);
-setError(err.message);
+          setError(err.message);
           setSnackbar({
             open: true,
             message: 'Failed to fetch files',
@@ -203,7 +219,7 @@ setError(err.message);
           setLoading(false);
         }
       };
-      
+
       fetchFiles();
     }
   }, [selectedCategory, selectedAgeGroup, setSnackbar]);
@@ -249,7 +265,9 @@ setError(err.message);
         const filesData = await apiRequest(
           `/api/files?category_id=${selectedCategory}&age_group_id=${selectedAgeGroup}`
         );
-        setFiles(filesData.files || []);
+        const returnedFiles = filesData.files || [];
+        const filtered = returnedFiles.filter(f => String(f.category_id) === String(selectedCategory) && String(f.age_group_id) === String(selectedAgeGroup));
+        setFiles(filtered);
       }
       
       if (selectedAgeGroup) {
@@ -377,16 +395,15 @@ setError(err.message);
 
   const handleDownload = async (fileId, fileName) => {
     try {
-      const blob = await apiDownload(`/api/files/download/${fileId}`);
-      const url = window.URL.createObjectURL(blob);
+      // Direct download without authentication
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const url = `${API_BASE_URL}/api/files/download/${fileId}`;
       const a = document.createElement('a');
       a.href = url;
       a.download = fileName || 'download';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-      
     } catch (err) {
       console.error('Error downloading file:', err);
       setError(err.message);

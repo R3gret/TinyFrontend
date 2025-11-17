@@ -8,6 +8,8 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), 'VITE_');
 
   return {
+    // Serve built files from the /tinytrack/ subfolder when deployed
+    base: '/tinytrack/',
     plugins: [react(), tailwindcss()],
     server: {
       proxy: {

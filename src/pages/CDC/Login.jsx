@@ -99,7 +99,7 @@ const Login = () => {
         localStorage.setItem("token", response.data.token);
         localStorage.setItem("user", JSON.stringify(response.data.user));
         
-        let path;
+  let path;
         switch(response.data.user.type.toLowerCase()) {
           case 'admin': path = "/admin-dashboard"; break;
           case 'president': path = "/president-dashboard"; break;
@@ -108,7 +108,8 @@ const Login = () => {
           case 'eccdc': path = "/president-list"; break;
           default: path = "/";
         }
-        window.location.href = path;
+        // Use react-router navigation to avoid full page reloads (works with HashRouter)
+        navigate(path);
       } else {
         setError(response.data.message || "Invalid username or password.");
       }

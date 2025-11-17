@@ -27,7 +27,8 @@ const Navbar = () => {
       localStorage.clear();
 
       // Redirect to login page with a full page reload
-      window.location.href = "/";
+      // Use client-side navigation to avoid server requests (HashRouter)
+      navigate('/');
     }, 1500);
   };
 

@@ -6,8 +6,9 @@ const handleUnauthorized = () => {
   localStorage.removeItem('user');
   
   // Redirect to login page
-  // We can't use react-router-dom hooks here, so we use window.location
-  window.location.href = '/'; 
+  // We can't use react-router-dom hooks here, so update the hash for HashRouter
+  // This avoids triggering a full server navigation which would cause 404s
+  window.location.hash = '#/';
   alert('Your session has expired. Please log in again.');
 };
 

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Navbar from "../../components/all/Navbar";
 import Sidebar from "../../components/CDC/Sidebar";
 import bgImage from "../../assets/bg1.jpg";
@@ -541,6 +542,7 @@ function StreamSection({ setSnackbar }) {
 }
 
 function ClassworksSection({ setSnackbar }) {
+  const navigate = useNavigate();
   const [activities, setActivities] = useState([]);
   const [ageGroups, setAgeGroups] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -750,7 +752,7 @@ function ClassworksSection({ setSnackbar }) {
                   key={activity.activity_id}
                   hover
                   sx={{ cursor: 'pointer' }}
-                  onClick={() => window.location.href = `/cdc/activity/${activity.activity_id}`}
+                    onClick={() => navigate(`/cdc/activity/${activity.activity_id}`)}
                 >
                   <TableCell>{activity.title}</TableCell>
                   <TableCell>{activity.due_date ? new Date(activity.due_date).toLocaleDateString() : 'N/A'}</TableCell>

@@ -54,6 +54,7 @@ import FocalProfile from "./pages/Focal/Focal_Profile";
 import CreateFocalPerson from "./pages/MSW/CreateFocalPerson";
 import ViewFocalPerson from "./pages/MSW/ViewFocalPerson";
 import ProtectedRoute from "./components/all/ProtectedRoute";
+import Home from "./pages/Home";
 
 export default function App() {
   const [userType, setUserType] = useState(null);
@@ -70,7 +71,8 @@ export default function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<Login />} />
+        <Route path="/" element={<Home />} />
+        <Route path="/login" element={<Login />} />
 
         {/* Worker (CDC) Routes */}
         <Route path="/dashboard" element={<ProtectedRoute allowedTypes={["worker"]}><Dashboard /></ProtectedRoute>} />

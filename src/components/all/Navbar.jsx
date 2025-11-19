@@ -51,6 +51,10 @@ const Navbar = () => {
       ? "/parent-profile"
       : userType === "eccdc"
       ? "/eccdc-profile"
+      : userType === "msw"
+      ? "/msw-profile"
+      : userType === "focal"
+      ? "/focal-profile"
       : "/";
 
   const userProfilePic = "/default-profile.png"; // static fallback

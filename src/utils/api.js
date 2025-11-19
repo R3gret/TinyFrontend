@@ -48,9 +48,12 @@ export const apiRequest = async (endpoint, method = 'GET', body = null, isFormDa
   
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.message || 'Request failed');
+      const error = new Error(errorData.message || 'Request failed');
+      // Attach full error data to the error object for better error handling
+      error.responseData = errorData;
+      throw error;
     }
-  
+
     return response.json();
   } catch (error) {
     console.error('API Request Error:', error);

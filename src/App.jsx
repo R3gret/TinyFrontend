@@ -19,7 +19,6 @@ import CreateParent from "./pages/CDC/CreateParent";
 import StudentProfile from "./pages/CDC/StudentProfile";
 import CDCInstructionalMaterials from "./pages/CDC/InstructionalMaterials";
 
-import ECCDCCreateAcc from "./pages/ECCDC/ECCDC_CreateCDC";
 import ECCDCProfile from "./pages/ECCDC/ECCDC_Profile"
 import ECCDCAccount from "./pages/ECCDC/ECCDC_AccountList";
 import UserProfile from "./pages/ECCDC/UserProfile";
@@ -45,6 +44,15 @@ import AccountList from "./pages/Admin/AccountList";
 import ManageAcc from "./pages/Admin/ManageAcc";
 import AdminProfile from "./pages/Admin/AdminProfile";
 
+import CreateFoalAccount from "./pages/MSW/CreateFoalAccount";
+import MSWProfileSetup from "./pages/MSW/MSW_ProfileSetup";
+import MSWProfile from "./pages/MSW/MSW_Profile";
+import MSWDashboard from "./pages/MSW/MSW_Dashboard";
+import FocalDashboard from "./pages/Focal/Focal_Dashboard";
+import FocalCreateCDC from "./pages/Focal/Focal_CreateCDC";
+import FocalProfile from "./pages/Focal/Focal_Profile";
+import CreateFocalPerson from "./pages/MSW/CreateFocalPerson";
+import ViewFocalPerson from "./pages/MSW/ViewFocalPerson";
 import ProtectedRoute from "./components/all/ProtectedRoute";
 
 export default function App() {
@@ -90,7 +98,6 @@ export default function App() {
         <Route path="/admin-profile" element={<ProtectedRoute allowedTypes={["admin"]}><AdminProfile /></ProtectedRoute>} />
 
         {/* ECCDC Routes */}
-        <Route path="/eccdc-createacc" element={<ProtectedRoute allowedTypes={["eccdc"]}><ECCDCCreateAcc /></ProtectedRoute>} />
         <Route path="/eccdc-profile" element={<ProtectedRoute allowedTypes={["eccdc"]}><ECCDCProfile /></ProtectedRoute>} />
         <Route path="/eccdc-list" element={<ProtectedRoute allowedTypes={["eccdc"]}><ECCDCAccount /></ProtectedRoute>} />
         <Route path="/president-list" element={<ProtectedRoute allowedTypes={["eccdc"]}><ECCDCAccount /></ProtectedRoute>} />
@@ -104,6 +111,19 @@ export default function App() {
         <Route path="/instructional-materials" element={<ProtectedRoute allowedTypes={["president"]}><InstructionalMaterials /></ProtectedRoute>} />
         <Route path="/worker-profile/:id" element={<ProtectedRoute allowedTypes={["president"]}><WorkerProfile /></ProtectedRoute>} />
         
+        {/* MSW Routes */}
+        <Route path="/msw/create-account" element={<CreateFoalAccount />} />
+        <Route path="/msw/profile-setup" element={<ProtectedRoute allowedTypes={["msw"]}><MSWProfileSetup /></ProtectedRoute>} />
+        <Route path="/msw-dashboard" element={<ProtectedRoute allowedTypes={["msw"]}><MSWDashboard /></ProtectedRoute>} />
+        <Route path="/msw-profile" element={<ProtectedRoute allowedTypes={["msw"]}><MSWProfile /></ProtectedRoute>} />
+        <Route path="/focal/create-person" element={<ProtectedRoute allowedTypes={["msw"]}><CreateFocalPerson /></ProtectedRoute>} />
+        <Route path="/focal/view-person" element={<ProtectedRoute allowedTypes={["msw"]}><ViewFocalPerson /></ProtectedRoute>} />
+
+        {/* Focal Routes */}
+        <Route path="/focal-dashboard" element={<ProtectedRoute allowedTypes={["focal"]}><FocalDashboard /></ProtectedRoute>} />
+        <Route path="/focal/create-cdc" element={<ProtectedRoute allowedTypes={["focal"]}><FocalCreateCDC /></ProtectedRoute>} />
+        <Route path="/focal-profile" element={<ProtectedRoute allowedTypes={["focal"]}><FocalProfile /></ProtectedRoute>} />
+
         {/* Parent Routes */}
         <Route path="/parent-announcement" element={<ProtectedRoute allowedTypes={["parent"]}><ParentVirtualC /></ProtectedRoute>} />
         <Route path="/parent-classworks" element={<ProtectedRoute allowedTypes={["parent"]}><ParentClassworks /></ProtectedRoute>} />

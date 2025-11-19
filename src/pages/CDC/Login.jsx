@@ -106,6 +106,8 @@ const Login = () => {
           case 'worker': path = "/dashboard"; break;
           case 'parent': path = "/parent-dashboard"; break;
           case 'eccdc': path = "/president-list"; break;
+          case 'msw': path = "/msw/profile-setup"; break;
+          case 'focal': path = "/focal-dashboard"; break;
           default: path = "/";
         }
         // Use react-router navigation to avoid full page reloads (works with HashRouter)

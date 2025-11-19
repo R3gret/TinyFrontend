@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import Navbar from "../../components/all/Navbar";
-import Sidebar from "../../components/ECCDC/ECCDCSidebar";
+import Sidebar from "../../components/Focal/FocalSidebar";
 import locationData from "../../components/ECCDC/loc.json";
 import {
   TextField,
@@ -32,10 +32,11 @@ const API_URL = import.meta.env.VITE_API_URL;
 const CDCPage = () => {
   const [cdcList, setCdcList] = useState([]);
   const [filter, setFilter] = useState({
-    province: '',
-    municipality: '',
-    barangay: ''
+    municipality: '', // Set from user's profile
+    barangay: '',
+    name: '' // Search by CDC name
   });
+  const [userMunicipality, setUserMunicipality] = useState('');
   const [loading, setLoading] = useState(false);
   const [openModal, setOpenModal] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
@@ -57,11 +58,71 @@ const CDCPage = () => {
   const [provinces, setProvinces] = useState([]);
   const [municipalities, setMunicipalities] = useState([]);
   const [barangays, setBarangays] = useState([]);
+  const [filterBarangays, setFilterBarangays] = useState([]); // Barangays for filter dropdown
   const [presidents, setPresidents] = useState([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [openDeleteConfirm, setOpenDeleteConfirm] = useState(false);
   const [openCreateConfirm, setOpenCreateConfirm] = useState(false);
+
+  // Fetch Focal user info and extract municipality, then load barangays
+  useEffect(() => {
+    const fetchUserInfo = async () => {
+      try {
+        const user = JSON.parse(localStorage.getItem('user'));
+        if (!user?.id) {
+          setSnackbar({
+            open: true,
+            message: "User not found. Please login again.",
+            severity: "error"
+          });
+          return;
+        }
+
+        const data = await apiRequest(`/api/user_session/current-user/details?userId=${user.id}`);
+        if (data?.user?.other_info?.address) {
+          // Parse address: "Barangay, Municipality, Province, Region"
+          const addressParts = data.user.other_info.address.split(',').map(part => part.trim());
+          if (addressParts.length >= 4) {
+            const municipality = addressParts[1]; // Second part is municipality
+            const province = addressParts[2]; // Third part is province
+            const region = addressParts[3]; // Fourth part is region
+            
+            setUserMunicipality(municipality);
+            setFilter(prev => ({
+              ...prev,
+              municipality: municipality
+            }));
+
+            // Load barangays for this municipality from loc.json
+            const regionCode = Object.keys(locationData).find(code => 
+              locationData[code].region_name === region
+            );
+            
+            if (regionCode && locationData[regionCode].province_list[province]) {
+              const municipalityData = locationData[regionCode]
+                .province_list[province]
+                .municipality_list[municipality];
+              
+              if (municipalityData && municipalityData.barangay_list) {
+                const barangaysArray = municipalityData.barangay_list.map(name => ({ name }));
+                setFilterBarangays(barangaysArray);
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch user info:', err);
+        setSnackbar({
+          open: true,
+          message: "Failed to load user information",
+          severity: "error"
+        });
+      }
+    };
+
+    fetchUserInfo();
+  }, []);
 
   // Load regions from imported JSON
   useEffect(() => {
@@ -96,17 +157,27 @@ const CDCPage = () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      if (filter.province) params.append('province', filter.province);
+      // Always filter by user's municipality
       if (filter.municipality) params.append('municipality', filter.municipality);
       if (filter.barangay) params.append('barangay', filter.barangay);
       
       const data = await apiRequest(`/api/cdc?${params.toString()}`);
       
+      // Filter by CDC name if provided (client-side)
+      let filteredData = data?.data || [];
+      if (filter.name) {
+        filteredData = filteredData.filter(cdc => 
+          cdc.name.toLowerCase().includes(filter.name.toLowerCase())
+        );
+      }
+      
       // Perform sorting asynchronously to prevent UI blocking
       setTimeout(() => {
-        if (data && data.data) {
-          const sortedData = [...data.data].sort((a, b) => a.name.localeCompare(b.name));
+        if (filteredData.length > 0) {
+          const sortedData = [...filteredData].sort((a, b) => a.name.localeCompare(b.name));
           setCdcList(sortedData);
+        } else {
+          setCdcList([]);
         }
         setLoading(false);
       }, 0);
@@ -123,8 +194,10 @@ const CDCPage = () => {
   };
 
   useEffect(() => {
-    fetchCDCs();
-  }, [filter]);
+    if (userMunicipality) {
+      fetchCDCs();
+    }
+  }, [filter, userMunicipality]);
 
   const handleRegionChange = (value) => {
     const region = regions.find(r => r.name === value);
@@ -326,19 +399,47 @@ const CDCPage = () => {
         <Navbar />
 
         <div className="p-6">
+          {/* Municipality Display Row */}
+          {userMunicipality && (
+            <Box sx={{ mb: 2 }}>
+              <Typography sx={{ color: 'text.secondary', fontWeight: 500, fontSize: '1rem' }}>
+                Municipality: {userMunicipality}
+              </Typography>
+            </Box>
+          )}
+
+          {/* Filters and Buttons Row */}
           <Box sx={{ 
             display: 'flex', 
             justifyContent: 'space-between',
             alignItems: 'center',
             mb: 3
           }}>
-            <Box sx={{ display: 'flex', gap: 2 }}>
-              <TextField
-                label="Filter by Province"
-                value={filter.province}
-                onChange={(e) => setFilter({...filter, province: e.target.value})}
+            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+              <Autocomplete
+                options={filterBarangays.map(barangay => barangay.name)}
+                value={filter.barangay}
+                onChange={(e, value) => setFilter({...filter, barangay: value || ''})}
+                onInputChange={(e, value) => {
+                  if (!value) setFilter({...filter, barangay: ''});
+                }}
                 size="small"
-                sx={{ width: 200 }}
+                sx={{ width: 220 }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Filter by Barangay"
+                    variant="outlined"
+                    placeholder="All barangays"
+                  />
+                )}
+              />
+              <TextField
+                label="Search by CDC Name"
+                value={filter.name}
+                onChange={(e) => setFilter({...filter, name: e.target.value})}
+                size="small"
+                sx={{ width: 250 }}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
@@ -347,23 +448,9 @@ const CDCPage = () => {
                   ),
                 }}
               />
-              <TextField
-                label="Filter by Municipality"
-                value={filter.municipality}
-                onChange={(e) => setFilter({...filter, municipality: e.target.value})}
-                size="small"
-                sx={{ width: 200 }}
-              />
-              <TextField
-                label="Filter by Barangay"
-                value={filter.barangay}
-                onChange={(e) => setFilter({...filter, barangay: e.target.value})}
-                size="small"
-                sx={{ width: 200 }}
-              />
             </Box>
             
-            <Box sx={{ display: 'flex', gap: 2 }}>
+            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
               <Button 
                 variant="contained" 
                 startIcon={<Edit />}
@@ -394,13 +481,62 @@ const CDCPage = () => {
                 variant="contained" 
                 startIcon={<Add />}
                 onClick={() => {
-                  setFormData({
+                  // Pre-load municipalities for the user's municipality
+                  let initialFormData = {
                     name: "",
                     region: "",
                     province: "",
-                    municipality: "",
-                    barangay: ""
-                  });
+                    municipality: userMunicipality || "",
+                    barangay: "",
+                    president_id: null
+                  };
+                  
+                  if (userMunicipality) {
+                    // Find region and province that contain this municipality
+                    const regionCode = Object.keys(locationData).find(code => {
+                      const region = locationData[code];
+                      return Object.keys(region.province_list || {}).some(provName => {
+                        const province = region.province_list[provName];
+                        return Object.keys(province.municipality_list || {}).includes(userMunicipality);
+                      });
+                    });
+                    
+                    if (regionCode) {
+                      const region = locationData[regionCode];
+                      // Find province
+                      const provName = Object.keys(region.province_list || {}).find(provName => {
+                        return Object.keys(region.province_list[provName].municipality_list || {}).includes(userMunicipality);
+                      });
+                      
+                      if (provName) {
+                        initialFormData = {
+                          ...initialFormData,
+                          region: region.region_name,
+                          province: provName,
+                          municipality: userMunicipality
+                        };
+                        
+                        // Load provinces for this region
+                        const provincesArray = Object.keys(region.province_list || {}).map(name => ({ name }));
+                        setProvinces(provincesArray);
+                        
+                        // Load municipalities for this province
+                        const municipalitiesArray = Object.keys(
+                          region.province_list[provName].municipality_list || {}
+                        ).map(name => ({ name }));
+                        setMunicipalities(municipalitiesArray);
+                        
+                        // Load barangays for this municipality
+                        const municipalityData = region.province_list[provName].municipality_list[userMunicipality];
+                        if (municipalityData) {
+                          const barangaysArray = (municipalityData.barangay_list || []).map(name => ({ name }));
+                          setBarangays(barangaysArray);
+                        }
+                      }
+                    }
+                  }
+                  
+                  setFormData(initialFormData);
                   setOpenModal(true);
                 }}
                 sx={{ 
@@ -903,3 +1039,4 @@ const CDCPage = () => {
 };
 
 export default CDCPage;
+

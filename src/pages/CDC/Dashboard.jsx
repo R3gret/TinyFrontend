@@ -15,7 +15,7 @@ import {
   FiChevronRight,
   FiBell
 } from "react-icons/fi";
-import { CircularProgress, Alert, Button } from "@mui/material";
+import { CircularProgress, Alert, Button, Select, MenuItem, FormControl, InputLabel } from "@mui/material";
 import { apiRequest } from "../../utils/api";
 
 export default function Dashboard() {
@@ -49,6 +49,15 @@ export default function Dashboard() {
   });
 
   const [genderAgeFilter, setGenderAgeFilter] = useState('');
+  const [academicYear, setAcademicYear] = useState(new Date().getFullYear());
+  
+  // Generate academic year options (current year - 5 to current year + 5)
+  const currentYear = new Date().getFullYear();
+  const yearOptions = Array.from({ length: 11 }, (_, i) => currentYear - 5 + i);
+  
+  const formatAcademicYear = (year) => {
+    return `${year}-${year + 1}`;
+  };
 
   // Generate mock attendance data for fallback
   const generateMockAttendanceData = () => {
@@ -77,7 +86,10 @@ export default function Dashboard() {
         console.log('Starting to fetch weekly attendance data');
         setWeeklyAttendance(prev => ({ ...prev, loading: true, error: null }));
         
-        const response = await apiRequest('/api/attendance/weekly');
+        const params = new URLSearchParams({
+          academic_year: formatAcademicYear(academicYear)
+        });
+        const response = await apiRequest(`/api/attendance/weekly?${params.toString()}`);
         console.log('API response:', response);
         
         if (!response.success) {
@@ -102,7 +114,7 @@ export default function Dashboard() {
     };
   
     fetchWeeklyAttendance();
-  }, []);
+  }, [academicYear]);
 
   // Fetch all other dashboard data
   useEffect(() => {
@@ -112,11 +124,12 @@ export default function Dashboard() {
 
         // Updated API endpoints. Fetch attendance stats separately so we can use the
         // new backend response shape: { success: true, stats: { totalRecords, presentRecords, attendanceRate } }
+        const academicYearParam = formatAcademicYear(academicYear);
         const [genderRes, enrollmentRes, ageRes, domainProgressRes, announcementsRes] = await Promise.all([
-          apiRequest('/api/dash/gender-distribution'),
-          apiRequest('/api/dash/enrollment-stats'),
-          apiRequest('/api/dash/age-distribution'),
-          apiRequest('/api/domains/progress-summary'),
+          apiRequest(`/api/dash/gender-distribution?academic_year=${academicYearParam}`),
+          apiRequest(`/api/dash/enrollment-stats?academic_year=${academicYearParam}`),
+          apiRequest(`/api/dash/age-distribution?academic_year=${academicYearParam}`),
+          apiRequest(`/api/domains/progress-summary?academic_year=${academicYearParam}`),
           apiRequest('/api/announcements')
         ]);
 
@@ -203,7 +216,7 @@ export default function Dashboard() {
     };
 
     fetchDashboardData();
-  }, []);
+  }, [academicYear]);
 
   useEffect(() => {
     const fetchGenderData = async () => {
@@ -219,7 +232,8 @@ export default function Dashboard() {
 
       setPieChartData(prev => ({ ...prev, loading: true }));
       try {
-        const endpoint = `/api/dash/gender-distribution?age_group=${genderAgeFilter}`;
+        const academicYearParam = formatAcademicYear(academicYear);
+        const endpoint = `/api/dash/gender-distribution?age_group=${genderAgeFilter}&academic_year=${academicYearParam}`;
         const genderRes = await apiRequest(endpoint);
         
         if (genderRes.success) {
@@ -243,7 +257,7 @@ export default function Dashboard() {
     if (!dashboardData.loading) {
         fetchGenderData();
     }
-  }, [genderAgeFilter, dashboardData.stats.genderDistribution, dashboardData.loading]);
+  }, [genderAgeFilter, academicYear, dashboardData.stats.genderDistribution, dashboardData.loading]);
 
   // Set up carousel auto-rotation
   useEffect(() => {
@@ -300,15 +314,33 @@ export default function Dashboard() {
         {/* Dashboard Content */}
         <div className="p-6 space-y-6">
           {/* Header */}
-          <div className="mb-4">
-            <h1 className="text-2xl font-bold text-gray-800">CDC Analytics Dashboard</h1>
-            <p className="text-sm text-gray-600">
-              {new Date().toLocaleDateString('en-US', { 
-                weekday: 'long', 
-                month: 'long', 
-                day: 'numeric' 
-              })}
-            </p>
+          <div className="mb-4 flex justify-between items-center">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-800">CDC Analytics Dashboard</h1>
+              <p className="text-sm text-gray-600">
+                {new Date().toLocaleDateString('en-US', { 
+                  weekday: 'long', 
+                  month: 'long', 
+                  day: 'numeric' 
+                })}
+              </p>
+            </div>
+            <FormControl variant="outlined" size="small" sx={{ minWidth: 200 }}>
+              <InputLabel id="academic-year-label">Academic Year</InputLabel>
+              <Select
+                labelId="academic-year-label"
+                id="academic-year-select"
+                value={academicYear}
+                onChange={(e) => setAcademicYear(e.target.value)}
+                label="Academic Year"
+              >
+                {yearOptions.map((year) => (
+                  <MenuItem key={year} value={year}>
+                    {formatAcademicYear(year)}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
           </div>
 
           {/* Stats Cards */}

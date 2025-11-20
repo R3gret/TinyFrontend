@@ -117,7 +117,7 @@ const CreateFoalAccount = () => {
 
       setStatus({
         type: "success",
-        message: "Foal person account has been created successfully."
+        message: "MSWD person account has been created successfully."
       });
       setFormData({
         username: "",
@@ -230,7 +230,7 @@ const CreateFoalAccount = () => {
             }}
           >
             <Typography variant="h5" fontWeight={600}>
-              Create Foal Person Account
+              Create MSWD Person Account
             </Typography>
             <Typography variant="body2" sx={{ opacity: 0.85, mt: 1 }}>
               Provision a Municipal Social Worker profile with secure credentials.

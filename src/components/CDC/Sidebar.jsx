@@ -8,8 +8,8 @@ import {
 export default function Sidebar() {
   const location = useLocation();
   return (
-    <aside className="bg-white text-gray-700 w-64 h-screen fixed top-0 left-0 flex flex-col py-4 shadow-md z-50">
-      <div className="mt-16 flex flex-col space-y-2 px-4">
+    <aside className="bg-white text-gray-700 w-64 h-screen fixed top-0 left-0 flex flex-col shadow-md z-50 overflow-hidden">
+      <div className="mt-16 flex flex-col space-y-2 px-4 py-4 overflow-y-auto flex-1">
         <SidebarItem to="/dashboard" icon={List} label="Dashboard" currentPath={location.pathname} />
         <SidebarItem to="/registration" icon={ClipboardEdit} label="Registration" currentPath={location.pathname} />
                 <SidebarItemWithSubmenu 
@@ -27,7 +27,9 @@ export default function Sidebar() {
           mainLabel="Forms"
           currentPath={location.pathname}
           submenuItems={[
-            { to: "/forms/registration", icon: FilePlus, label: "Registration Form" },
+            { to: "/forms/registration", icon: FilePlus, label: "Form 1" },
+            { to: "/forms/form2", icon: FilePlus, label: "Form 2" },
+            { to: "/forms/form3", icon: FilePlus, label: "Form 3" },
             { to: "/forms/center-profile", icon: School, label: "Child Development Center Profile" }
           ]}
         />

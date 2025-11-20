@@ -87,14 +87,11 @@ export default function InstructionalMaterials() {
 
 function ClassworksSection({ setSnackbar }) {
   const [categories, setCategories] = useState([]);
-  const [ageGroups, setAgeGroups] = useState([]);
-  const [selectedAgeGroup, setSelectedAgeGroup] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [files, setFiles] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newFile, setNewFile] = useState({
     category_id: '',
-    age_group_id: '',
     file_name: '',
     file_type: '',
     file_data: null
@@ -115,13 +112,9 @@ function ClassworksSection({ setSnackbar }) {
     onConfirm: null,
   });
 
-  const fetchCategories = async (ageGroupId, filterScope = scope) => {
-    if (!ageGroupId) {
-      setCategories([]);
-      return;
-    }
+  const fetchCategories = async (filterScope = scope) => {
     try {
-      const categoriesData = await apiRequest(`/api/files/get-categories?age_group_id=${ageGroupId}&scope=${filterScope}`);
+      const categoriesData = await apiRequest(`/api/files/get-categories?scope=${filterScope}`);
       setCategories(categoriesData.categories || []);
     } catch (err) {
       console.error('Error fetching categories:', err);
@@ -146,11 +139,13 @@ function ClassworksSection({ setSnackbar }) {
   }, []);
 
   useEffect(() => {
-    const fetchAgeGroups = async () => {
+    const fetchInitialData = async () => {
       try {
         setLoading(true);
-        const ageGroupsData = await apiRequest('/api/files/get-age-groups');
-        setAgeGroups(ageGroupsData.ageGroups || []);
+        await Promise.all([
+          fetchCategories(scope),
+          refetchFileCounts(scope)
+        ]);
       } catch (err) {
         console.error('Error fetching initial data:', err);
         setError(err.message);
@@ -163,33 +158,32 @@ function ClassworksSection({ setSnackbar }) {
         setLoading(false);
       }
     };
-    fetchAgeGroups();
-  }, [setSnackbar]);
+    fetchInitialData();
+  }, [scope, setSnackbar]);
 
   useEffect(() => {
-    if (selectedAgeGroup) {
+    if (scope) {
+      setSelectedCategory(null);
+      setFiles([]);
       setLoading(true);
       const fetchDependentData = async () => {
         await Promise.all([
-          fetchCategories(selectedAgeGroup, scope),
-          refetchFileCounts(selectedAgeGroup, scope)
+          fetchCategories(scope),
+          refetchFileCounts(scope)
         ]);
         setLoading(false);
       };
       fetchDependentData();
-    } else {
-      setCategories([]);
-      setFileCounts({});
     }
-  }, [selectedAgeGroup, scope, setSnackbar]);
+  }, [scope, setSnackbar]);
 
   useEffect(() => {
-    if (selectedCategory && selectedAgeGroup) {
+    if (selectedCategory) {
       const fetchFiles = async () => {
         try {
           setLoading(true);
           const data = await apiRequest(
-            `/api/files?category_id=${selectedCategory}&age_group_id=${selectedAgeGroup}&scope=${scope}`
+            `/api/files?category_id=${selectedCategory}&scope=${scope}`
           );
           setFiles(data.files || []);
         } catch (err) {
@@ -207,29 +201,26 @@ function ClassworksSection({ setSnackbar }) {
       
       fetchFiles();
     }
-  }, [selectedCategory, selectedAgeGroup, scope, setSnackbar]);
+  }, [selectedCategory, scope, setSnackbar]);
 
   const handleOpenUploadModal = () => {
     setNewFile(prev => ({
       ...prev,
       category_id: selectedCategory || '',
-      age_group_id: selectedAgeGroup || '',
       file_name: '',
       file_data: null,
     }));
     setIsModalOpen(true);
   };
 
-  const refetchFileCounts = async (ageGroupId, filterScope = scope) => {
-    if (ageGroupId) {
-      try {
-        const countsData = await apiRequest(
-          `/api/files/counts?age_group_id=${ageGroupId}&scope=${filterScope}`
-        );
-        setFileCounts(countsData.counts || {});
-      } catch (err) {
-        console.error('Error refetching file counts:', err);
-      }
+  const refetchFileCounts = async (filterScope = scope) => {
+    try {
+      const countsData = await apiRequest(
+        `/api/files/counts?scope=${filterScope}`
+      );
+      setFileCounts(countsData.counts || {});
+    } catch (err) {
+      console.error('Error refetching file counts:', err);
     }
   };
 
@@ -240,30 +231,26 @@ function ClassworksSection({ setSnackbar }) {
       
       const formData = new FormData();
       formData.append('category_id', newFile.category_id);
-      formData.append('age_group_id', newFile.age_group_id);
       formData.append('file_name', newFile.file_name);
       formData.append('file_data', newFile.file_data);
       
       await apiRequest('/api/files', 'POST', formData, true);
       
-      if (selectedCategory && selectedAgeGroup) {
+      if (selectedCategory) {
         const filesData = await apiRequest(
-          `/api/files?category_id=${selectedCategory}&age_group_id=${selectedAgeGroup}&scope=${scope}`
+          `/api/files?category_id=${selectedCategory}&scope=${scope}`
         );
         setFiles(filesData.files || []);
       }
       
-      if (selectedAgeGroup) {
-        const countsData = await apiRequest(
-          `/api/files/counts?age_group_id=${selectedAgeGroup}&scope=${scope}`
-        );
-        setFileCounts(countsData.counts || {});
-      }
+      const countsData = await apiRequest(
+        `/api/files/counts?scope=${scope}`
+      );
+      setFileCounts(countsData.counts || {});
       
       setIsModalOpen(false);
       setNewFile({
         category_id: '',
-        age_group_id: '',
         file_name: '',
         file_type: '',
         file_data: null
@@ -314,7 +301,7 @@ function ClassworksSection({ setSnackbar }) {
         try {
           await apiRequest(`/api/files/${fileId}`, 'DELETE');
           setFiles(files.filter(f => f.file_id !== fileId));
-          await refetchFileCounts(selectedAgeGroup);
+          await refetchFileCounts();
           setSnackbar({ open: true, message: 'File deleted successfully', severity: 'success' });
         } catch (error) {
           setSnackbar({ open: true, message: error.message || 'Failed to delete file', severity: 'error' });
@@ -351,8 +338,8 @@ function ClassworksSection({ setSnackbar }) {
         setLoading(true);
         try {
           await apiRequest(`/api/files/categories/${categoryId}`, 'DELETE');
-          await fetchCategories(selectedAgeGroup); // Refetch categories for the current age group
-          await refetchFileCounts(selectedAgeGroup); // Refresh file counts
+          await fetchCategories(); // Refetch categories
+          await refetchFileCounts(); // Refresh file counts
           setSnackbar({ open: true, message: 'Category deleted successfully', severity: 'success' });
         } catch (error) {
           setSnackbar({ open: true, message: error.message || 'Failed to delete category', severity: 'error' });
@@ -402,13 +389,11 @@ function ClassworksSection({ setSnackbar }) {
   const handleBackClick = () => {
     if (selectedCategory) {
       setSelectedCategory(null);
-    } else if (selectedAgeGroup) {
-      setSelectedAgeGroup(null);
     }
   };
 
-  const showBackButton = selectedAgeGroup || selectedCategory;
-  const backButtonLabel = selectedCategory ? "Back to Categories" : "Back to Age Groups";
+  const showBackButton = selectedCategory;
+  const backButtonLabel = "Back to Categories";
 
   if (loading && !selectedCategory) {
     return (
@@ -452,7 +437,6 @@ function ClassworksSection({ setSnackbar }) {
               <Button
                 variant="contained"
                 onClick={() => setIsCategoryModalOpen(true)}
-                disabled={!selectedAgeGroup} // Disable if no age group is selected
               >
                 Add Category
               </Button>
@@ -474,37 +458,15 @@ function ClassworksSection({ setSnackbar }) {
                 <MenuItem value="cdc">My CDC Only</MenuItem>
               </Select>
             </FormControl>
-            <FormControl sx={{ minWidth: 200 }} size="small">
-              <InputLabel>Select Age Group</InputLabel>
-              <Select
-                value={selectedAgeGroup || ''}
-                label="Select Age Group"
-                onChange={(e) => setSelectedAgeGroup(e.target.value)}
-              >
-                <MenuItem value="">Select Age</MenuItem>
-                {ageGroups.map((ageGroup) => (
-                  <MenuItem key={ageGroup.age_group_id} value={ageGroup.age_group_id}>
-                    {ageGroup.age_range.replace(/\?/g, '-')}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
           </Box>
         </Box>
       )}
 
-      {!selectedAgeGroup ? (
-        <Box sx={{ textAlign: 'center', py: 4 }}>
-          <Typography color="text.secondary">
-            Please select an age group to view categories
-          </Typography>
-        </Box>
-      ) : selectedCategory ? (
+      {selectedCategory ? (
         <Box>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
             <Typography variant="h6">
-              {categories.find(c => c.category_id == selectedCategory)?.category_name} - 
-              {ageGroups.find(a => a.age_group_id == selectedAgeGroup)?.age_range}
+              {categories.find(c => c.category_id == selectedCategory)?.category_name}
             </Typography>
             {userRole !== 'President' && (
               <Button
@@ -671,10 +633,9 @@ function ClassworksSection({ setSnackbar }) {
           setEditingCategory(null);
         }}
         category={editingCategory}
-        ageGroupId={selectedAgeGroup}
         onSave={() => {
-          fetchCategories(selectedAgeGroup, scope);
-          refetchFileCounts(selectedAgeGroup, scope);
+          fetchCategories(scope);
+          refetchFileCounts(scope);
         }}
         setSnackbar={setSnackbar}
       />
@@ -855,7 +816,7 @@ function ConfirmationModal({ open, onClose, onConfirm, message, loading }) {
   );
 }
 
-function CategoryModal({ open, onClose, category, ageGroupId, onSave, setSnackbar }) {
+function CategoryModal({ open, onClose, category, onSave, setSnackbar }) {
   const [categoryName, setCategoryName] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -878,7 +839,7 @@ function CategoryModal({ open, onClose, category, ageGroupId, onSave, setSnackba
         await apiRequest(`/api/files/categories/${category.category_id}`, 'PUT', { category_name: categoryName });
         setSnackbar({ open: true, message: 'Category updated successfully', severity: 'success' });
       } else { // Add new category
-        await apiRequest('/api/files/categories', 'POST', { category_name: categoryName, age_group_id: ageGroupId });
+        await apiRequest('/api/files/categories', 'POST', { category_name: categoryName });
         setSnackbar({ open: true, message: 'Category added successfully', severity: 'success' });
       }
       await onSave(); // Refetch categories and counts

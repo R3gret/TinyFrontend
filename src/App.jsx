@@ -12,6 +12,8 @@ import StudentWeeklyPlans from "./pages/CDC/StudentWeeklyPlans";
 import ChildrenProgress from "./pages/CDC/ChildrenProgress";
 import Login from "./pages/CDC/Login";
 import RegistrationForm from "./pages/CDC/RegistrationForm";
+import Form2 from "./pages/CDC/Form2";
+import Form3 from "./pages/CDC/Form3";
 import CDCProfileForm from "./pages/CDC/CDProfile";
 import DomainForm from "./pages/CDC/Domain";
 import CDCStudentList from "./pages/CDC/StudentList";
@@ -94,6 +96,8 @@ export default function App() {
         <Route path="/student-profile/:studentId" element={<ProtectedRoute allowedTypes={["worker"]}><StudentProfile /></ProtectedRoute>} />
         <Route path="/cdc-instructional-materials" element={<ProtectedRoute allowedTypes={["worker"]}><CDCInstructionalMaterials /></ProtectedRoute>} />
         <Route path="/forms/registration" element={<ProtectedRoute allowedTypes={["worker"]}><RegistrationForm /></ProtectedRoute>} />
+        <Route path="/forms/form2" element={<ProtectedRoute allowedTypes={["worker"]}><Form2 /></ProtectedRoute>} />
+        <Route path="/forms/form3" element={<ProtectedRoute allowedTypes={["worker"]}><Form3 /></ProtectedRoute>} />
         <Route path="/forms/center-profile" element={<ProtectedRoute allowedTypes={["worker"]}><CDCProfileForm /></ProtectedRoute>} />
 
         {/* Admin Routes */}
@@ -106,6 +110,7 @@ export default function App() {
         {/* ECCDC Routes */}
         <Route path="/eccdc-profile" element={<ProtectedRoute allowedTypes={["eccdc"]}><ECCDCProfile /></ProtectedRoute>} />
         <Route path="/eccdc-list" element={<ProtectedRoute allowedTypes={["eccdc"]}><ECCDCAccount /></ProtectedRoute>} />
+        <Route path="/eccdc-createacc" element={<ProtectedRoute allowedTypes={["eccdc"]}><ECCDCAccount /></ProtectedRoute>} />
         <Route path="/president-list" element={<ProtectedRoute allowedTypes={["eccdc"]}><ECCDCAccount /></ProtectedRoute>} />
         
         {/* President Routes */}

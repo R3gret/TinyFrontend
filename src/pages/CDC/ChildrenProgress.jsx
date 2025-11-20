@@ -21,7 +21,8 @@ import {
   InputLabel,
   Checkbox,
   Button,
-  CircularProgress
+  CircularProgress,
+  TablePagination
 } from "@mui/material";
 
 import { apiRequest } from "../../utils/api";
@@ -44,6 +45,7 @@ export default function AssessmentTable() {
   const [evaluatorId, setEvaluatorId] = useState(1);
   const [existingEvaluation, setExistingEvaluation] = useState(false);
   const [checkingEvaluation, setCheckingEvaluation] = useState(false);
+  const [domainPage, setDomainPage] = useState(0);
 
   // Helper function to calculate age from birthdate
   function calculateAge(birthdate) {
@@ -187,6 +189,7 @@ export default function AssessmentTable() {
   // Handle child selection
   const handleChildSelect = (event, value) => {
     setSelectedChild(value);
+    setDomainPage(0); // Reset to first domain when child changes
     if (value) {
       setGender(value.gender);
       setAge(value.age);
@@ -196,6 +199,17 @@ export default function AssessmentTable() {
       setEvaluationData({});
     }
   };
+
+  // Handle domain page change
+  const handleDomainPageChange = (event, newPage) => {
+    setDomainPage(newPage);
+  };
+
+  // Get current domain and its items for pagination
+  const domainEntries = Object.entries(domains);
+  const currentDomain = domainEntries[domainPage] || null;
+  const currentDomainName = currentDomain ? currentDomain[0] : '';
+  const currentDomainItems = currentDomain ? currentDomain[1] : [];
 
   // Handle evaluation checkbox changes
   const handleEvaluationChange = (domainId, value) => {
@@ -340,55 +354,16 @@ export default function AssessmentTable() {
               <Select
                 value={evaluationPeriod}
                 label="Period"
-                onChange={(e) => setEvaluationPeriod(e.target.value)}
+                onChange={(e) => {
+                  setEvaluationPeriod(e.target.value);
+                  setDomainPage(0); // Reset to first domain when period changes
+                }}
               >
                 <MenuItem value="1st">1st</MenuItem>
                 <MenuItem value="2nd">2nd</MenuItem>
                 <MenuItem value="3rd">3rd</MenuItem>
               </Select>
             </FormControl>
-
-            <Button 
-              variant="contained" 
-              color={existingEvaluation ? "secondary" : "success"}
-              onClick={handleSaveEvaluation}
-              disabled={!selectedChild || loading || checkingEvaluation || existingEvaluation}
-              sx={{ minWidth: 150 }}
-            >
-              {loading ? "Saving..." : 
-               checkingEvaluation ? "Checking..." : 
-               existingEvaluation ? "Evaluation Exists" : "Save Evaluation"}
-            </Button>
-          </Box>
-
-          {/* General Notes */}
-          <Box sx={{ mb: 3 }}>
-            <TextField
-              label="General Notes"
-              multiline
-              rows={2}
-              fullWidth
-              value={generalNotes}
-              onChange={(e) => setGeneralNotes(e.target.value)}
-              variant="outlined"
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  padding: '8px',
-                },
-                '& .MuiInputLabel-outlined': {
-                  transform: 'translate(14px, 14px) scale(1)',
-                },
-                '& .MuiInputLabel-outlined.MuiInputLabel-shrink': {
-                  transform: 'translate(14px, -6px) scale(0.75)',
-                },
-              }}
-              InputProps={{
-                style: {
-                  fontSize: '0.875rem',
-                  minHeight: '60px',
-                }
-              }}
-            />
           </Box>
 
           {/* Assessment Table */}
@@ -507,9 +482,9 @@ export default function AssessmentTable() {
               </TableHead>
 
               <TableBody>
-                {Object.entries(domains).map(([category, items]) => (
+                {currentDomain && (
                   <>
-                    <TableRow key={category}>
+                    <TableRow>
                       <TableCell 
                         colSpan={5} 
                         sx={{ 
@@ -524,11 +499,11 @@ export default function AssessmentTable() {
                           padding: '8px 16px'
                         }}
                       >
-                        {category}
+                        {currentDomainName}
                       </TableCell>
                     </TableRow>
                     
-                    {items.map((item) => (
+                    {currentDomainItems.map((item) => (
                       <TableRow
                         key={item.id}
                         sx={{
@@ -595,10 +570,77 @@ export default function AssessmentTable() {
                       </TableRow>
                     ))}
                   </>
-                ))}
+                )}
               </TableBody>
             </Table>
           </TableContainer>
+          
+          {/* Domain Pagination */}
+          {domainEntries.length > 0 && (
+            <TablePagination
+              component="div"
+              count={domainEntries.length}
+              page={domainPage}
+              onPageChange={handleDomainPageChange}
+              rowsPerPage={1}
+              rowsPerPageOptions={[]}
+              labelDisplayedRows={({ from, to, count }) => 
+                `${domainPage + 1} of ${count} ${domainPage + 1 === count ? 'Domain' : 'Domains'}`
+              }
+              sx={{ 
+                borderTop: '1px solid #e0e0e0',
+                '& .MuiTablePagination-toolbar': {
+                  paddingLeft: 2,
+                  paddingRight: 2
+                }
+              }}
+            />
+          )}
+
+          {/* General Notes and Save Button at Bottom */}
+          <Box sx={{ mt: 3, mb: 2 }}>
+            <TextField
+              label="General Notes"
+              multiline
+              rows={3}
+              fullWidth
+              value={generalNotes}
+              onChange={(e) => setGeneralNotes(e.target.value)}
+              variant="outlined"
+              sx={{
+                mb: 2,
+                '& .MuiOutlinedInput-root': {
+                  padding: '8px',
+                },
+                '& .MuiInputLabel-outlined': {
+                  transform: 'translate(14px, 14px) scale(1)',
+                },
+                '& .MuiInputLabel-outlined.MuiInputLabel-shrink': {
+                  transform: 'translate(14px, -6px) scale(0.75)',
+                },
+              }}
+              InputProps={{
+                style: {
+                  fontSize: '0.875rem',
+                  minHeight: '80px',
+                }
+              }}
+            />
+            
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+              <Button 
+                variant="contained" 
+                color={existingEvaluation ? "secondary" : "success"}
+                onClick={handleSaveEvaluation}
+                disabled={!selectedChild || loading || checkingEvaluation || existingEvaluation}
+                sx={{ minWidth: 180, height: 40 }}
+              >
+                {loading ? "Saving..." : 
+                 checkingEvaluation ? "Checking..." : 
+                 existingEvaluation ? "Evaluation Exists" : "Save Evaluation"}
+              </Button>
+            </Box>
+          </Box>
         </Paper>
       </Box>
     );

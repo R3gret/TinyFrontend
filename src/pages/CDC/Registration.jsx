@@ -10,6 +10,7 @@ import { apiRequest } from "../../utils/api";
 
 // Initial form state
 const initialFormData = {
+  studentId: "",
   childLastName: "",
   childFirstName: "",
   childMiddleName: "",
@@ -20,9 +21,16 @@ const initialFormData = {
   childFirstLanguage: "",
   childSecondLanguage: "",
   childRegistered: false,
+  childBirthplace: "",
+  childFourPsId: "",
+  childDisability: "",
+  childHeightCm: "",
+  childWeightKg: "",
   guardianName: "",
   guardianRelationship: "",
   guardianEmail: "",
+  guardianPhone: "",
+  guardianAddress: "",
   motherName: "",
   motherOccupation: "",
   motherAddress: "",
@@ -86,7 +94,45 @@ export default function Registration() {
     setFormData(initialFormData);
   };
 
+  const validateStudentId = (studentId) => {
+    if (!studentId) {
+      return 'Student ID is required. Format: YYYY-MM-DD (e.g., 2025-01-01)';
+    }
+    
+    // Validate format: YYYY-MM-DD
+    const idPattern = /^\d{4}-\d{2}-\d{2}$/;
+    if (!idPattern.test(studentId)) {
+      return 'Invalid student ID format. Expected format: YYYY-MM-DD (e.g., 2025-01-01)';
+    }
+    
+    // Validate date parts
+    const [year, month, day] = studentId.split('-').map(Number);
+    if (year < 2000 || year > 2100) {
+      return 'Year must be between 2000 and 2100';
+    }
+    if (month < 1 || month > 12) {
+      return 'Month must be between 01 and 12';
+    }
+    if (day < 1 || day > 31) {
+      return 'Day must be between 01 and 31';
+    }
+    
+    return null; // Valid
+  };
+
   const handleRegister = async () => {
+    // Validate student ID
+    const studentIdError = validateStudentId(formData.studentId);
+    if (studentIdError) {
+      setSubmitError(studentIdError);
+      setSnackbar({
+        open: true,
+        message: studentIdError,
+        severity: 'error'
+      });
+      return;
+    }
+
     // Validate required fields
     if (!formData.childFirstName || !formData.childLastName || 
         !formData.guardianName || !formData.motherName || !formData.fatherName) {
@@ -204,6 +250,43 @@ function RegistrationForm({ formData, onChange }) {
       {/* Child Information Section */}
       <div className="border-b pb-4">
         <h2 className="text-xl font-semibold mb-4">Child Information</h2>
+        <div className="mb-4">
+          <label className="block text-gray-700">
+            Student ID <span className="text-red-500">*</span>
+          </label>
+          <input 
+            type="text" 
+            className="w-full border rounded p-2" 
+            placeholder="(e.g., 2025-01-01)"
+            value={formData.studentId} 
+            onChange={(e) => {
+              // Remove all non-numeric characters
+              let value = e.target.value.replace(/[^\d]/g, '');
+              
+              // Auto-format: YYYY-MM-DD
+              if (value.length <= 4) {
+                // Just year
+                onChange("studentId", value);
+              } else if (value.length <= 6) {
+                // Year and month
+                const year = value.substring(0, 4);
+                const month = value.substring(4, 6);
+                onChange("studentId", `${year}-${month}`);
+              } else {
+                // Year, month, and day (limit to 8 digits)
+                const year = value.substring(0, 4);
+                const month = value.substring(4, 6);
+                const day = value.substring(6, 8);
+                onChange("studentId", `${year}-${month}-${day}`);
+              }
+            }}
+            maxLength={10}
+            required
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            Format: (e.g., 2025-01-01). 
+          </p>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-gray-700">First Name</label>
@@ -306,6 +389,60 @@ function RegistrationForm({ formData, onChange }) {
             onChange={(e) => onChange("childAddress", e.target.value)} 
           />
         </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+          <div>
+            <label className="block text-gray-700">Birthplace</label>
+            <input
+              type="text"
+              className="w-full border rounded p-2"
+              value={formData.childBirthplace}
+              onChange={(e) => onChange("childBirthplace", e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="block text-gray-700">4Ps ID</label>
+            <input
+              type="text"
+              className="w-full border rounded p-2"
+              value={formData.childFourPsId}
+              onChange={(e) => onChange("childFourPsId", e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="block text-gray-700">Disability</label>
+            <input
+              type="text"
+              className="w-full border rounded p-2"
+              placeholder="Specify disability or leave blank"
+              value={formData.childDisability}
+              onChange={(e) => onChange("childDisability", e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+          <div>
+            <label className="block text-gray-700">Height (cm)</label>
+            <input
+              type="number"
+              min="0"
+              className="w-full border rounded p-2"
+              value={formData.childHeightCm}
+              onChange={(e) => onChange("childHeightCm", e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="block text-gray-700">Weight (kg)</label>
+            <input
+              type="number"
+              min="0"
+              className="w-full border rounded p-2"
+              value={formData.childWeightKg}
+              onChange={(e) => onChange("childWeightKg", e.target.value)}
+            />
+          </div>
+        </div>
       </div>
 
       {/* Guardian Information Section */}
@@ -339,6 +476,24 @@ function RegistrationForm({ formData, onChange }) {
               onChange={(e) => onChange("guardianEmail", e.target.value)} 
             />
           </div>
+          <div>
+            <label className="block text-gray-700">Contact Number</label>
+            <input
+              type="tel"
+              className="w-full border rounded p-2"
+              value={formData.guardianPhone}
+              onChange={(e) => onChange("guardianPhone", e.target.value)}
+            />
+          </div>
+        </div>
+        <div className="mt-4">
+          <label className="block text-gray-700">Address</label>
+          <input
+            type="text"
+            className="w-full border rounded p-2"
+            value={formData.guardianAddress}
+            onChange={(e) => onChange("guardianAddress", e.target.value)}
+          />
         </div>
       </div>
 

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import logo from "../../assets/logo.png";
+import defaultProfilePic from "../../assets/default-profile.png";
 
 const Navbar = () => {
   const [userType, setUserType] = useState(null);
@@ -57,7 +58,7 @@ const Navbar = () => {
       ? "/focal-profile"
       : "/";
 
-  const userProfilePic = "/default-profile.png"; // static fallback
+  const userProfilePic = defaultProfilePic; // default profile image from assets
 
   return (
     <>

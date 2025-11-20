@@ -8,89 +8,152 @@ Font.register({
 
 const styles = StyleSheet.create({
   page: {
-    padding: 30,
-    fontSize: 12,
+    paddingTop: 25,
+    paddingHorizontal: 35,
+    paddingBottom: 40,
+    fontSize: 11,
     fontFamily: "Times-Roman",
   },
-  headerWrapper: {
-    textAlign: 'center',
-    marginBottom: 7,
+  formHeader: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    marginBottom: 6,
+    position: 'relative',
   },
-  headerText: {
-    fontSize: 10,
-    marginBottom: 4,
-    fontWeight: 'bold', 
-  },
-  title: {
-    fontSize: 12,
+  formHeaderText: {
+    fontSize: 11,
     fontWeight: 'bold',
+    textTransform: 'uppercase',
+    textAlign: 'center',
+  },
+  formNumber: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    fontSize: 11,
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+  },
+  centerHeader: {
+    textAlign: 'center',
     marginBottom: 6,
   },
-  instruction: {
-    fontSize: 9,
-    marginTop: 4,
-    fontStyle: 'italic',
+  centerHeaderLine: {
+    fontSize: 10,
+    textTransform: 'capitalize',
+    textAlign: 'center',
   },
-  horizontalLine: {
-    borderBottomWidth: 2,
-    borderBottomColor: 'black',
-    width: '105%',
-    marginVertical: 10,
-    alignSelf: 'center',
+  title: {
+    fontWeight: 'bold',
+    fontSize: 12,
+    textAlign: 'center',
+    marginBottom: 6,
+  },
+  topLine: {
+    borderTop: '2pt solid black',
+    marginVertical: 6,
   },
   borderBox: {
-    border: '3pt solid black',
-    padding: 10,
-  },
-  section: {
-    marginBottom: 10,
+    border: '1.8pt solid black',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
   },
   row: {
     flexDirection: 'row',
-    marginBottom: 4,
+    alignItems: 'flex-end',
+    marginBottom: 6,
   },
   field: {
     flex: 1,
-    marginRight: 6,
-  },
-  fieldLast: {
-    flex: 1,
+    marginRight: 8,
   },
   label: {
     fontWeight: 'bold',
+    marginRight: 4,
+  },
+  colon: {
+    marginRight: 4,
+    fontWeight: 'bold',
+  },
+  fieldRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
     marginBottom: 6,
   },
-  value: {
+  valueWrapper: {
+    flex: 1,
     borderBottom: '1pt solid black',
+    minHeight: 16,
+    paddingBottom: 2,
+  },
+  valueText: {
     minHeight: 14,
   },
-  signatureSection: {
-    marginTop: 20,
+  checkboxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 12,
   },
-  signatureLine: {
-    marginTop: 20,
-    borderTop: '1pt solid black',
+  checkboxBox: {
+    width: 11,
+    height: 11,
+    border: '1pt solid black',
+    marginHorizontal: 6,
     textAlign: 'center',
-    paddingTop: 2,
+    fontSize: 9,
   },
   sectionLabel: {
     fontWeight: 'bold',
+    marginTop: 4,
+    marginBottom: 8,
+    textTransform: 'uppercase',
+  },
+  indentLabel: {
+    fontWeight: 'bold',
+    marginTop: 4,
+    marginBottom: 8,
+  },
+  signatureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginTop: 10,
-    marginBottom: 6,
+  },
+  signatureLine: {
+    flex: 1,
+    borderTop: '1pt solid black',
+    paddingTop: 4,
+    marginRight: 12,
+    minHeight: 28,
+  },
+  bottomNote: {
+    textAlign: 'left',
+    fontSize: 9,
+    marginTop: 2,
+  },
+  formFooter: {
+    textAlign: 'left',
+    marginTop: 16,
+    fontSize: 10,
+    fontWeight: 'bold',
   }
 });
 
-const Field = ({ label, value }) => (
-  <View style={styles.field}>
-    <Text style={styles.label}>{label}</Text>
-    <Text style={styles.value}>{value || ' '}</Text>
+const LineField = ({ label, value, flex = 1 }) => (
+  <View style={[styles.field, { flex }]}>
+    <View style={styles.fieldRow}>
+      <Text style={styles.label}>{label}</Text>
+      <Text style={styles.colon}>:</Text>
+      <View style={styles.valueWrapper}>
+        <Text style={styles.valueText}>{value || ' '}</Text>
+      </View>
+    </View>
   </View>
 );
 
-const FieldLast = ({ label, value }) => (
-  <View style={styles.fieldLast}>
-    <Text style={styles.label}>{label}</Text>
-    <Text style={styles.value}>{value || ' '}</Text>
+const CheckBox = ({ label, checked }) => (
+  <View style={styles.checkboxRow}>
+    <Text style={styles.checkboxBox}>{checked ? '✔' : ''}</Text>
+    <Text>{label}</Text>
   </View>
 );
 
@@ -111,89 +174,95 @@ export default function RegistrationPDF({ data }) {
   return (
     <Document>
       <Page size="LEGAL" style={styles.page}>
-        <View style={styles.headerWrapper}>
-          <Text style={styles.headerText}>LIAN Child Development Center</Text>
-          <Text style={styles.headerText}>Lian, Batangas</Text>
-          <Text style={styles.title}>REGISTRATION FORM</Text>
+        <View style={styles.formHeader}>
+          <Text style={styles.formNumber}>FORM 1</Text>
+          <Text style={styles.formHeaderText}>LIAN CHILD DEVELOPMENT CENTER</Text>
+          <Text style={styles.centerHeaderLine}>Lian, Batangas</Text>
+          <Text style={styles.formHeaderText}>REGISTRATION FORM</Text>
         </View>
+        <View style={styles.topLine} />
 
         <View style={styles.borderBox}>
-          <Text style={styles.instruction}>
-            <Text style={{ fontWeight: 'bold' }}>INSTRUCTION:</Text> This form is to be filled up by the parent/guardian of the child upon enrolment to the Child Development Center.
-            This will be kept by the Child Development Teacher in the portfolio of the child.
-          </Text>
-          <View style={styles.horizontalLine} />
-
-          <View style={styles.section}>
-            <View style={styles.row}>
-              <Field label="Name of Child" value={fullName} />
-              <FieldLast label="Gender" value={data.childGender} />
-            </View>
-            <View style={styles.row}>
-              <Field label="Address" value={data.childAddress} />
-              <FieldLast label="Birthday" value={data.childBirthday} />
-            </View>
-            <View style={styles.row}>
-              <Field label="Guardian" value={data.guardianName} />
-              <FieldLast label="Relationship" value={data.guardianRelationship} />
-            </View>
-            <View style={styles.row}>
-              <Field label="Registered" value={data.childRegistered ? "Yes" : "No"} />
-              <FieldLast label="Age" value={data.childAge} />
-            </View>
-            <View style={styles.row}>
-              <Field label="Child's First Language" value={data.childFirstLanguage} />
-              <FieldLast label="Second Language" value={data.childSecondLanguage} />
-            </View>
-            <View style={styles.row}>
-              <Field label="E-mail address" value={data.guardianEmail} />
-            </View>
+          <View style={styles.row}>
+            <LineField label="Name of Child" value={fullName} flex={2} />
+            <LineField label="Gender" value={data.childGender} />
+          </View>
+          <View style={styles.row}>
+            <LineField label="Address" value={data.childAddress} flex={2} />
+            <LineField label="Birthday" value={data.childBirthday} />
+          </View>
+          <View style={styles.row}>
+            <LineField label="Guardian" value={data.guardianName} flex={2} />
+            <LineField label="Relationship" value={data.guardianRelationship} />
+          </View>
+          <View style={[styles.row, { alignItems: 'center' }]}>
+            <Text style={styles.label}>Registered</Text>
+            <Text style={styles.colon}>:</Text>
+            <CheckBox label="Yes" checked={!!data.childRegistered} />
+            <CheckBox label="No" checked={!data.childRegistered} />
+            <LineField label="Age" value={data.childAge} />
+          </View>
+          <View style={styles.row}>
+            <LineField label="Child's First Language" value={data.childFirstLanguage} />
+            <LineField label="Second Language" value={data.childSecondLanguage} />
+          </View>
+          <View style={styles.row}>
+            <LineField label="E-mail address" value={data.guardianEmail} flex={2} />
           </View>
 
-          <View style={styles.horizontalLine} />
-          <Text style={styles.sectionLabel}>Guardian Information:</Text>
-
-          <Text style={{ fontWeight: 'bold' }}>Mother:</Text>
+          <Text style={styles.indentLabel}>Mother:</Text>
           <View style={styles.row}>
-            <Field label="Name" value={data.motherName} />
-            <FieldLast label="Occupation" value={data.motherOccupation} />
+            <LineField label="Name" value={data.motherName} />
+            <LineField label="Occupation" value={data.motherOccupation} />
           </View>
           <View style={styles.row}>
-            <Field label="Address" value={data.motherAddress} />
+            <LineField label="Address" value={data.motherAddress} flex={2} />
           </View>
           <View style={styles.row}>
-            <Field label="Contact Number (Home)" value={data.motherContactHome} />
-            <FieldLast label="Work" value={data.motherContactWork} />
+            <LineField label="Home" value={data.motherContactHome} />
+            <LineField label="Work" value={data.motherContactWork} />
           </View>
 
-          <Text style={{ fontWeight: 'bold' }}>Father:</Text>
+          <Text style={styles.indentLabel}>Father:</Text>
           <View style={styles.row}>
-            <Field label="Name" value={data.fatherName} />
-            <FieldLast label="Occupation" value={data.fatherOccupation} />
+            <LineField label="Name" value={data.fatherName} />
+            <LineField label="Occupation" value={data.fatherOccupation} />
           </View>
           <View style={styles.row}>
-            <Field label="Address" value={data.fatherAddress} />
+            <LineField label="Address" value={data.fatherAddress} flex={2} />
           </View>
           <View style={styles.row}>
-            <Field label="Contact Number (Home)" value={data.fatherContactHome} />
-            <FieldLast label="Work" value={data.fatherContactWork} />
-          </View>
-
-          <View style={styles.horizontalLine} />
-          <Text style={styles.sectionLabel}>IN CASE OF EMERGENCY, Please contact the following:</Text>
-          <View style={styles.row}>
-            <Field label="Name" value={data.emergencyName} />
-            <FieldLast label="Relationship" value={data.emergencyRelationship} />
-          </View>
-          <View style={styles.row}>
-            <Field label="Contact Number (Home)" value={data.emergencyContactHome} />
-            <FieldLast label="Work" value={data.emergencyContactWork} />
+            <LineField label="Home" value={data.fatherContactHome} />
+            <LineField label="Work" value={data.fatherContactWork} />
           </View>
 
-          <View style={styles.signatureSection}>
-            <View style={styles.row}>
-              <Field label="Accomplished by (Parent/Guardian)" value={data.guardianName} />
-              <FieldLast label="Date" value={new Date().toLocaleDateString()} />
+          <Text style={styles.sectionLabel}>In case of emergency, Please contact the following:</Text>
+          <View style={styles.row}>
+            <LineField label="Name" value={data.emergencyName} />
+            <LineField label="Relationship" value={data.emergencyRelationship} />
+          </View>
+          <View style={styles.row}>
+            <LineField label="Home" value={data.emergencyContactHome} />
+            <LineField label="Work" value={data.emergencyContactWork} />
+          </View>
+
+          <View style={styles.signatureRow}>
+            <View style={styles.signatureLine}>
+              <Text>Accomplished by :</Text>
+              <Text style={styles.bottomNote}>Signature over printed name of parent/guardian</Text>
+            </View>
+            <View style={styles.signatureLine}>
+              <Text>Date</Text>
+            </View>
+          </View>
+
+          <View style={styles.signatureRow}>
+            <View style={styles.signatureLine}>
+              <Text>Reviewed by :</Text>
+              <Text style={styles.bottomNote}>Signature over printed name of CDW</Text>
+            </View>
+            <View style={styles.signatureLine}>
+              <Text>Date</Text>
             </View>
           </View>
         </View>

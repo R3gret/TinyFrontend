@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import Navbar from "../../components/all/Navbar";
-import Sidebar from "../../components/President/PresidentSidebar";
+import Sidebar from "../../components/Focal/FocalSidebar";
 import {
   Table,
   TableBody,
@@ -39,7 +39,7 @@ import {
 
 import { apiRequest } from "../../utils/api";
 
-export default function Dashboard() {
+export default function FocalAnnouncements() {
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
@@ -95,22 +95,18 @@ function StreamSection({ setSnackbar }) {
   const [error, setError] = useState(null);
   const [ageFilter, setAgeFilter] = useState('all');
   const [userRole, setUserRole] = useState('');
+  const [filterContext, setFilterContext] = useState(null);
+  const [geographicFilter, setGeographicFilter] = useState(null);
+  const [addressWarning, setAddressWarning] = useState(null);
 
   useEffect(() => {
     const userString = localStorage.getItem('user');
-    console.log('user string from localStorage:', userString);
     if (userString) {
         const loggedInUser = JSON.parse(userString);
-        console.log('Parsed user object from localStorage:', loggedInUser);
         if (loggedInUser && (loggedInUser.role || loggedInUser.type)) {
           const role = loggedInUser.role || loggedInUser.type;
-          console.log('User role found:', role);
           setUserRole(role);
-        } else {
-            console.log('User role not found in user object:', loggedInUser);
         }
-    } else {
-        console.log('No user object found in localStorage');
     }
   }, []);
 
@@ -120,15 +116,25 @@ function StreamSection({ setSnackbar }) {
         setLoading(true);
         const data = await apiRequest('/api/announcements');
         setAnnouncements(data.announcements || []);
+        setFilterContext(data.filter || null);
+        setGeographicFilter(data.geographicFilter || null);
         setError(null);
+        setAddressWarning(null);
       } catch (err) {
         console.error('Error fetching announcements:', err);
-        setError(err.message);
-        setSnackbar({
-          open: true,
-          message: 'Failed to fetch announcements',
-          severity: 'error'
-        });
+        const responseMessage = err.responseData?.message || err.message || 'Failed to fetch announcements';
+        const isAddressIssue = responseMessage.toLowerCase().includes('address');
+        if (isAddressIssue) {
+          setAddressWarning(responseMessage);
+          setError(null);
+        } else {
+          setError(responseMessage);
+          setSnackbar({
+            open: true,
+            message: responseMessage,
+            severity: 'error'
+          });
+        }
       } finally {
         setLoading(false);
       }
@@ -137,8 +143,14 @@ function StreamSection({ setSnackbar }) {
     fetchAnnouncements();
   }, [setSnackbar]);
 
+  useEffect(() => {
+    if (filterContext === 'role:focal') {
+      setIsCreatingAnnouncement(false);
+    }
+  }, [filterContext]);
+
   const handleOpenCreateModal = () => {
-    console.log('Opening create modal, current user role:', userRole);
+    if (filterContext === 'role:focal') return;
     setNewAnnouncement({
       title: '',
       message: '',
@@ -222,6 +234,8 @@ function StreamSection({ setSnackbar }) {
     ? announcements 
     : announcements.filter(ann => ann.ageFilter === ageFilter || ann.ageFilter === 'all');
 
+  const canCreateAnnouncements = filterContext !== 'role:focal';
+
   return (
     <div className="text-gray-800">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
@@ -246,16 +260,30 @@ function StreamSection({ setSnackbar }) {
             </FormControl>
           </div>
           
-          <Button
-            onClick={handleOpenCreateModal}
-            variant="contained"
-            sx={{ bgcolor: 'success.main', '&:hover': { bgcolor: 'success.dark' } }}
-            startIcon={<span>+</span>}
-          >
-            New Announcement
-          </Button>
+          {canCreateAnnouncements && (
+            <Button
+              onClick={handleOpenCreateModal}
+              variant="contained"
+              sx={{ bgcolor: 'success.main', '&:hover': { bgcolor: 'success.dark' } }}
+              startIcon={<span>+</span>}
+            >
+              New Announcement
+            </Button>
+          )}
         </div>
       </div>
+
+      {filterContext === 'role:focal' && geographicFilter && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Showing announcements targeting focal accounts in {geographicFilter.municipality}, {geographicFilter.province}.
+        </Alert>
+      )}
+
+      {addressWarning && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          {addressWarning}
+        </Alert>
+      )}
 
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
@@ -269,7 +297,7 @@ function StreamSection({ setSnackbar }) {
         </Box>
       )}
 
-      {!loading && filteredAnnouncements.length === 0 && (
+      {!loading && filteredAnnouncements.length === 0 && !addressWarning && (
         <Box sx={{ 
           border: 2, 
           borderColor: 'grey.300', 
@@ -282,16 +310,24 @@ function StreamSection({ setSnackbar }) {
           <Typography variant="h6" gutterBottom>
             No announcements yet
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Get started by creating a new announcement.
-          </Typography>
-          <Button
-            onClick={handleOpenCreateModal}
-            variant="contained"
-            sx={{ bgcolor: 'success.main', '&:hover': { bgcolor: 'success.dark' } }}
-          >
-            Create Announcement
-          </Button>
+          {canCreateAnnouncements ? (
+            <>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Get started by creating a new announcement.
+              </Typography>
+              <Button
+                onClick={handleOpenCreateModal}
+                variant="contained"
+                sx={{ bgcolor: 'success.main', '&:hover': { bgcolor: 'success.dark' } }}
+              >
+                Create Announcement
+              </Button>
+            </>
+          ) : (
+            <Typography variant="body2" color="text.secondary">
+              No announcements have been sent to your assigned municipalities yet.
+            </Typography>
+          )}
         </Box>
       )}
 
@@ -352,7 +388,8 @@ function StreamSection({ setSnackbar }) {
         </Box>
       )}
 
-      <Modal open={isCreatingAnnouncement} onClose={() => setIsCreatingAnnouncement(false)}>
+      {canCreateAnnouncements && (
+        <Modal open={isCreatingAnnouncement} onClose={() => setIsCreatingAnnouncement(false)}>
         <Box sx={{
           position: 'absolute',
           top: '50%',
@@ -464,24 +501,6 @@ function StreamSection({ setSnackbar }) {
                     }
                   }}
                 />
-                <Chip
-                  label="Focal"
-                  color={newAnnouncement.roleFilter.includes('focal') ? 'primary' : 'default'}
-                  clickable={userRole !== 'focal'}
-                  onClick={() => {
-                    if (userRole !== 'focal') {
-                      setNewAnnouncement((prev) => {
-                        const exists = prev.roleFilter.includes('focal');
-                        return {
-                          ...prev,
-                          roleFilter: exists
-                            ? prev.roleFilter.filter((r) => r !== 'focal')
-                            : [...prev.roleFilter, 'focal']
-                        };
-                      });
-                    }
-                  }}
-                />
               </Box>
             </FormControl>
             
@@ -541,6 +560,7 @@ function StreamSection({ setSnackbar }) {
           </form>
         </Box>
       </Modal>
+      )}
     </div>
   );
 }

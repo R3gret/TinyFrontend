@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Navbar from "../../components/all/Navbar";
-import DefaultSidebar from "../../components/CDC/Sidebar";
+import MSWSidebar from "../../components/MSW/MSWSidebar";
 import {
   Table,
   TableBody,
@@ -27,6 +27,7 @@ import {
   InputAdornment,
   IconButton,
   Menu,
+  Checkbox,
 } from "@mui/material";
 import {
   Upload as UploadIcon,
@@ -44,7 +45,7 @@ import { jwtDecode } from "jwt-decode";
 
 import { apiRequest, apiDownload } from "../../utils/api";
 
-export default function InstructionalMaterials({ SidebarComponent = DefaultSidebar }) {
+export default function MSWInstructionalMaterials({ SidebarComponent = MSWSidebar }) {
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
@@ -103,7 +104,6 @@ function ClassworksSection({ setSnackbar }) {
   const [error, setError] = useState(null);
   const [fileCounts, setFileCounts] = useState({});
   const [userRole, setUserRole] = useState(null);
-  const [scope, setScope] = useState('both'); // 'all', 'cdc', or 'both'
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [renameFile, setRenameFile] = useState(null); // For rename modal
   const [editingCategory, setEditingCategory] = useState(null); // For editing a category
@@ -114,14 +114,24 @@ function ClassworksSection({ setSnackbar }) {
     message: '',
     onConfirm: null,
   });
+  const [multiUploadModalOpen, setMultiUploadModalOpen] = useState(false);
+  const [multiUploadFolder, setMultiUploadFolder] = useState('');
+  const [multiUploadFiles, setMultiUploadFiles] = useState([]);
+  const [selectedCdcIds, setSelectedCdcIds] = useState([]);
+  const [cdcListForUpload, setCdcListForUpload] = useState([]);
+  const [cdcBarangayFilter, setCdcBarangayFilter] = useState('');
+  const [cdcBarangayOptions, setCdcBarangayOptions] = useState([]);
+  const [cdcListLoading, setCdcListLoading] = useState(false);
+  const [multiUploadSubmitting, setMultiUploadSubmitting] = useState(false);
+  const [userMunicipality, setUserMunicipality] = useState('');
 
-  const fetchCategories = async (ageGroupId, filterScope = scope) => {
+  const fetchCategories = async (ageGroupId) => {
     if (!ageGroupId) {
       setCategories([]);
       return;
     }
     try {
-      const categoriesData = await apiRequest(`/api/files/get-categories?age_group_id=${ageGroupId}&scope=${filterScope}`);
+      const categoriesData = await apiRequest(`/api/files/get-categories?age_group_id=${ageGroupId}`);
       setCategories(categoriesData.categories || []);
     } catch (err) {
       console.error('Error fetching categories:', err);
@@ -133,6 +143,36 @@ function ClassworksSection({ setSnackbar }) {
     }
   };
 
+  const fetchCdcOptions = async (municipalityParam) => {
+    try {
+      setCdcListLoading(true);
+      const params = new URLSearchParams();
+      if (municipalityParam) {
+        params.append('municipality', municipalityParam);
+      }
+      const response = await apiRequest(`/api/cdc?${params.toString()}`);
+      const list = response?.data || [];
+      setCdcListForUpload(list);
+      const uniqueBarangays = [...new Set(list.map(item => item.barangay).filter(Boolean))].sort();
+      setCdcBarangayOptions(uniqueBarangays);
+    } catch (err) {
+      console.error('Error fetching CDC list:', err);
+      setSnackbar({
+        open: true,
+        message: 'Failed to load CDC list',
+        severity: 'error'
+      });
+    } finally {
+      setCdcListLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (userMunicipality) {
+      fetchCdcOptions(userMunicipality);
+    }
+  }, [userMunicipality]);
+
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (token) {
@@ -143,6 +183,30 @@ function ClassworksSection({ setSnackbar }) {
         console.error("Invalid token:", error);
       }
     }
+  }, []);
+
+  useEffect(() => {
+    const fetchUserInfo = async () => {
+      try {
+        const user = JSON.parse(localStorage.getItem('user'));
+        if (!user?.id) {
+          return;
+        }
+
+        const data = await apiRequest(`/api/user_session/current-user/details?userId=${user.id}`);
+        if (data?.user?.other_info?.address) {
+          const addressParts = data.user.other_info.address.split(',').map(part => part.trim());
+          if (addressParts.length >= 2) {
+            const municipality = addressParts.length === 2 ? addressParts[0] : addressParts[1];
+            setUserMunicipality(municipality || '');
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch user info for CDC uploads:', err);
+      }
+    };
+
+    fetchUserInfo();
   }, []);
 
   useEffect(() => {
@@ -176,8 +240,8 @@ function ClassworksSection({ setSnackbar }) {
       setLoading(true);
       const fetchDependentData = async () => {
         await Promise.all([
-          fetchCategories(selectedAgeGroup, scope),
-          refetchFileCounts(selectedAgeGroup, scope)
+          fetchCategories(selectedAgeGroup),
+          refetchFileCounts(selectedAgeGroup)
         ]);
         setLoading(false);
       };
@@ -188,7 +252,7 @@ function ClassworksSection({ setSnackbar }) {
       setSelectedCategory(null);
       setFiles([]);
     }
-  }, [selectedAgeGroup, scope, setSnackbar]);
+  }, [selectedAgeGroup, setSnackbar]);
 
   useEffect(() => {
     if (selectedCategory && selectedAgeGroup) {
@@ -200,7 +264,7 @@ function ClassworksSection({ setSnackbar }) {
           setLoading(true);
 
           const data = await apiRequest(
-            `/api/files?category_id=${selectedCategory}&age_group_id=${selectedAgeGroup}&scope=${scope}`
+            `/api/files?category_id=${selectedCategory}&age_group_id=${selectedAgeGroup}`
           );
           // Defensive: only show files that match the currently-selected
           // category and age group. This prevents files returned by the
@@ -223,7 +287,7 @@ function ClassworksSection({ setSnackbar }) {
 
       fetchFiles();
     }
-  }, [selectedCategory, selectedAgeGroup, scope, setSnackbar]);
+  }, [selectedCategory, selectedAgeGroup, setSnackbar]);
 
   const handleOpenUploadModal = () => {
     setNewFile(prev => ({
@@ -236,11 +300,11 @@ function ClassworksSection({ setSnackbar }) {
     setIsModalOpen(true);
   };
 
-  const refetchFileCounts = async (ageGroupId, filterScope = scope) => {
+  const refetchFileCounts = async (ageGroupId) => {
     if (ageGroupId) {
       try {
         const countsData = await apiRequest(
-          `/api/files/counts?age_group_id=${ageGroupId}&scope=${filterScope}`
+          `/api/files/counts?age_group_id=${ageGroupId}`
         );
         setFileCounts(countsData.counts || {});
       } catch (err) {
@@ -264,7 +328,7 @@ function ClassworksSection({ setSnackbar }) {
       
       if (selectedCategory && selectedAgeGroup) {
         const filesData = await apiRequest(
-          `/api/files?category_id=${selectedCategory}&age_group_id=${selectedAgeGroup}&scope=${scope}`
+          `/api/files?category_id=${selectedCategory}&age_group_id=${selectedAgeGroup}`
         );
         const returnedFiles = filesData.files || [];
         const filtered = returnedFiles.filter(f => String(f.category_id) === String(selectedCategory) && String(f.age_group_id) === String(selectedAgeGroup));
@@ -273,7 +337,7 @@ function ClassworksSection({ setSnackbar }) {
       
       if (selectedAgeGroup) {
         const countsData = await apiRequest(
-          `/api/files/counts?age_group_id=${selectedAgeGroup}&scope=${scope}`
+          `/api/files/counts?age_group_id=${selectedAgeGroup}`
         );
         setFileCounts(countsData.counts || {});
       }
@@ -394,6 +458,130 @@ function ClassworksSection({ setSnackbar }) {
     }
   };
 
+  const filteredCdcList = useMemo(() => {
+    const baseList = cdcBarangayFilter
+      ? cdcListForUpload.filter(cdc => cdc.barangay === cdcBarangayFilter)
+      : cdcListForUpload;
+    return [...baseList].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  }, [cdcBarangayFilter, cdcListForUpload]);
+
+  const toggleCdcSelection = (cdcId) => {
+    const id = String(cdcId);
+    setSelectedCdcIds(prev => (
+      prev.includes(id) ? prev.filter(existingId => existingId !== id) : [...prev, id]
+    ));
+  };
+
+  const allFilteredSelected = filteredCdcList.length > 0 && filteredCdcList.every(cdc => selectedCdcIds.includes(String(cdc.cdcId)));
+  const someFilteredSelected = filteredCdcList.some(cdc => selectedCdcIds.includes(String(cdc.cdcId)));
+
+  const handleToggleSelectAllFiltered = () => {
+    if (allFilteredSelected) {
+      const filteredIds = filteredCdcList.map(cdc => String(cdc.cdcId));
+      setSelectedCdcIds(prev => prev.filter(id => !filteredIds.includes(id)));
+    } else {
+      const newIds = filteredCdcList.map(cdc => String(cdc.cdcId));
+      setSelectedCdcIds(prev => Array.from(new Set([...prev, ...newIds])));
+    }
+  };
+
+  const handleMultiUploadFilesChange = (event) => {
+    const files = Array.from(event.target.files || []);
+    setMultiUploadFiles(files);
+  };
+
+  const handleRemoveSelectedFile = (index) => {
+    setMultiUploadFiles(prev => prev.filter((_, idx) => idx !== index));
+  };
+
+  const resetMultiUploadState = () => {
+    setMultiUploadFolder('');
+    setMultiUploadFiles([]);
+    setSelectedCdcIds([]);
+    setCdcBarangayFilter('');
+  };
+
+  const handleCloseMultiUploadModal = () => {
+    setMultiUploadModalOpen(false);
+    resetMultiUploadState();
+  };
+
+  const handleOpenMultiUploadModal = () => {
+    if (!selectedAgeGroup) return;
+    if (!cdcListForUpload.length && !cdcListLoading) {
+      fetchCdcOptions(userMunicipality);
+    }
+    setMultiUploadModalOpen(true);
+  };
+
+  const currentAgeGroupLabel = useMemo(() => {
+    if (!selectedAgeGroup) return '';
+    const ageGroup = ageGroups.find(group => String(group.age_group_id) === String(selectedAgeGroup));
+    return ageGroup ? ageGroup.age_range.replace(/\?/g, '-') : selectedAgeGroup;
+  }, [ageGroups, selectedAgeGroup]);
+
+  const handleMultiUploadSubmit = async (event) => {
+    event.preventDefault();
+    if (!selectedCdcIds.length) {
+      setSnackbar({
+        open: true,
+        message: 'Select at least one CDC',
+        severity: 'warning'
+      });
+      return;
+    }
+
+    if (!multiUploadFolder.trim()) {
+      setSnackbar({
+        open: true,
+        message: 'Folder name is required',
+        severity: 'warning'
+      });
+      return;
+    }
+
+    if (!multiUploadFiles.length) {
+      setSnackbar({
+        open: true,
+        message: 'Select at least one file to upload',
+        severity: 'warning'
+      });
+      return;
+    }
+
+    try {
+      setMultiUploadSubmitting(true);
+      const formData = new FormData();
+      formData.append('folder_name', multiUploadFolder.trim());
+      if (selectedAgeGroup) {
+        formData.append('age_group_id', selectedAgeGroup);
+      }
+      selectedCdcIds.forEach(id => formData.append('cdc_ids[]', id));
+      multiUploadFiles.forEach(file => formData.append('files', file));
+
+      await apiRequest('/api/files/multi-cdc-upload', 'POST', formData, true);
+
+      setSnackbar({
+        open: true,
+        message: 'Files uploaded to selected CDCs',
+        severity: 'success'
+      });
+      handleCloseMultiUploadModal();
+      if (selectedAgeGroup) {
+        refetchFileCounts(selectedAgeGroup);
+      }
+    } catch (err) {
+      console.error('Error uploading files to multiple CDCs:', err);
+      setSnackbar({
+        open: true,
+        message: err.message || 'Failed to upload files to CDCs',
+        severity: 'error'
+      });
+    } finally {
+      setMultiUploadSubmitting(false);
+    }
+  };
+
   const handleDownload = async (fileId, fileName) => {
     try {
       const blob = await apiDownload(`/api/files/download/${fileId}`);
@@ -464,33 +652,26 @@ function ClassworksSection({ setSnackbar }) {
           <Typography variant="h5" component="h2">
             Instructional Materials
           </Typography>
-          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
             {userRole !== 'President' && (
-              <Button
-                variant="contained"
-                onClick={() => setIsCategoryModalOpen(true)}
-                disabled={!selectedAgeGroup} // Disable if no age group is selected
-              >
-                Add Category
-              </Button>
+              <>
+                <Button
+                  variant="outlined"
+                  startIcon={<CloudUploadIcon />}
+                  onClick={handleOpenMultiUploadModal}
+                  disabled={!selectedAgeGroup}
+                >
+                  Upload to Multiple CDCs
+                </Button>
+                <Button
+                  variant="contained"
+                  onClick={() => setIsCategoryModalOpen(true)}
+                  disabled={!selectedAgeGroup} // Disable if no age group is selected
+                >
+                  Add Category
+                </Button>
+              </>
             )}
-            <FormControl sx={{ minWidth: 150 }} size="small">
-              <InputLabel>Filter</InputLabel>
-              <Select
-                value={scope}
-                label="Filter"
-                onChange={(e) => {
-                  setScope(e.target.value);
-                  // Reset category when filter changes
-                  setSelectedCategory(null);
-                  setFiles([]);
-                }}
-              >
-                <MenuItem value="both">All Files</MenuItem>
-                <MenuItem value="all">Available to All</MenuItem>
-                <MenuItem value="cdc">My CDC Only</MenuItem>
-              </Select>
-            </FormControl>
             <FormControl sx={{ minWidth: 200 }} size="small">
               <InputLabel>Select Age Group</InputLabel>
               <Select
@@ -690,11 +871,194 @@ function ClassworksSection({ setSnackbar }) {
         category={editingCategory}
         ageGroupId={selectedAgeGroup}
         onSave={() => {
-          fetchCategories(selectedAgeGroup, scope);
-          refetchFileCounts(selectedAgeGroup, scope);
+          fetchCategories(selectedAgeGroup);
+          refetchFileCounts(selectedAgeGroup);
         }}
         setSnackbar={setSnackbar}
       />
+
+      <Modal open={multiUploadModalOpen} onClose={handleCloseMultiUploadModal}>
+        <Box sx={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: '95%',
+          maxWidth: 800,
+          maxHeight: '90vh',
+          overflowY: 'auto',
+          bgcolor: 'background.paper',
+          boxShadow: 24,
+          p: 4,
+          borderRadius: 2
+        }}>
+          <Typography variant="h6" component="h2" sx={{ mb: 1 }}>
+            Upload Files to Multiple CDCs
+          </Typography>
+          {selectedAgeGroup ? (
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+              Target Age Group: {currentAgeGroupLabel}
+            </Typography>
+          ) : (
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+              Select an age group first to enable uploads.
+            </Typography>
+          )}
+
+          <form onSubmit={handleMultiUploadSubmit}>
+            <FormControl fullWidth sx={{ mb: 2 }}>
+              <InputLabel>Filter by Barangay</InputLabel>
+              <Select
+                value={cdcBarangayFilter}
+                label="Filter by Barangay"
+                onChange={(e) => setCdcBarangayFilter(e.target.value)}
+              >
+                <MenuItem value="">All Barangays</MenuItem>
+                {cdcBarangayOptions.map(barangay => (
+                  <MenuItem key={barangay} value={barangay}>
+                    {barangay}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <Box sx={{
+              border: 1,
+              borderColor: 'grey.300',
+              borderRadius: 1,
+              p: 2,
+              mb: 3
+            }}>
+              {cdcListLoading ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                  <CircularProgress size={32} />
+                </Box>
+              ) : (
+                <>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                    <Checkbox
+                      checked={allFilteredSelected}
+                      indeterminate={!allFilteredSelected && someFilteredSelected}
+                      onChange={handleToggleSelectAllFiltered}
+                      disabled={!filteredCdcList.length}
+                    />
+                    <Typography>
+                      Select All ({filteredCdcList.length})
+                    </Typography>
+                  </Box>
+                  <Box sx={{ maxHeight: 250, overflowY: 'auto' }}>
+                    {filteredCdcList.length === 0 ? (
+                      <Typography color="text.secondary" sx={{ p: 2 }}>
+                        No CDCs available for the selected filter.
+                      </Typography>
+                    ) : (
+                      filteredCdcList.map(cdc => (
+                        <Box
+                          key={cdc.cdcId}
+                          sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            py: 1,
+                            borderBottom: '1px solid',
+                            borderColor: 'grey.100',
+                          }}
+                        >
+                          <Checkbox
+                            checked={selectedCdcIds.includes(String(cdc.cdcId))}
+                            onChange={() => toggleCdcSelection(cdc.cdcId)}
+                          />
+                          <Box>
+                            <Typography fontWeight={600}>{cdc.name}</Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              Barangay: {cdc.barangay || 'N/A'}
+                            </Typography>
+                          </Box>
+                        </Box>
+                      ))
+                    )}
+                  </Box>
+                </>
+              )}
+            </Box>
+
+            <TextField
+              label="Folder Name"
+              fullWidth
+              required
+              value={multiUploadFolder}
+              onChange={(e) => setMultiUploadFolder(e.target.value)}
+              sx={{ mb: 3 }}
+            />
+
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="body2" sx={{ mb: 1 }}>
+                Select Files
+              </Typography>
+              <Box sx={{
+                border: 2,
+                borderColor: 'grey.300',
+                borderStyle: 'dashed',
+                borderRadius: 1,
+                p: 3,
+                textAlign: 'center'
+              }}>
+                <Button variant="outlined" component="label">
+                  Choose Files
+                  <input
+                    type="file"
+                    hidden
+                    multiple
+                    onChange={handleMultiUploadFilesChange}
+                  />
+                </Button>
+                <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+                  You can select multiple files (PDF, DOCX, XLSX up to 10MB each)
+                </Typography>
+
+                {multiUploadFiles.length > 0 ? (
+                  <Box sx={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: 1.5,
+                    mt: 2,
+                    justifyContent: 'center'
+                  }}>
+                    {multiUploadFiles.map((file, index) => (
+                      <Chip
+                        key={`${file.name}-${index}`}
+                        label={file.name}
+                        onDelete={() => handleRemoveSelectedFile(index)}
+                      />
+                    ))}
+                  </Box>
+                ) : (
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                    No files selected yet.
+                  </Typography>
+                )}
+              </Box>
+            </Box>
+
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+              <Button
+                variant="outlined"
+                onClick={handleCloseMultiUploadModal}
+                disabled={multiUploadSubmitting}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="contained"
+                disabled={multiUploadSubmitting}
+                startIcon={!multiUploadSubmitting && <CloudUploadIcon />}
+              >
+                {multiUploadSubmitting ? <CircularProgress size={24} color="inherit" /> : 'Upload Files'}
+              </Button>
+            </Box>
+          </form>
+        </Box>
+      </Modal>
 
       {/* Rename File Modal */}
       <Modal open={!!renameFile} onClose={() => setRenameFile(null)}>

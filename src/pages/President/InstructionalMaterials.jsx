@@ -103,6 +103,7 @@ function ClassworksSection({ setSnackbar }) {
   const [error, setError] = useState(null);
   const [fileCounts, setFileCounts] = useState({});
   const [userRole, setUserRole] = useState(null);
+  const [scope, setScope] = useState('both'); // 'all', 'cdc', or 'both'
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [renameFile, setRenameFile] = useState(null); // For rename modal
   const [editingCategory, setEditingCategory] = useState(null); // For editing a category
@@ -114,13 +115,13 @@ function ClassworksSection({ setSnackbar }) {
     onConfirm: null,
   });
 
-  const fetchCategories = async (ageGroupId) => {
+  const fetchCategories = async (ageGroupId, filterScope = scope) => {
     if (!ageGroupId) {
       setCategories([]);
       return;
     }
     try {
-      const categoriesData = await apiRequest(`/api/files/get-categories?age_group_id=${ageGroupId}`);
+      const categoriesData = await apiRequest(`/api/files/get-categories?age_group_id=${ageGroupId}&scope=${filterScope}`);
       setCategories(categoriesData.categories || []);
     } catch (err) {
       console.error('Error fetching categories:', err);
@@ -170,8 +171,8 @@ function ClassworksSection({ setSnackbar }) {
       setLoading(true);
       const fetchDependentData = async () => {
         await Promise.all([
-          fetchCategories(selectedAgeGroup),
-          refetchFileCounts(selectedAgeGroup)
+          fetchCategories(selectedAgeGroup, scope),
+          refetchFileCounts(selectedAgeGroup, scope)
         ]);
         setLoading(false);
       };
@@ -180,7 +181,7 @@ function ClassworksSection({ setSnackbar }) {
       setCategories([]);
       setFileCounts({});
     }
-  }, [selectedAgeGroup, setSnackbar]);
+  }, [selectedAgeGroup, scope, setSnackbar]);
 
   useEffect(() => {
     if (selectedCategory && selectedAgeGroup) {
@@ -188,12 +189,12 @@ function ClassworksSection({ setSnackbar }) {
         try {
           setLoading(true);
           const data = await apiRequest(
-            `/api/files?category_id=${selectedCategory}&age_group_id=${selectedAgeGroup}`
+            `/api/files?category_id=${selectedCategory}&age_group_id=${selectedAgeGroup}&scope=${scope}`
           );
           setFiles(data.files || []);
         } catch (err) {
           console.error('Error fetching files:', err);
-setError(err.message);
+          setError(err.message);
           setSnackbar({
             open: true,
             message: 'Failed to fetch files',
@@ -206,7 +207,7 @@ setError(err.message);
       
       fetchFiles();
     }
-  }, [selectedCategory, selectedAgeGroup, setSnackbar]);
+  }, [selectedCategory, selectedAgeGroup, scope, setSnackbar]);
 
   const handleOpenUploadModal = () => {
     setNewFile(prev => ({
@@ -219,11 +220,11 @@ setError(err.message);
     setIsModalOpen(true);
   };
 
-  const refetchFileCounts = async (ageGroupId) => {
+  const refetchFileCounts = async (ageGroupId, filterScope = scope) => {
     if (ageGroupId) {
       try {
         const countsData = await apiRequest(
-          `/api/files/counts?age_group_id=${ageGroupId}`
+          `/api/files/counts?age_group_id=${ageGroupId}&scope=${filterScope}`
         );
         setFileCounts(countsData.counts || {});
       } catch (err) {
@@ -247,14 +248,14 @@ setError(err.message);
       
       if (selectedCategory && selectedAgeGroup) {
         const filesData = await apiRequest(
-          `/api/files?category_id=${selectedCategory}&age_group_id=${selectedAgeGroup}`
+          `/api/files?category_id=${selectedCategory}&age_group_id=${selectedAgeGroup}&scope=${scope}`
         );
         setFiles(filesData.files || []);
       }
       
       if (selectedAgeGroup) {
         const countsData = await apiRequest(
-          `/api/files/counts?age_group_id=${selectedAgeGroup}`
+          `/api/files/counts?age_group_id=${selectedAgeGroup}&scope=${scope}`
         );
         setFileCounts(countsData.counts || {});
       }
@@ -456,6 +457,23 @@ setError(err.message);
                 Add Category
               </Button>
             )}
+            <FormControl sx={{ minWidth: 150 }} size="small">
+              <InputLabel>Filter</InputLabel>
+              <Select
+                value={scope}
+                label="Filter"
+                onChange={(e) => {
+                  setScope(e.target.value);
+                  // Reset category when filter changes
+                  setSelectedCategory(null);
+                  setFiles([]);
+                }}
+              >
+                <MenuItem value="both">All Files</MenuItem>
+                <MenuItem value="all">Available to All</MenuItem>
+                <MenuItem value="cdc">My CDC Only</MenuItem>
+              </Select>
+            </FormControl>
             <FormControl sx={{ minWidth: 200 }} size="small">
               <InputLabel>Select Age Group</InputLabel>
               <Select
@@ -655,8 +673,8 @@ setError(err.message);
         category={editingCategory}
         ageGroupId={selectedAgeGroup}
         onSave={() => {
-          fetchCategories(selectedAgeGroup);
-          refetchFileCounts(selectedAgeGroup);
+          fetchCategories(selectedAgeGroup, scope);
+          refetchFileCounts(selectedAgeGroup, scope);
         }}
         setSnackbar={setSnackbar}
       />

@@ -37,6 +37,7 @@ const CDCPage = () => {
     name: '' // Search by CDC name
   });
   const [userMunicipality, setUserMunicipality] = useState('');
+  const [userProvince, setUserProvince] = useState('');
   const [loading, setLoading] = useState(false);
   const [openModal, setOpenModal] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
@@ -81,32 +82,70 @@ const CDCPage = () => {
 
         const data = await apiRequest(`/api/user_session/current-user/details?userId=${user.id}`);
         if (data?.user?.other_info?.address) {
-          // Parse address: "Barangay, Municipality, Province, Region"
+          // Parse address - can be:
+          // "Municipality, Province" (2 parts)
+          // "Barangay, Municipality, Province" (3 parts)
+          // "Barangay, Municipality, Province, Region" (4 parts)
           const addressParts = data.user.other_info.address.split(',').map(part => part.trim());
-          if (addressParts.length >= 4) {
-            const municipality = addressParts[1]; // Second part is municipality
-            const province = addressParts[2]; // Third part is province
-            const region = addressParts[3]; // Fourth part is region
-            
+          
+          let municipality, province, region;
+          
+          if (addressParts.length === 2) {
+            // Format: "Municipality, Province"
+            municipality = addressParts[0];
+            province = addressParts[1];
+          } else if (addressParts.length === 3) {
+            // Format: "Barangay, Municipality, Province"
+            municipality = addressParts[1];
+            province = addressParts[2];
+          } else if (addressParts.length >= 4) {
+            // Format: "Barangay, Municipality, Province, Region"
+            municipality = addressParts[1];
+            province = addressParts[2];
+            region = addressParts[3];
+          }
+          
+          if (municipality && province) {
             setUserMunicipality(municipality);
+            setUserProvince(province);
             setFilter(prev => ({
               ...prev,
               municipality: municipality
             }));
 
             // Load barangays for this municipality from loc.json
-            const regionCode = Object.keys(locationData).find(code => 
-              locationData[code].region_name === region
-            );
-            
-            if (regionCode && locationData[regionCode].province_list[province]) {
-              const municipalityData = locationData[regionCode]
-                .province_list[province]
-                .municipality_list[municipality];
+            // If region is not in address, try to find it from locationData
+            if (!region) {
+              const regionCode = Object.keys(locationData).find(code => {
+                const regionData = locationData[code];
+                return Object.keys(regionData.province_list || {}).some(provName => {
+                  if (provName === province) {
+                    const provinceData = regionData.province_list[provName];
+                    return Object.keys(provinceData.municipality_list || {}).includes(municipality);
+                  }
+                  return false;
+                });
+              });
               
-              if (municipalityData && municipalityData.barangay_list) {
-                const barangaysArray = municipalityData.barangay_list.map(name => ({ name }));
-                setFilterBarangays(barangaysArray);
+              if (regionCode) {
+                region = locationData[regionCode].region_name;
+              }
+            }
+            
+            if (region) {
+              const regionCode = Object.keys(locationData).find(code => 
+                locationData[code].region_name === region
+              );
+              
+              if (regionCode && locationData[regionCode].province_list[province]) {
+                const municipalityData = locationData[regionCode]
+                  .province_list[province]
+                  .municipality_list[municipality];
+                
+                if (municipalityData && municipalityData.barangay_list) {
+                  const barangaysArray = municipalityData.barangay_list.map(name => ({ name }));
+                  setFilterBarangays(barangaysArray);
+                }
               }
             }
           }
@@ -157,8 +196,7 @@ const CDCPage = () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      // Always filter by user's municipality
-      if (filter.municipality) params.append('municipality', filter.municipality);
+      // Province and municipality are automatically filtered by backend from user's profile
       if (filter.barangay) params.append('barangay', filter.barangay);
       
       const data = await apiRequest(`/api/cdc?${params.toString()}`);
@@ -170,6 +208,10 @@ const CDCPage = () => {
           cdc.name.toLowerCase().includes(filter.name.toLowerCase())
         );
       }
+      
+      // Extract unique barangays from the fetched CDCs for the filter dropdown
+      const uniqueBarangays = [...new Set(filteredData.map(cdc => cdc.barangay).filter(Boolean))].sort();
+      setFilterBarangays(uniqueBarangays.map(name => ({ name })));
       
       // Perform sorting asynchronously to prevent UI blocking
       setTimeout(() => {
@@ -194,10 +236,8 @@ const CDCPage = () => {
   };
 
   useEffect(() => {
-    if (userMunicipality) {
-      fetchCDCs();
-    }
-  }, [filter, userMunicipality]);
+    fetchCDCs();
+  }, [filter]);
 
   const handleRegionChange = (value) => {
     const region = regions.find(r => r.name === value);
@@ -399,11 +439,11 @@ const CDCPage = () => {
         <Navbar />
 
         <div className="p-6">
-          {/* Municipality Display Row */}
-          {userMunicipality && (
+          {/* Location Display Row */}
+          {userMunicipality && userProvince && (
             <Box sx={{ mb: 2 }}>
               <Typography sx={{ color: 'text.secondary', fontWeight: 500, fontSize: '1rem' }}>
-                Municipality: {userMunicipality}
+                Province: {userProvince} | Municipality: {userMunicipality}
               </Typography>
             </Box>
           )}

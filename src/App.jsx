@@ -48,9 +48,13 @@ import CreateFoalAccount from "./pages/MSW/CreateFoalAccount";
 import MSWProfileSetup from "./pages/MSW/MSW_ProfileSetup";
 import MSWProfile from "./pages/MSW/MSW_Profile";
 import MSWDashboard from "./pages/MSW/MSW_Dashboard";
+import MSWInstructionalMaterials from "./pages/MSW/MSW_InstructionalMaterials";
 import FocalDashboard from "./pages/Focal/Focal_Dashboard";
 import FocalCreateCDC from "./pages/Focal/Focal_CreateCDC";
 import FocalProfile from "./pages/Focal/Focal_Profile";
+import FocalInstructionalMaterials from "./pages/Focal/Focal_InstructionalMaterials";
+import FocalVirtualC from "./pages/Focal/Focal_VirtualC";
+import MSWVirtualC from "./pages/MSW/MSW_VirtualC";
 import CreateFocalPerson from "./pages/MSW/CreateFocalPerson";
 import ViewFocalPerson from "./pages/MSW/ViewFocalPerson";
 import ProtectedRoute from "./components/all/ProtectedRoute";
@@ -118,6 +122,8 @@ export default function App() {
         <Route path="/msw/profile-setup" element={<ProtectedRoute allowedTypes={["msw"]}><MSWProfileSetup /></ProtectedRoute>} />
         <Route path="/msw-dashboard" element={<ProtectedRoute allowedTypes={["msw"]}><MSWDashboard /></ProtectedRoute>} />
         <Route path="/msw-profile" element={<ProtectedRoute allowedTypes={["msw"]}><MSWProfile /></ProtectedRoute>} />
+        <Route path="/msw/instructional-materials" element={<ProtectedRoute allowedTypes={["msw"]}><MSWInstructionalMaterials /></ProtectedRoute>} />
+        <Route path="/msw/virtualc" element={<ProtectedRoute allowedTypes={["msw"]}><MSWVirtualC /></ProtectedRoute>} />
         <Route path="/focal/create-person" element={<ProtectedRoute allowedTypes={["msw"]}><CreateFocalPerson /></ProtectedRoute>} />
         <Route path="/focal/view-person" element={<ProtectedRoute allowedTypes={["msw"]}><ViewFocalPerson /></ProtectedRoute>} />
 
@@ -125,6 +131,8 @@ export default function App() {
         <Route path="/focal-dashboard" element={<ProtectedRoute allowedTypes={["focal"]}><FocalDashboard /></ProtectedRoute>} />
         <Route path="/focal/create-cdc" element={<ProtectedRoute allowedTypes={["focal"]}><FocalCreateCDC /></ProtectedRoute>} />
         <Route path="/focal-profile" element={<ProtectedRoute allowedTypes={["focal"]}><FocalProfile /></ProtectedRoute>} />
+        <Route path="/focal/instructional-materials" element={<ProtectedRoute allowedTypes={["focal"]}><FocalInstructionalMaterials /></ProtectedRoute>} />
+        <Route path="/focal/announcements" element={<ProtectedRoute allowedTypes={["focal"]}><FocalVirtualC /></ProtectedRoute>} />
 
         {/* Parent Routes */}
         <Route path="/parent-announcement" element={<ProtectedRoute allowedTypes={["parent"]}><ParentVirtualC /></ProtectedRoute>} />

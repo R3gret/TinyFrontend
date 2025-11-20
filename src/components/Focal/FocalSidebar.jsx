@@ -2,7 +2,9 @@ import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
   Building2,
-  User
+  User,
+  BookOpen,
+  Megaphone
 } from "lucide-react";
 
 export default function FocalSidebar() {
@@ -20,6 +22,18 @@ export default function FocalSidebar() {
           to="/focal/create-cdc" 
           icon={Building2} 
           label="CDC Centers" 
+          currentPath={location.pathname} 
+        />
+        <SidebarItem 
+          to="/focal/announcements" 
+          icon={Megaphone} 
+          label="Announcements" 
+          currentPath={location.pathname} 
+        />
+        <SidebarItem 
+          to="/focal/instructional-materials" 
+          icon={BookOpen} 
+          label="Instructional Materials" 
           currentPath={location.pathname} 
         />
         <SidebarItem 

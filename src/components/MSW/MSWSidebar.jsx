@@ -2,7 +2,9 @@ import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
   UserPlus,
-  Users
+  Users,
+  BookOpen,
+  Megaphone
 } from "lucide-react";
 
 export default function MSWSidebar() {
@@ -26,6 +28,18 @@ export default function MSWSidebar() {
           to="/focal/view-person" 
           icon={Users} 
           label="View Focal Person" 
+          currentPath={location.pathname} 
+        />
+        <SidebarItem 
+          to="/msw/instructional-materials" 
+          icon={BookOpen} 
+          label="Instructional Materials" 
+          currentPath={location.pathname} 
+        />
+        <SidebarItem 
+          to="/msw/virtualc" 
+          icon={Megaphone} 
+          label="Announcements" 
           currentPath={location.pathname} 
         />
       </div>

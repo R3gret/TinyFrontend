@@ -47,14 +47,53 @@ export const apiRequest = async (endpoint, method = 'GET', body = null, isFormDa
     }
   
     if (!response.ok) {
-      const errorData = await response.json();
+      // Try to parse error response as JSON, but handle cases where response might be empty
+      let errorData;
+      const contentType = response.headers.get('content-type');
+      const text = await response.text();
+      
+      if (contentType && contentType.includes('application/json') && text) {
+        try {
+          errorData = JSON.parse(text);
+        } catch (e) {
+          // If JSON parsing fails, use status text
+          errorData = { message: response.statusText || 'Request failed' };
+        }
+      } else {
+        // Try to parse text as JSON even if content-type doesn't say so
+        if (text) {
+          try {
+            errorData = JSON.parse(text);
+          } catch (e) {
+            errorData = { message: text || response.statusText || 'Request failed' };
+          }
+        } else {
+          errorData = { message: response.statusText || 'Request failed' };
+        }
+      }
       const error = new Error(errorData.message || 'Request failed');
       // Attach full error data to the error object for better error handling
       error.responseData = errorData;
       throw error;
     }
 
-    return response.json();
+    // Handle 204 No Content (common for DELETE requests)
+    if (response.status === 204) {
+      return null;
+    }
+
+    // Check if response has content before parsing
+    const text = await response.text();
+    if (!text || text.trim() === '') {
+      return null;
+    }
+
+    try {
+      return JSON.parse(text);
+    } catch (e) {
+      // If JSON parsing fails, return the text as-is
+      return text;
+    }
   } catch (error) {
     console.error('API Request Error:', error);
     throw error;
@@ -83,8 +122,15 @@ export const apiDownload = async (endpoint) => {
     }
   
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Request failed');
+      // Try to parse as JSON first (for structured error responses)
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Request failed');
+      } else {
+        // If not JSON, use status text
+        throw new Error(`Download failed: ${response.status} ${response.statusText}`);
+      }
     }
   
     return response.blob();

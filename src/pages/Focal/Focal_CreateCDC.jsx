@@ -53,14 +53,15 @@ const CDCPage = () => {
     province: "",
     municipality: "",
     barangay: "",
-    president_id: null
+    cd_worker_id: null
   });
   const [regions, setRegions] = useState([]);
   const [provinces, setProvinces] = useState([]);
   const [municipalities, setMunicipalities] = useState([]);
   const [barangays, setBarangays] = useState([]);
   const [filterBarangays, setFilterBarangays] = useState([]); // Barangays for filter dropdown
-  const [presidents, setPresidents] = useState([]);
+  const [cdWorkers, setCdWorkers] = useState([]);
+  const [userRegion, setUserRegion] = useState('');
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [openDeleteConfirm, setOpenDeleteConfirm] = useState(false);
@@ -173,22 +174,22 @@ const CDCPage = () => {
   }, []);
 
   useEffect(() => {
-    const fetchPresidents = async () => { 
+    const fetchCdWorkers = async () => { 
       if (openModal) {
         try {
-          const data = await apiRequest('/api/cdc/admins');
-          setPresidents(data.data);
+          const data = await apiRequest('/api/cdc/workers/unassigned');
+          setCdWorkers(data.data || []);
         } catch (err) {
-          console.error('Failed to fetch presidents:', err);
+          console.error('Failed to fetch CD workers:', err);
           setSnackbar({
             open: true,
-            message: "Failed to load presidents list",
+            message: "Failed to load CD workers list",
             severity: "error"
           });
         }
       }
     };
-    fetchPresidents();
+    fetchCdWorkers();
   }, [openModal]);
 
   // Fetch CDCs with API helper
@@ -521,56 +522,68 @@ const CDCPage = () => {
                 variant="contained" 
                 startIcon={<Add />}
                 onClick={() => {
-                  // Pre-load municipalities for the user's municipality
+                  // Pre-load and lock in region, province, and municipality from user's profile
                   let initialFormData = {
                     name: "",
-                    region: "",
-                    province: "",
+                    region: userRegion || "",
+                    province: userProvince || "",
                     municipality: userMunicipality || "",
                     barangay: "",
-                    president_id: null
+                    cd_worker_id: null
                   };
                   
-                  if (userMunicipality) {
-                    // Find region and province that contain this municipality
-                    const regionCode = Object.keys(locationData).find(code => {
-                      const region = locationData[code];
-                      return Object.keys(region.province_list || {}).some(provName => {
-                        const province = region.province_list[provName];
-                        return Object.keys(province.municipality_list || {}).includes(userMunicipality);
-                      });
-                    });
-                    
-                    if (regionCode) {
-                      const region = locationData[regionCode];
-                      // Find province
-                      const provName = Object.keys(region.province_list || {}).find(provName => {
-                        return Object.keys(region.province_list[provName].municipality_list || {}).includes(userMunicipality);
+                  if (userMunicipality && userProvince) {
+                    // Find region if not already set
+                    let regionName = userRegion;
+                    if (!regionName) {
+                      const regionCode = Object.keys(locationData).find(code => {
+                        const region = locationData[code];
+                        return Object.keys(region.province_list || {}).some(provName => {
+                          if (provName === userProvince) {
+                            const province = region.province_list[provName];
+                            return Object.keys(province.municipality_list || {}).includes(userMunicipality);
+                          }
+                          return false;
+                        });
                       });
                       
-                      if (provName) {
+                      if (regionCode) {
+                        regionName = locationData[regionCode].region_name;
+                        setUserRegion(regionName);
+                      }
+                    }
+                    
+                    if (regionName) {
+                      const regionCode = Object.keys(locationData).find(code => 
+                        locationData[code].region_name === regionName
+                      );
+                      
+                      if (regionCode) {
+                        const region = locationData[regionCode];
                         initialFormData = {
                           ...initialFormData,
-                          region: region.region_name,
-                          province: provName,
+                          region: regionName,
+                          province: userProvince,
                           municipality: userMunicipality
                         };
                         
-                        // Load provinces for this region
+                        // Load provinces for this region (for display only, will be disabled)
                         const provincesArray = Object.keys(region.province_list || {}).map(name => ({ name }));
                         setProvinces(provincesArray);
                         
-                        // Load municipalities for this province
-                        const municipalitiesArray = Object.keys(
-                          region.province_list[provName].municipality_list || {}
-                        ).map(name => ({ name }));
-                        setMunicipalities(municipalitiesArray);
-                        
-                        // Load barangays for this municipality
-                        const municipalityData = region.province_list[provName].municipality_list[userMunicipality];
-                        if (municipalityData) {
-                          const barangaysArray = (municipalityData.barangay_list || []).map(name => ({ name }));
-                          setBarangays(barangaysArray);
+                        // Load municipalities for this province (for display only, will be disabled)
+                        if (region.province_list[userProvince]) {
+                          const municipalitiesArray = Object.keys(
+                            region.province_list[userProvince].municipality_list || {}
+                          ).map(name => ({ name }));
+                          setMunicipalities(municipalitiesArray);
+                          
+                          // Load barangays for this municipality
+                          const municipalityData = region.province_list[userProvince].municipality_list[userMunicipality];
+                          if (municipalityData) {
+                            const barangaysArray = (municipalityData.barangay_list || []).map(name => ({ name }));
+                            setBarangays(barangaysArray);
+                          }
                         }
                       }
                     }
@@ -760,16 +773,17 @@ const CDCPage = () => {
                     />
                   </Box>
 
-                  {/* President Selection */}
+                  {/* CD Worker Selection */}
                   <Autocomplete
-                    options={presidents}
-                    getOptionLabel={(option) => option.username}
-                    onChange={(e, value) => setFormData({...formData, president_id: value ? value.id : null})}
+                    options={cdWorkers}
+                    getOptionLabel={(option) => option.username || `${option.first_name || ''} ${option.last_name || ''}`.trim() || 'Unknown'}
+                    onChange={(e, value) => setFormData({...formData, cd_worker_id: value ? value.id : null})}
                     renderInput={(params) => (
                       <TextField
                         {...params}
-                        label="Assign President (Optional)"
+                        label="Assign CD Worker (Optional)"
                         variant="outlined"
+                        helperText="Select a CD worker not assigned to any CDC"
                       />
                     )}
                   />

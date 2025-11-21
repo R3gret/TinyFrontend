@@ -139,7 +139,27 @@ export default function FocalWorkerList() {
     try {
       setLoading(true);
       setError(null);
-      const data = await apiRequest(`/api/workers?${new URLSearchParams({ search: searchTerm }).toString()}`);
+      
+      // For Focal users, try the all workers endpoint first
+      // This endpoint should return all workers regardless of CDC association
+      let data;
+      try {
+        // Try Focal-specific endpoint that returns all workers
+        data = await apiRequest(`/api/workers/all?${new URLSearchParams({ search: searchTerm }).toString()}`);
+      } catch (focalErr) {
+        // If Focal endpoint doesn't exist, try regular endpoint
+        // This will fail for Focal users but we'll show a helpful error
+        try {
+          data = await apiRequest(`/api/workers?${new URLSearchParams({ search: searchTerm }).toString()}`);
+        } catch (regularErr) {
+          // If both fail, check if it's a CDC association error
+          if (regularErr.message.includes('not associated with a CDC') || regularErr.message.includes('Access denied')) {
+            throw new Error('Backend needs GET /api/workers/all endpoint for Focal users. The current endpoint requires CDC association.');
+          }
+          throw regularErr;
+        }
+      }
+      
       // Sort workers alphabetically by username
       const sortedWorkers = (data.data || []).sort((a, b) => a.username.localeCompare(b.username));
       setWorkers(sortedWorkers);

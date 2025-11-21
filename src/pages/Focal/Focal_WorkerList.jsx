@@ -147,16 +147,29 @@ export default function FocalWorkerList() {
         // Try Focal-specific endpoint that returns all workers
         data = await apiRequest(`/api/workers/all?${new URLSearchParams({ search: searchTerm }).toString()}`);
       } catch (focalErr) {
-        // If Focal endpoint doesn't exist, try regular endpoint
-        // This will fail for Focal users but we'll show a helpful error
-        try {
-          data = await apiRequest(`/api/workers?${new URLSearchParams({ search: searchTerm }).toString()}`);
-        } catch (regularErr) {
-          // If both fail, check if it's a CDC association error
-          if (regularErr.message.includes('not associated with a CDC') || regularErr.message.includes('Access denied')) {
-            throw new Error('Backend needs GET /api/workers/all endpoint for Focal users. The current endpoint requires CDC association.');
+        // Check if it's a CORS error
+        if (focalErr.message.includes('CORS') || focalErr.message.includes('Failed to fetch') || focalErr.message.includes('blocked')) {
+          throw new Error('CORS error: Backend needs to allow requests from this origin. Please configure CORS on the server to allow https://tinytrack.docmap.cloud');
+        }
+        
+        // If Focal endpoint doesn't exist (404), try regular endpoint
+        if (focalErr.message.includes('404') || focalErr.message.includes('Not Found')) {
+          try {
+            data = await apiRequest(`/api/workers?${new URLSearchParams({ search: searchTerm }).toString()}`);
+          } catch (regularErr) {
+            // Check if it's a CORS error
+            if (regularErr.message.includes('CORS') || regularErr.message.includes('Failed to fetch') || regularErr.message.includes('blocked')) {
+              throw new Error('CORS error: Backend needs to allow requests from this origin. Please configure CORS on the server.');
+            }
+            // If both fail, check if it's a CDC association error
+            if (regularErr.message.includes('not associated with a CDC') || regularErr.message.includes('Access denied')) {
+              throw new Error('Backend needs GET /api/workers/all endpoint for Focal users. The current endpoint requires CDC association.');
+            }
+            throw regularErr;
           }
-          throw regularErr;
+        } else {
+          // Re-throw if it's not a 404
+          throw focalErr;
         }
       }
       
@@ -165,7 +178,12 @@ export default function FocalWorkerList() {
       setWorkers(sortedWorkers);
     } catch (err) {
       console.error('Fetch error:', err);
-      setError(err.message);
+      // Provide user-friendly error messages
+      let errorMessage = err.message;
+      if (err.message.includes('Failed to fetch') || err.message.includes('CORS') || err.message.includes('blocked')) {
+        errorMessage = 'Network error: Unable to connect to the server. This may be a CORS configuration issue on the backend.';
+      }
+      setError(errorMessage);
       if (err.message.includes('Unauthorized')) {
         navigate('/login');
       }
@@ -277,12 +295,29 @@ export default function FocalWorkerList() {
 
     if (error && !createModalOpen && !editModalOpen) {
       return (
-        <div className="text-center py-8 text-red-500">
-          <p className="font-medium">Error loading workers</p>
-          <p className="text-sm">{error}</p>
-          <button onClick={() => window.location.reload()} className="mt-2 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition">
-            Retry
-          </button>
+        <div className="text-center py-8">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-2xl mx-auto">
+            <p className="font-medium text-red-800 mb-2">Error loading workers</p>
+            <p className="text-sm text-red-600 mb-4">{error}</p>
+            {error.includes('CORS') && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded p-3 mb-4 text-left">
+                <p className="text-sm text-yellow-800 font-semibold mb-1">CORS Configuration Required:</p>
+                <p className="text-xs text-yellow-700">
+                  The backend server needs to allow requests from <code className="bg-yellow-100 px-1 rounded">https://tinytrack.docmap.cloud</code>.
+                  Please update the CORS configuration on the backend to include this origin.
+                </p>
+              </div>
+            )}
+            <button 
+              onClick={() => {
+                setError(null);
+                fetchWorkers();
+              }} 
+              className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition"
+            >
+              Retry
+            </button>
+          </div>
         </div>
       );
     }

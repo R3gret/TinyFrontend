@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../../components/all/Navbar";
 import Sidebar from "../../components/CDC/Sidebar";
@@ -14,7 +14,7 @@ const useFormState = (initialState) => {
   const [state, setState] = useState(initialState);
   const [errors, setErrors] = useState({});
 
-  const handleChange = (e) => {
+  const handleChange = useCallback((e) => {
     const { name, value } = e.target;
     setState(prev => ({
       ...prev,
@@ -22,13 +22,125 @@ const useFormState = (initialState) => {
     }));
     
     // Clear error when user types
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: null }));
-    }
-  };
+    setErrors(prev => {
+      if (prev[name]) {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      }
+      return prev;
+    });
+  }, []); // Empty deps - function doesn't depend on any props/state
 
   return [state, setState, errors, setErrors, handleChange];
 };
+
+// EditTab component - moved outside to prevent recreation on every render
+const EditTab = ({ editForm, editErrors, handleEditChange, handleEditSubmit, loading, setActiveTab }) => (
+  <div className="p-4">
+    <h3 className="text-xl font-semibold text-gray-800 mb-4">Edit Profile</h3>
+    <form onSubmit={handleEditSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label className="block text-gray-700 font-medium mb-1">Full Name *</label>
+        <input
+          type="text"
+          name="full_name"
+          value={editForm.full_name || ''}
+          onChange={handleEditChange}
+          className={`w-full p-2 border rounded-md ${editErrors.full_name ? 'border-red-500' : 'border-gray-300'}`}
+          required
+        />
+        {editErrors.full_name && <p className="text-red-500 text-sm mt-1">{editErrors.full_name}</p>}
+      </div>
+      
+      <div>
+        <label className="block text-gray-700 font-medium mb-1">Email</label>
+        <input
+          type="text"
+          name="email"
+          value={editForm.email || ''}
+          onChange={handleEditChange}
+          className="w-full p-2 border border-gray-300 rounded-md"
+        />
+      </div>
+      
+      <div>
+        <label className="block text-gray-700 font-medium mb-1">Phone</label>
+        <input
+          type="text"
+          name="phone"
+          value={editForm.phone || ''}
+          onChange={handleEditChange}
+          className="w-full p-2 border border-gray-300 rounded-md"
+        />
+      </div>
+      
+      <div>
+        <label className="block text-gray-700 font-medium mb-1">Address</label>
+        <input
+          type="text"
+          name="address"
+          value={editForm.address || ''}
+          onChange={handleEditChange}
+          className="w-full p-2 border border-gray-300 rounded-md"
+        />
+      </div>
+      
+      <div>
+        <label className="block text-gray-700 font-medium mb-1">Organization</label>
+        <input
+          type="text"
+          name="organization"
+          value={editForm.organization || ''}
+          onChange={handleEditChange}
+          className="w-full p-2 border border-gray-300 rounded-md"
+        />
+      </div>
+      
+      <div>
+        <label className="block text-gray-700 font-medium mb-1">Website</label>
+        <input
+          type="text"
+          name="website"
+          value={editForm.website || ''}
+          onChange={handleEditChange}
+          className="w-full p-2 border border-gray-300 rounded-md"
+          placeholder="https://example.com"
+        />
+      </div>
+      
+      <div>
+        <label className="block text-gray-700 font-medium mb-1">Social Media</label>
+        <input
+          type="text"
+          name="social_media"
+          value={editForm.social_media || ''}
+          onChange={handleEditChange}
+          className="w-full p-2 border border-gray-300 rounded-md"
+          placeholder="https://facebook.com/username"
+        />
+      </div>
+
+      <div className="col-span-1 md:col-span-2 flex justify-end space-x-4">
+        <button
+          type="button"
+          onClick={() => setActiveTab('profile')}
+          className="px-4 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400 transition-all"
+          disabled={loading}
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          className="px-4 py-2 bg-green-700 text-white rounded-md hover:bg-green-800 transition-all"
+          disabled={loading}
+        >
+          Save Changes
+        </button>
+      </div>
+    </form>
+  </div>
+);
 
 export default function Profile() {
   const [fadeIn, setFadeIn] = useState(false);
@@ -73,12 +185,19 @@ export default function Profile() {
   useEffect(() => {
     if (activeTab === "profile") {
       fetchUserData();
+    } else if (activeTab === "edit") {
+      // Reset form initialization when switching to edit tab
+      // This allows the form to be populated with fresh data
+      setFormInitialized(false);
     }
   }, [activeTab]);
 
-  // Update edit form when user data changes
+  // Track if form has been initialized to prevent overwriting user input
+  const [formInitialized, setFormInitialized] = useState(false);
+
+  // Update edit form when user data changes (only once on initial load)
   useEffect(() => {
-    if (userData?.other_info) {
+    if (userData?.other_info && !formInitialized) {
       setEditForm({
         full_name: userData.other_info.full_name || '',
         email: userData.other_info.email || userData.email || '',
@@ -88,8 +207,9 @@ export default function Profile() {
         website: userData.other_info.website || '',
         social_media: userData.other_info.social_media || ''
       });
+      setFormInitialized(true);
     }
-  }, [userData, setEditForm]);
+  }, [userData, formInitialized]); // Only initialize once
 
   // Toggle password visibility
   const togglePasswordVisibility = (field) => {
@@ -131,17 +251,7 @@ export default function Profile() {
       newErrors.full_name = 'Full name must be at least 2 characters';
     }
     
-    if (editForm.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editForm.email)) {
-      newErrors.email = 'Invalid email format';
-    }
-    
-    if (editForm.website && !/^https?:\/\/.+\..+/.test(editForm.website)) {
-      newErrors.website = 'Invalid website URL';
-    }
-    
-    if (editForm.social_media && !/^https?:\/\/.+\..+/.test(editForm.social_media)) {
-      newErrors.social_media = 'Invalid social media URL';
-    }
+    // Removed validation for email, phone, website, and social_media - these fields are optional
     
     setEditErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -201,10 +311,20 @@ export default function Profile() {
         throw new Error('No user logged in');
       }
 
-      const data = await apiRequest('/api/user_session/update-profile', 'PUT', { 
-        userId: user.id, 
-        ...editForm 
-      });
+      // Build payload - send all fields including empty strings
+      // Backend should handle empty strings without validation
+      const payload = {
+        userId: user.id,
+        full_name: editForm.full_name?.trim() || '',
+        email: editForm.email?.trim() || '',
+        phone: editForm.phone?.trim() || '',
+        address: editForm.address?.trim() || '',
+        organization: editForm.organization?.trim() || '',
+        website: editForm.website?.trim() || '',
+        social_media: editForm.social_media?.trim() || ''
+      };
+
+      const data = await apiRequest('/api/user_session/update-profile', 'PUT', payload);
   
       setSuccess('Profile updated successfully!');
       fetchUserData();
@@ -280,15 +400,15 @@ export default function Profile() {
     <div className="flex flex-col md:flex-row items-center md:items-start">
       <div className="flex flex-col items-center md:items-start w-full md:w-1/3 p-4">
         <img
-          src={userData.other_info?.profile_pic || userData.profile_pic || "https://via.placeholder.com/150"}
+          src={userData?.other_info?.profile_pic || userData?.profile_pic || "https://via.placeholder.com/150"}
           alt="Profile"
           className="w-36 h-36 rounded-full shadow-md border-4 border-green-700 object-cover"
         />
         <h2 className="text-2xl font-semibold text-gray-800 mt-4">
-          {userData.other_info?.full_name || 'No name provided'}
+          {userData?.other_info?.full_name || 'No name provided'}
         </h2>
         <p className="text-green-700 font-medium">
-          {userData.type || 'No position specified'}
+          {userData?.type || 'No position specified'}
         </p>
       </div>
 
@@ -297,21 +417,21 @@ export default function Profile() {
         <div className="space-y-3">
           <div className="flex items-center text-gray-700">
             <FaMapMarkerAlt className="text-green-600 mr-2" />
-            <span>{userData.other_info?.address || 'No address provided'}</span>
+            <span>{userData?.other_info?.address || 'No address provided'}</span>
           </div>
           <div className="flex items-center text-gray-700">
             <FaPhone className="text-green-600 mr-2" />
-            <span>{userData.other_info?.phone || 'No phone number provided'}</span>
+            <span>{userData?.other_info?.phone || 'No phone number provided'}</span>
           </div>
           <div className="flex items-center text-gray-700">
             <FaEnvelope className="text-green-600 mr-2" />
-            <span>{userData.other_info?.email || userData.email || 'No email provided'}</span>
+            <span>{userData?.other_info?.email || userData?.email || 'No email provided'}</span>
           </div>
         </div>
 
         <h3 className="text-lg font-semibold text-gray-800 mt-6">Quick Links</h3>
         <div className="mt-3 space-y-2">
-          {userData.other_info?.website && (
+          {userData?.other_info?.website && (
             <a
               href={formatUrl(userData.other_info.website)}
               target="_blank"
@@ -323,7 +443,7 @@ export default function Profile() {
             </a>
           )}
 
-          {userData.other_info?.social_media && (
+          {userData?.other_info?.social_media && (
             <a
               href={formatUrl(userData.other_info.social_media)}
               target="_blank"
@@ -337,121 +457,13 @@ export default function Profile() {
 
           <div className="flex items-center text-green-600">
             <FaLink className="mr-2" />
-            Organization: {userData.other_info?.organization || 'Not specified'}
+            Organization: {userData?.other_info?.organization || 'Not specified'}
           </div>
         </div>
       </div>
     </div>
   );
 
-  const EditTab = () => (
-    <div className="p-4">
-      <h3 className="text-xl font-semibold text-gray-800 mb-4">Edit Profile</h3>
-      <form onSubmit={handleEditSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-gray-700 font-medium mb-1">Full Name *</label>
-          <input
-            type="text"
-            name="full_name"
-            value={editForm.full_name}
-            onChange={handleEditChange}
-            className={`w-full p-2 border rounded-md ${editErrors.full_name ? 'border-red-500' : ''}`}
-            required
-          />
-          {editErrors.full_name && <p className="text-red-500 text-sm mt-1">{editErrors.full_name}</p>}
-        </div>
-        
-        <div>
-          <label className="block text-gray-700 font-medium mb-1">Email</label>
-          <input
-            type="email"
-            name="email"
-            value={editForm.email}
-            onChange={handleEditChange}
-            className={`w-full p-2 border rounded-md ${editErrors.email ? 'border-red-500' : ''}`}
-          />
-          {editErrors.email && <p className="text-red-500 text-sm mt-1">{editErrors.email}</p>}
-        </div>
-        
-        <div>
-          <label className="block text-gray-700 font-medium mb-1">Phone</label>
-          <input
-            type="text"
-            name="phone"
-            value={editForm.phone}
-            onChange={handleEditChange}
-            className="w-full p-2 border rounded-md"
-          />
-        </div>
-        
-        <div>
-          <label className="block text-gray-700 font-medium mb-1">Address</label>
-          <input
-            type="text"
-            name="address"
-            value={editForm.address}
-            onChange={handleEditChange}
-            className="w-full p-2 border rounded-md"
-          />
-        </div>
-        
-        <div>
-          <label className="block text-gray-700 font-medium mb-1">Organization</label>
-          <input
-            type="text"
-            name="organization"
-            value={editForm.organization}
-            onChange={handleEditChange}
-            className="w-full p-2 border rounded-md"
-          />
-        </div>
-        
-        <div>
-          <label className="block text-gray-700 font-medium mb-1">Website</label>
-          <input
-            type="url"
-            name="website"
-            value={editForm.website}
-            onChange={handleEditChange}
-            className={`w-full p-2 border rounded-md ${editErrors.website ? 'border-red-500' : ''}`}
-            placeholder="https://example.com"
-          />
-          {editErrors.website && <p className="text-red-500 text-sm mt-1">{editErrors.website}</p>}
-        </div>
-        
-        <div>
-          <label className="block text-gray-700 font-medium mb-1">Social Media</label>
-          <input
-            type="url"
-            name="social_media"
-            value={editForm.social_media}
-            onChange={handleEditChange}
-            className={`w-full p-2 border rounded-md ${editErrors.social_media ? 'border-red-500' : ''}`}
-            placeholder="https://facebook.com/username"
-          />
-          {editErrors.social_media && <p className="text-red-500 text-sm mt-1">{editErrors.social_media}</p>}
-        </div>
-
-        <div className="col-span-1 md:col-span-2 flex justify-end space-x-4">
-          <button
-            type="button"
-            onClick={() => setActiveTab('profile')}
-            className="px-4 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400 transition-all"
-            disabled={loading}
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            className="px-4 py-2 bg-green-700 text-white rounded-md hover:bg-green-800 transition-all"
-            disabled={loading}
-          >
-            Save Changes
-          </button>
-        </div>
-      </form>
-    </div>
-  );
 
   const PasswordTab = () => (
     <div className="p-4">
@@ -630,7 +642,16 @@ export default function Profile() {
               )}
 
               {activeTab === "profile" && userData && <ProfileTab />}
-              {activeTab === "edit" && <EditTab />}
+              {activeTab === "edit" && (
+                <EditTab 
+                  editForm={editForm}
+                  editErrors={editErrors}
+                  handleEditChange={handleEditChange}
+                  handleEditSubmit={handleEditSubmit}
+                  loading={loading}
+                  setActiveTab={setActiveTab}
+                />
+              )}
               {activeTab === "password" && <PasswordTab />}
             </div>
           </div>

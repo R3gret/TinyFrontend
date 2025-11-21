@@ -95,26 +95,15 @@ export default function Registration() {
   };
 
   const validateStudentId = (studentId) => {
-    if (!studentId) {
-      return 'Student ID is required. Format: YYYY-MM-DD (e.g., 2025-01-01)';
+    if (!studentId || !studentId.trim()) {
+      return 'Student ID is required';
     }
     
-    // Validate format: YYYY-MM-DD
-    const idPattern = /^\d{4}-\d{2}-\d{2}$/;
-    if (!idPattern.test(studentId)) {
-      return 'Invalid student ID format. Expected format: YYYY-MM-DD (e.g., 2025-01-01)';
-    }
-    
-    // Validate date parts
-    const [year, month, day] = studentId.split('-').map(Number);
-    if (year < 2000 || year > 2100) {
-      return 'Year must be between 2000 and 2100';
-    }
-    if (month < 1 || month > 12) {
-      return 'Month must be between 01 and 12';
-    }
-    if (day < 1 || day > 31) {
-      return 'Day must be between 01 and 31';
+    // Allow alphanumeric characters (letters and numbers)
+    // Can include hyphens, underscores, and spaces
+    const idPattern = /^[A-Za-z0-9\s\-_]+$/;
+    if (!idPattern.test(studentId.trim())) {
+      return 'Student ID can only contain letters, numbers, hyphens, underscores, and spaces';
     }
     
     return null; // Valid
@@ -257,30 +246,15 @@ function RegistrationForm({ formData, onChange }) {
           <input 
             type="text" 
             className="w-full border rounded p-2" 
-            placeholder="(e.g., 2025-01-01)"
+            placeholder="Enter student ID (letters and numbers allowed)"
             value={formData.studentId} 
             onChange={(e) => {
-              // Remove all non-numeric characters
-              let value = e.target.value.replace(/[^\d]/g, '');
-              
-              // Auto-format: YYYY-MM-DD
-              if (value.length <= 4) {
-                // Just year
-                onChange("studentId", value);
-              } else if (value.length <= 6) {
-                // Year and month
-                const year = value.substring(0, 4);
-                const month = value.substring(4, 6);
-                onChange("studentId", `${year}-${month}`);
-              } else {
-                // Year, month, and day (limit to 8 digits)
-                const year = value.substring(0, 4);
-                const month = value.substring(4, 6);
-                const day = value.substring(6, 8);
-                onChange("studentId", `${year}-${month}-${day}`);
-              }
+              // Allow alphanumeric characters, hyphens, underscores, and spaces
+              let value = e.target.value;
+              // Remove any characters that aren't letters, numbers, hyphens, underscores, or spaces
+              value = value.replace(/[^A-Za-z0-9\s\-_]/g, '');
+              onChange("studentId", value);
             }}
-            maxLength={10}
             required
           />
           <p className="text-xs text-gray-500 mt-1">

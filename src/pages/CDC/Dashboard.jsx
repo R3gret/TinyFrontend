@@ -50,6 +50,7 @@ export default function Dashboard() {
 
   const [genderAgeFilter, setGenderAgeFilter] = useState('');
   const [academicYear, setAcademicYear] = useState(new Date().getFullYear());
+  const [cdcName, setCdcName] = useState('');
   
   // Generate academic year options (current year - 5 to current year + 5)
   const currentYear = new Date().getFullYear();
@@ -115,6 +116,33 @@ export default function Dashboard() {
   
     fetchWeeklyAttendance();
   }, [academicYear]);
+
+  // Fetch CDC name
+  useEffect(() => {
+    const fetchCdcName = async () => {
+      try {
+        const userJson = localStorage.getItem('user');
+        if (!userJson) return;
+        
+        const userObj = JSON.parse(userJson);
+        if (!userObj?.cdc_id) return;
+        
+        // Fetch CDC information
+        const cdcData = await apiRequest(`/api/cdc?id=${userObj.cdc_id}`);
+        if (cdcData?.success && cdcData?.data && cdcData.data.length > 0) {
+          setCdcName(cdcData.data[0].name || '');
+        } else if (cdcData?.data && Array.isArray(cdcData.data) && cdcData.data.length > 0) {
+          // Handle case where response doesn't have success field
+          setCdcName(cdcData.data[0].name || '');
+        }
+      } catch (err) {
+        console.error('Error fetching CDC name:', err);
+        // Silently fail - CDC name is not critical
+      }
+    };
+    
+    fetchCdcName();
+  }, []);
 
   // Fetch all other dashboard data
   useEffect(() => {
@@ -316,7 +344,9 @@ export default function Dashboard() {
           {/* Header */}
           <div className="mb-4 flex justify-between items-center">
             <div>
-              <h1 className="text-2xl font-bold text-gray-800">CDC Analytics Dashboard</h1>
+              <h1 className="text-2xl font-bold text-gray-800">
+                {cdcName ? `${cdcName} - Analytics Dashboard` : 'CDC Analytics Dashboard'}
+              </h1>
               <p className="text-sm text-gray-600">
                 {new Date().toLocaleDateString('en-US', { 
                   weekday: 'long', 

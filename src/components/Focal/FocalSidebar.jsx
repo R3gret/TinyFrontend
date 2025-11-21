@@ -4,7 +4,8 @@ import {
   Building2,
   User,
   BookOpen,
-  Megaphone
+  Megaphone,
+  Users
 } from "lucide-react";
 
 export default function FocalSidebar() {
@@ -22,6 +23,12 @@ export default function FocalSidebar() {
           to="/focal/create-cdc" 
           icon={Building2} 
           label="CDC Centers" 
+          currentPath={location.pathname} 
+        />
+        <SidebarItem 
+          to="/focal/workers" 
+          icon={Users} 
+          label="CD Workers" 
           currentPath={location.pathname} 
         />
         <SidebarItem 

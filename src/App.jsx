@@ -56,6 +56,7 @@ import FocalCreateCDC from "./pages/Focal/Focal_CreateCDC";
 import FocalProfile from "./pages/Focal/Focal_Profile";
 import FocalInstructionalMaterials from "./pages/Focal/Focal_InstructionalMaterials";
 import FocalVirtualC from "./pages/Focal/Focal_VirtualC";
+import FocalWorkerList from "./pages/Focal/Focal_WorkerList";
 import MSWVirtualC from "./pages/MSW/MSW_VirtualC";
 import CreateFocalPerson from "./pages/MSW/CreateFocalPerson";
 import ViewFocalPerson from "./pages/MSW/ViewFocalPerson";
@@ -135,6 +136,7 @@ export default function App() {
         {/* Focal Routes */}
         <Route path="/focal-dashboard" element={<ProtectedRoute allowedTypes={["focal"]}><FocalDashboard /></ProtectedRoute>} />
         <Route path="/focal/create-cdc" element={<ProtectedRoute allowedTypes={["focal"]}><FocalCreateCDC /></ProtectedRoute>} />
+        <Route path="/focal/workers" element={<ProtectedRoute allowedTypes={["focal"]}><FocalWorkerList /></ProtectedRoute>} />
         <Route path="/focal-profile" element={<ProtectedRoute allowedTypes={["focal"]}><FocalProfile /></ProtectedRoute>} />
         <Route path="/focal/instructional-materials" element={<ProtectedRoute allowedTypes={["focal"]}><FocalInstructionalMaterials /></ProtectedRoute>} />
         <Route path="/focal/announcements" element={<ProtectedRoute allowedTypes={["focal"]}><FocalVirtualC /></ProtectedRoute>} />

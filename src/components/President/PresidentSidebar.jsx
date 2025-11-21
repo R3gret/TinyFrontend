@@ -21,12 +21,6 @@ export default function PresidentSidebar() {
           currentPath={location.pathname}
         />
         <SidebarItem 
-          to="/pres-account-list" 
-          icon={Users} 
-          label="CD Workers List"
-          currentPath={location.pathname}
-        />
-        <SidebarItem 
           to="/pres-virtualc" 
           icon={Megaphone} 
           label="Announcements"

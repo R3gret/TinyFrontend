@@ -43,6 +43,7 @@ import {
 import { jwtDecode } from "jwt-decode";
 
 import { apiRequest, apiDownload } from "../../utils/api";
+import { getAllCategoryPaths, DOMAINS, QUARTERS, MATERIAL_TYPES, generateFilePath, generateCategoryName } from "../../utils/instructionalMaterialsStructure";
 
 export default function FocalInstructionalMaterials({ SidebarComponent = FocalSidebar }) {
   const [snackbar, setSnackbar] = useState({
@@ -110,6 +111,13 @@ function ClassworksSection({ setSnackbar }) {
     message: '',
     onConfirm: null,
   });
+  const [selectedDomain, setSelectedDomain] = useState(null);
+  const [selectedQuarter, setSelectedQuarter] = useState(null);
+  const [selectedMaterialType, setSelectedMaterialType] = useState(null);
+  const [initializingFolders, setInitializingFolders] = useState(false);
+  // Navigation state for hierarchical file manager
+  const [navigationPath, setNavigationPath] = useState([]); // ['domain', 'quarter', 'materialType']
+  const [currentView, setCurrentView] = useState('domains'); // 'domains', 'quarters', 'materialTypes', 'files'
 
   const fetchCategories = async () => {
     try {
@@ -193,13 +201,131 @@ function ClassworksSection({ setSnackbar }) {
     }
   }, [selectedCategory, setSnackbar]);
 
+  // Navigation handlers for hierarchical file manager
+  const handleDomainClick = (domain) => {
+    setNavigationPath([domain]);
+    setCurrentView('quarters');
+    setSelectedDomain(domain.id);
+    setSelectedQuarter(null);
+    setSelectedMaterialType(null);
+    setSelectedCategory(null);
+    setFiles([]);
+  };
+
+  const handleQuarterClick = (quarter) => {
+    setNavigationPath([navigationPath[0], quarter]);
+    setCurrentView('materialTypes');
+    setSelectedQuarter(quarter.id);
+    setSelectedMaterialType(null);
+    setSelectedCategory(null);
+    setFiles([]);
+  };
+
+  const handleMaterialTypeClick = async (materialType) => {
+    const domain = navigationPath[0];
+    const quarter = navigationPath[1];
+    
+    setNavigationPath([domain, quarter, materialType]);
+    setCurrentView('files');
+    setSelectedMaterialType(materialType.id);
+    
+    // Find or create the category and load files
+    const categoryName = generateCategoryName(domain.id, quarter.id, materialType.id);
+    
+    try {
+      setLoading(true);
+      // Find category by name
+      const categoriesData = await apiRequest(`/api/files/get-categories`);
+      const category = categoriesData.categories?.find(cat => cat.category_name === categoryName);
+      
+      if (category) {
+        setSelectedCategory(category.category_id);
+        const filesData = await apiRequest(
+          `/api/files?category_id=${category.category_id}`
+        );
+        const returnedFiles = filesData.files || [];
+        const filtered = returnedFiles.filter(f => String(f.category_id) === String(category.category_id));
+        setFiles(filtered);
+      } else {
+        setFiles([]);
+      }
+    } catch (err) {
+      console.error('Error loading files:', err);
+      setFiles([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBackClick = () => {
+    if (currentView === 'files') {
+      setCurrentView('materialTypes');
+      setNavigationPath(navigationPath.slice(0, 2));
+      setSelectedMaterialType(null);
+      setSelectedCategory(null);
+      setFiles([]);
+    } else if (currentView === 'materialTypes') {
+      setCurrentView('quarters');
+      setNavigationPath(navigationPath.slice(0, 1));
+      setSelectedQuarter(null);
+      setSelectedMaterialType(null);
+      setSelectedCategory(null);
+      setFiles([]);
+    } else if (currentView === 'quarters') {
+      setCurrentView('domains');
+      setNavigationPath([]);
+      setSelectedDomain(null);
+      setSelectedQuarter(null);
+      setSelectedMaterialType(null);
+      setSelectedCategory(null);
+      setFiles([]);
+    }
+  };
+
+  const getBreadcrumbPath = () => {
+    const path = ['Domains'];
+    if (navigationPath[0]) {
+      path.push(navigationPath[0].name);
+    }
+    if (navigationPath[1]) {
+      path.push(navigationPath[1].name);
+    }
+    if (navigationPath[2]) {
+      path.push(navigationPath[2].name);
+    }
+    return path;
+  };
+
   const handleOpenUploadModal = () => {
+    // If we're in files view, set the category based on current navigation
+    let categoryId = selectedCategory;
+    if (currentView === 'files' && navigationPath[0] && navigationPath[1] && navigationPath[2]) {
+      const categoryName = generateCategoryName(
+        navigationPath[0].id,
+        navigationPath[1].id,
+        navigationPath[2].id
+      );
+      const category = categories.find(c => c.category_name === categoryName);
+      if (category) {
+        categoryId = category.category_id;
+        setSelectedCategory(category.category_id);
+      }
+    }
+    
     setNewFile(prev => ({
       ...prev,
-      category_id: selectedCategory || '',
+      category_id: categoryId || '',
       file_name: '',
       file_data: null,
     }));
+    
+    // Pre-select domain, quarter, and material type if in files view
+    if (currentView === 'files' && navigationPath[0] && navigationPath[1] && navigationPath[2]) {
+      setSelectedDomain(navigationPath[0].id);
+      setSelectedQuarter(navigationPath[1].id);
+      setSelectedMaterialType(navigationPath[2].id);
+    }
+    
     setIsModalOpen(true);
   };
 
@@ -214,15 +340,75 @@ function ClassworksSection({ setSnackbar }) {
     }
   };
 
+  // Initialize folder structure
+  const initializeFolderStructure = async () => {
+    setInitializingFolders(true);
+    try {
+      const allPaths = getAllCategoryPaths();
+      let created = 0;
+      let skipped = 0;
+
+      for (const pathInfo of allPaths) {
+        try {
+          // Check if category exists
+          const existingCategories = await apiRequest(`/api/files/get-categories`);
+          const exists = existingCategories.categories?.some(
+            cat => cat.category_name === pathInfo.categoryName
+          );
+
+          if (!exists) {
+            // Create category with path structure
+            await apiRequest('/api/files/categories', 'POST', {
+              category_name: pathInfo.categoryName,
+              file_path: pathInfo.path
+            });
+            created++;
+          } else {
+            skipped++;
+          }
+        } catch (err) {
+          console.error(`Error creating category ${pathInfo.categoryName}:`, err);
+        }
+      }
+
+      await fetchCategories();
+      await refetchFileCounts();
+      
+      setSnackbar({
+        open: true,
+        message: `Folder structure initialized: ${created} folders created, ${skipped} already existed`,
+        severity: 'success'
+      });
+    } catch (err) {
+      console.error('Error initializing folder structure:', err);
+      setSnackbar({
+        open: true,
+        message: err.message || 'Failed to initialize folder structure',
+        severity: 'error'
+      });
+    } finally {
+      setInitializingFolders(false);
+    }
+  };
+
   const handleFileUpload = async (e) => {
     e.preventDefault();
     try {
       setLoading(true);
       
+      // Generate file path if domain, quarter, and material type are selected
+      let filePath = null;
+      if (selectedDomain && selectedQuarter && selectedMaterialType) {
+        filePath = generateFilePath(selectedDomain, selectedQuarter, selectedMaterialType);
+      }
+      
       const formData = new FormData();
       formData.append('category_id', newFile.category_id);
       formData.append('file_name', newFile.file_name);
       formData.append('file_data', newFile.file_data);
+      if (filePath) {
+        formData.append('file_path', filePath);
+      }
       
       await apiRequest('/api/files', 'POST', formData, true);
       
@@ -377,14 +563,7 @@ function ClassworksSection({ setSnackbar }) {
     }
   };
 
-  const handleBackClick = () => {
-    if (selectedCategory) {
-      setSelectedCategory(null);
-    }
-  };
-
-  const showBackButton = selectedCategory;
-  const backButtonLabel = "Back to Categories";
+  const showBackButton = currentView !== 'domains';
 
   if (loading && !selectedCategory) {
     return (
@@ -404,56 +583,175 @@ function ClassworksSection({ setSnackbar }) {
 
   return (
     <div className="text-gray-800">
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          {showBackButton && (
-            <Button
-              onClick={handleBackClick}
-              startIcon={<ArrowBackIcon />}
-              sx={{ mr: 2 }}
+      {/* Breadcrumb Navigation */}
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 1 }}>
+        {getBreadcrumbPath().map((item, index) => (
+          <Box key={index} sx={{ display: 'flex', alignItems: 'center' }}>
+            {index > 0 && <Typography sx={{ mx: 1, color: 'text.secondary' }}>/</Typography>}
+            <Typography 
+              variant="body2" 
+              sx={{ 
+                color: index === getBreadcrumbPath().length - 1 ? 'primary.main' : 'text.secondary',
+                cursor: index < getBreadcrumbPath().length - 1 ? 'pointer' : 'default',
+                '&:hover': index < getBreadcrumbPath().length - 1 ? { textDecoration: 'underline' } : {}
+              }}
+              onClick={() => {
+                if (index === 0) {
+                  setCurrentView('domains');
+                  setNavigationPath([]);
+                  setSelectedDomain(null);
+                  setSelectedQuarter(null);
+                  setSelectedMaterialType(null);
+                  setSelectedCategory(null);
+                  setFiles([]);
+                } else if (index === 1 && currentView !== 'domains') {
+                  handleBackClick();
+                } else if (index === 2 && currentView === 'files') {
+                  handleBackClick();
+                }
+              }}
             >
-              {backButtonLabel}
-            </Button>
+              {item}
+            </Typography>
+          </Box>
+        ))}
+      </Box>
+
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h5" component="h2">
+          {currentView === 'domains' && 'Instructional Materials'}
+          {currentView === 'quarters' && `${navigationPath[0]?.name || ''} - Quarters`}
+          {currentView === 'materialTypes' && `${navigationPath[0]?.name || ''} > ${navigationPath[1]?.name || ''} - Material Types`}
+          {currentView === 'files' && `${navigationPath[0]?.name || ''} > ${navigationPath[1]?.name || ''} > ${navigationPath[2]?.name || ''}`}
+        </Typography>
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+          {userRole !== 'President' && (
+            <>
+              <Button
+                variant="outlined"
+                onClick={initializeFolderStructure}
+                disabled={initializingFolders}
+                startIcon={<FolderIcon />}
+              >
+                {initializingFolders ? 'Initializing...' : 'Initialize Folder Structure'}
+              </Button>
+              {currentView === 'files' && (
+                <Button
+                  variant="contained"
+                  startIcon={<UploadIcon />}
+                  onClick={handleOpenUploadModal}
+                >
+                  Upload File
+                </Button>
+              )}
+            </>
           )}
         </Box>
       </Box>
 
-      {!selectedCategory && (
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Typography variant="h5" component="h2">
-            Instructional Materials
-          </Typography>
-          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-            {userRole !== 'President' && (
-              <Button
-                variant="contained"
-                onClick={() => setIsCategoryModalOpen(true)}
-              >
-                Add Category
-              </Button>
-            )}
-          </Box>
-        </Box>
+      {/* Hierarchical File Manager Views */}
+      {currentView === 'domains' && (
+        <Grid container spacing={2}>
+          {DOMAINS.flatMap((domain) => {
+            if (domain.id === 'self_help' && domain.subcategories) {
+              return domain.subcategories.map((sub) => (
+                <Grid item xs={12} sm={6} md={4} key={sub.id}>
+                  <Card 
+                    sx={{ 
+                      cursor: 'pointer', 
+                      '&:hover': { boxShadow: 4 },
+                      height: '100%'
+                    }}
+                    onClick={() => handleDomainClick(sub)}
+                  >
+                    <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                      <FolderIcon sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} />
+                      <Typography variant="h6" align="center">
+                        {sub.name}
+                      </Typography>
+                    </Box>
+                  </Card>
+                </Grid>
+              ));
+            }
+            return (
+              <Grid item xs={12} sm={6} md={4} key={domain.id}>
+                <Card 
+                  sx={{ 
+                    cursor: 'pointer', 
+                    '&:hover': { boxShadow: 4 },
+                    height: '100%'
+                  }}
+                  onClick={() => handleDomainClick(domain)}
+                >
+                  <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <FolderIcon sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} />
+                    <Typography variant="h6" align="center">
+                      {domain.name}
+                    </Typography>
+                  </Box>
+                </Card>
+              </Grid>
+            );
+          })}
+        </Grid>
       )}
 
-      {selectedCategory ? (
-        <Box>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-            <Typography variant="h6">
-              {categories.find(c => c.category_id == selectedCategory)?.category_name}
-            </Typography>
-            {userRole !== 'President' && (
-              <Button
-                variant="contained"
-                startIcon={<UploadIcon />}
-                onClick={handleOpenUploadModal}
+      {currentView === 'quarters' && navigationPath[0] && (
+        <Grid container spacing={2}>
+          {QUARTERS.map((quarter) => (
+            <Grid item xs={12} sm={6} md={3} key={quarter.id}>
+              <Card 
+                sx={{ 
+                  cursor: 'pointer', 
+                  '&:hover': { boxShadow: 4 },
+                  height: '100%'
+                }}
+                onClick={() => handleQuarterClick(quarter)}
               >
-                Upload File
-              </Button>
-            )}
-          </Box>
+                <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <FolderIcon sx={{ fontSize: 48, color: 'secondary.main', mb: 2 }} />
+                  <Typography variant="h6" align="center">
+                    {quarter.name}
+                  </Typography>
+                </Box>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+      )}
 
-          {files.length === 0 ? (
+      {currentView === 'materialTypes' && navigationPath[0] && navigationPath[1] && (
+        <Grid container spacing={2}>
+          {MATERIAL_TYPES.map((materialType) => (
+            <Grid item xs={12} sm={6} md={4} key={materialType.id}>
+              <Card 
+                sx={{ 
+                  cursor: 'pointer', 
+                  '&:hover': { boxShadow: 4 },
+                  height: '100%'
+                }}
+                onClick={() => handleMaterialTypeClick(materialType)}
+              >
+                <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <FolderIcon sx={{ fontSize: 48, color: 'success.main', mb: 2 }} />
+                  <Typography variant="h6" align="center">
+                    {materialType.name}
+                  </Typography>
+                </Box>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+      )}
+
+      {currentView === 'files' && (
+        <Box>
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : files.length === 0 ? (
             <Box sx={{ 
               border: 2, 
               borderColor: 'grey.300', 
@@ -530,57 +828,6 @@ function ClassworksSection({ setSnackbar }) {
             </TableContainer>
           )}
         </Box>
-      ) : (
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Category Name</TableCell>
-                <TableCell align="center">Files</TableCell>
-                <TableCell align="right">Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {categories.map((category) => (
-                <TableRow
-                  key={category.category_id}
-                  hover
-                  sx={{ '&:hover .action-button': { opacity: 1 } }}
-                >
-                  <TableCell 
-                    component="th" 
-                    scope="row"
-                    onClick={() => setSelectedCategory(category.category_id)}
-                    sx={{ cursor: 'pointer' }}
-                  >
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <FolderIcon sx={{ mr: 2, color: 'success.main' }} />
-                      {category.category_name}
-                    </Box>
-                  </TableCell>
-                  <TableCell 
-                    align="center"
-                    onClick={() => setSelectedCategory(category.category_id)}
-                    sx={{ cursor: 'pointer' }}
-                  >
-                    {fileCounts[category.category_id] || 0}
-                  </TableCell>
-                  <TableCell align="right">
-                    {userRole !== 'President' && (
-                      <IconButton
-                        className="action-button"
-                        sx={{ opacity: 0 }}
-                        onClick={(e) => handleMenuClick(e, category)}
-                      >
-                        <MoreVertIcon />
-                      </IconButton>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
       )}
 
       <Menu
@@ -673,7 +920,13 @@ function ClassworksSection({ setSnackbar }) {
               <Select
                 value={newFile.category_id}
                 label="Category"
-                onChange={(e) => setNewFile({...newFile, category_id: e.target.value})}
+                onChange={(e) => {
+                  setNewFile({...newFile, category_id: e.target.value});
+                  // Reset domain, quarter, material type when category changes
+                  setSelectedDomain(null);
+                  setSelectedQuarter(null);
+                  setSelectedMaterialType(null);
+                }}
                 required
               >
                 <MenuItem value="">Select Category</MenuItem>
@@ -684,7 +937,85 @@ function ClassworksSection({ setSnackbar }) {
                 ))}
               </Select>
             </FormControl>
-            
+
+            {/* Domain, Quarter, and Material Type Selection for File Path */}
+            {newFile.category_id && (
+              <>
+                <FormControl fullWidth sx={{ mb: 2 }}>
+                  <InputLabel>Domain</InputLabel>
+                  <Select
+                    value={selectedDomain || ''}
+                    label="Domain"
+                    onChange={(e) => {
+                      setSelectedDomain(e.target.value);
+                      setSelectedQuarter(null);
+                      setSelectedMaterialType(null);
+                    }}
+                  >
+                    <MenuItem value="">Select Domain</MenuItem>
+                    {DOMAINS.flatMap((domain) => {
+                      if (domain.id === 'self_help' && domain.subcategories) {
+                        return domain.subcategories.map((sub) => (
+                          <MenuItem key={sub.id} value={sub.id}>
+                            {sub.name}
+                          </MenuItem>
+                        ));
+                      }
+                      return (
+                        <MenuItem key={domain.id} value={domain.id}>
+                          {domain.name}
+                        </MenuItem>
+                      );
+                    })}
+                  </Select>
+                </FormControl>
+
+                {selectedDomain && (
+                  <FormControl fullWidth sx={{ mb: 2 }}>
+                    <InputLabel>Quarter</InputLabel>
+                    <Select
+                      value={selectedQuarter || ''}
+                      label="Quarter"
+                      onChange={(e) => {
+                        setSelectedQuarter(e.target.value);
+                        setSelectedMaterialType(null);
+                      }}
+                    >
+                      <MenuItem value="">Select Quarter</MenuItem>
+                      {QUARTERS.map((quarter) => (
+                        <MenuItem key={quarter.id} value={quarter.id}>
+                          {quarter.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                )}
+
+                {selectedDomain && selectedQuarter && (
+                  <FormControl fullWidth sx={{ mb: 2 }}>
+                    <InputLabel>Material Type</InputLabel>
+                    <Select
+                      value={selectedMaterialType || ''}
+                      label="Material Type"
+                      onChange={(e) => setSelectedMaterialType(e.target.value)}
+                    >
+                      <MenuItem value="">Select Material Type</MenuItem>
+                      {MATERIAL_TYPES.map((type) => (
+                        <MenuItem key={type.id} value={type.id}>
+                          {type.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                )}
+
+                {selectedDomain && selectedQuarter && selectedMaterialType && (
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                    File Path: {generateFilePath(selectedDomain, selectedQuarter, selectedMaterialType)}
+                  </Typography>
+                )}
+              </>
+            )}
             
             <TextField
               label="File Name"

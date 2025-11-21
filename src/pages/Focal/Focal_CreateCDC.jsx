@@ -181,11 +181,17 @@ const CDCPage = () => {
           setCdWorkers(data.data || []);
         } catch (err) {
           console.error('Failed to fetch CD workers:', err);
-          setSnackbar({
-            open: true,
-            message: "Failed to load CD workers list",
-            severity: "error"
-          });
+          // Don't show error snackbar - just log it and set empty array
+          // The backend endpoint may not be implemented yet
+          setCdWorkers([]);
+          // Only show error if it's not a 404/500 (endpoint doesn't exist)
+          if (err.message && !err.message.includes('404') && !err.message.includes('500')) {
+            setSnackbar({
+              open: true,
+              message: "Failed to load CD workers list. The endpoint may not be implemented yet.",
+              severity: "warning"
+            });
+          }
         }
       }
     };
@@ -778,14 +784,24 @@ const CDCPage = () => {
                     options={cdWorkers}
                     getOptionLabel={(option) => option.username || `${option.first_name || ''} ${option.last_name || ''}`.trim() || 'Unknown'}
                     onChange={(e, value) => setFormData({...formData, cd_worker_id: value ? value.id : null})}
+                    disabled={cdWorkers.length === 0}
                     renderInput={(params) => (
                       <TextField
                         {...params}
                         label="Assign CD Worker (Optional)"
                         variant="outlined"
-                        helperText="Select a CD worker not assigned to any CDC"
+                        helperText={
+                          cdWorkers.length === 0 
+                            ? "No unassigned CD workers available. The backend endpoint /api/cdc/workers/unassigned may need to be implemented."
+                            : "Select a CD worker not assigned to any CDC"
+                        }
                       />
                     )}
+                    noOptionsText={
+                      cdWorkers.length === 0 
+                        ? "No unassigned CD workers found. Backend endpoint may not be implemented yet."
+                        : "No options"
+                    }
                   />
 
                   {/* Buttons */}
